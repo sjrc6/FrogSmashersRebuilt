@@ -252,7 +252,7 @@ internal sealed class MenuRenderer
             "BORDERLESS FULLSCREEN: " + OnOff(game.Settings.Fullscreen),
             "VSYNC: " + OnOff(game.Settings.VSync),
             "FRAME LIMIT: " + game.Settings.FrameLimit,
-            "VOLUME: " + (int)(game.Settings.Volume * 100) + "%",
+            "VOLUME: " + (int)MathF.Round(game.Settings.Volume * 100) + "%",
             "SCREEN SHAKE: " + OnOff(game.Settings.ScreenShake),
             "TEAMS (NEXT MATCH): " + OnOff(game.Setup.Rules.TeamMode),
             "WIN SCORE: " + (game.Setup.Rules.WinScore == 0 ? "ORIGINAL DEFAULT" : game.Setup.Rules.WinScore),

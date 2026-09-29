@@ -544,7 +544,7 @@ internal sealed class MenuController
                 ];
                 break;
             case Setting.Volume:
-                game.Settings.Volume = Math.Clamp(game.Settings.Volume + amount * .1f, 0, 1);
+                game.Settings.Volume = Math.Clamp((int)MathF.Round(game.Settings.Volume * 20) + amount, 0, 20) / 20f;
                 game.Audio.Volume = game.Settings.Volume;
                 break;
             case Setting.ScreenShake:
