@@ -1,0 +1,44 @@
+{
+  "AtlasSize": 1024,
+  "EmSize": 64,
+  "DistanceRange": 8,
+  "Fonts": [
+    {
+      "Source": "Retroville-repaired.ttf",
+      "Atlas": "retroville-msdf",
+      "Layouts": [
+        {
+          "Name": "font",
+          "Size": 16,
+          "MetricsSize": 100,
+          "LineHeight": 19
+        }
+      ]
+    },
+    {
+      "Source": "ArcadeClassic-repaired.ttf",
+      "Fallback": "LiberationSans-Regular.ttf",
+      "Atlas": "arcade-msdf",
+      "Layouts": [
+        {
+          "Name": "score-font",
+          "Size": 20,
+          "MetricsSize": 100,
+          "LineHeight": 20
+        },
+        {
+          "Name": "overhead-font",
+          "Size": 20,
+          "MetricsSize": 40,
+          "LineHeight": 20
+        },
+        {
+          "Name": "side-score-font",
+          "Size": 20,
+          "MetricsSize": 80,
+          "LineHeight": 20
+        }
+      ]
+    }
+  ]
+}

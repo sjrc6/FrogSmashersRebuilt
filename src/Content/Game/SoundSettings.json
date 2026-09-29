@@ -1,0 +1,208 @@
+{
+  "SoundSettings": {
+    "2DownSmash/Burp": {
+      "PitchVariance": 0.1,
+      "Volume": 0.5
+    },
+    "3Moon/CharacterCollision": {
+      "PitchVariance": 0.25,
+      "Volume": 1
+    },
+    "BackgroundExplosion": {
+      "PitchVariance": 0.1,
+      "Volume": 0.5
+    },
+    "BatChargeup": {
+      "PitchVariance": 0.1,
+      "Volume": 0.3
+    },
+    "BatHit1": {
+      "PitchVariance": 0.1,
+      "Volume": 1
+    },
+    "BatHit2": {
+      "PitchVariance": 0.1,
+      "Volume": 1
+    },
+    "BatHit3": {
+      "PitchVariance": 0.1,
+      "Volume": 1
+    },
+    "BatHit4": {
+      "PitchVariance": 0.1,
+      "Volume": 1
+    },
+    "BatHit5": {
+      "PitchVariance": 0,
+      "Volume": 1
+    },
+    "BatHitVoice1": {
+      "PitchVariance": 0,
+      "Volume": 0.4
+    },
+    "BatHitVoice2": {
+      "PitchVariance": 0,
+      "Volume": 1
+    },
+    "BatHitVoice3": {
+      "PitchVariance": 0,
+      "Volume": 1
+    },
+    "BatHitVoice4": {
+      "PitchVariance": 0,
+      "Volume": 1
+    },
+    "BatHitVoice5": {
+      "PitchVariance": 0,
+      "Volume": 1
+    },
+    "BatSwing": {
+      "PitchVariance": 0.1,
+      "Volume": 1
+    },
+    "BatSwingVoice": {
+      "PitchVariance": 0.1,
+      "Volume": 0.2
+    },
+    "Burp": {
+      "PitchVariance": 0.1,
+      "Volume": 0.5
+    },
+    "CharacterCollision": {
+      "PitchVariance": 0.1,
+      "Volume": 0.5
+    },
+    "CharacterSpawn": {
+      "PitchVariance": 0,
+      "Volume": 0.7
+    },
+    "DramaSting": {
+      "PitchVariance": 0,
+      "Volume": 0.3
+    },
+    "Footstep": {
+      "PitchVariance": 0.3,
+      "Volume": 0.6
+    },
+    "FrogBounce": {
+      "PitchVariance": 0.6,
+      "Volume": 1
+    },
+    "FrogBounceVoice": {
+      "PitchVariance": 0,
+      "Volume": 0.2
+    },
+    "FrogFly": {
+      "PitchVariance": 0.1,
+      "Volume": 1
+    },
+    "FrogSit": {
+      "PitchVariance": 0,
+      "Volume": 0.6
+    },
+    "FrogTurn": {
+      "PitchVariance": 0.2,
+      "Volume": 0.2
+    },
+    "Gasp1": {
+      "PitchVariance": 0,
+      "Volume": 0.4
+    },
+    "Gasp2": {
+      "PitchVariance": 0,
+      "Volume": 0.4
+    },
+    "GetBat": {
+      "PitchVariance": 0,
+      "Volume": 0.3
+    },
+    "Growl": {
+      "PitchVariance": 0,
+      "Volume": 0.3
+    },
+    "Jump": {
+      "PitchVariance": 0.6,
+      "Volume": 1
+    },
+    "Knockout1": {
+      "PitchVariance": 0,
+      "Volume": 0.4
+    },
+    "Knockout2": {
+      "PitchVariance": 0,
+      "Volume": 0.4
+    },
+    "Knockout3": {
+      "PitchVariance": 0,
+      "Volume": 0.3
+    },
+    "KnockoutSuicide": {
+      "PitchVariance": 0,
+      "Volume": 0.4
+    },
+    "Land": {
+      "PitchVariance": 0.2,
+      "Volume": 1
+    },
+    "Launch1": {
+      "PitchVariance": 0.3,
+      "Volume": 0.2
+    },
+    "Launch2": {
+      "PitchVariance": 0.3,
+      "Volume": 0.2
+    },
+    "Launch3": {
+      "PitchVariance": 0.3,
+      "Volume": 0.2
+    },
+    "LaunchVoice1": {
+      "PitchVariance": 0,
+      "Volume": 0.2
+    },
+    "LaunchVoice2": {
+      "PitchVariance": 0,
+      "Volume": 0.3
+    },
+    "LaunchVoice3": {
+      "PitchVariance": 0,
+      "Volume": 0.6
+    },
+    "StandUp": {
+      "PitchVariance": 0.2,
+      "Volume": 0.3
+    },
+    "Surprise": {
+      "PitchVariance": 0,
+      "Volume": 0.3
+    },
+    "TapBat": {
+      "PitchVariance": 0,
+      "Volume": 0.6
+    },
+    "TitleSong": {
+      "PitchVariance": 0,
+      "Volume": 0.6
+    },
+    "TongueCollide": {
+      "PitchVariance": 0.4,
+      "Volume": 1
+    },
+    "TongueCollideSurface": {
+      "PitchVariance": 0.6,
+      "Volume": 1
+    },
+    "TongueHit": {
+      "PitchVariance": 0,
+      "Volume": 1
+    },
+    "TongueLaunch": {
+      "PitchVariance": 0.2,
+      "Volume": 1
+    },
+    "VictorySting": {
+      "PitchVariance": 0,
+      "Volume": 0.8
+    }
+  }
+}

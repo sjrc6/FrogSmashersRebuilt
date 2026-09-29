@@ -1,0 +1,143 @@
+{
+  "CharacterOffsetX": 0,
+  "CharacterOffsetY": 1.39,
+  "CharacterParameters": {
+    "airAccel": 200,
+    "attackChargeTime": 1.25,
+    "attackDirX": 0,
+    "attackDirY": 0,
+    "attackRange": 3,
+    "attackRecoverTime": 0.35,
+    "attackRecoverTimeLeft": 0,
+    "attackState": 0,
+    "attackTime": 0.01,
+    "attackTimeLeft": 0,
+    "bounceAccel": 20,
+    "bounceDodgePower": 20,
+    "bounceGravityMax": 50,
+    "bounceGravityMin": 20,
+    "bounceGravityRestoreCounter": 0,
+    "bounceGravityRestoreDelay": 1,
+    "bounceGravityRestoreTime": 1.5,
+    "canBounceDodge": 0,
+    "graceGravityM": 0,
+    "gravity": 200,
+    "gravityGraceThreshold": 15,
+    "gravityGraceTime": 0.25,
+    "gravityGraceTimeLeft": 0,
+    "hasBounceDodged": 0,
+    "hitsTaken": 0,
+    "jumpGraceTime": 0.2,
+    "jumpVel": 40,
+    "maxFallSpeed": -40,
+    "maxFallSpeedWallSlide": -10,
+    "maxRunSpeed": 20,
+    "minimumTongueDistance": 3,
+    "runAccel": 175,
+    "skidAccel": 100,
+    "state": 0,
+    "tongueDelay": 0.05,
+    "tongueOriginX": 0,
+    "tongueOriginY": 1.5,
+    "tongueRange": 10,
+    "tongueRetractSpeedLatched": 25,
+    "tongueRetractSpeedMissed": 27.5,
+    "tongueSpeed": 60,
+    "velocityTX": 0,
+    "velocityTY": 0,
+    "velocityX": 0,
+    "velocityY": 0,
+    "wasHitDownwards": 0
+  },
+  "CharacterScaleX": 1,
+  "CharacterScaleY": 1,
+  "CharacterVisualParameters": {
+    "flightHeightPitchMod": 0.055555556,
+    "flightVelocityVolumeMod": 0.001,
+    "lineVelocityScale": 0.005,
+    "modFlightVolume": 1,
+    "skidEffectDistance": 1,
+    "smokeRingDistance": 7.5,
+    "trailDelay": 0.01
+  },
+  "EffectsColors": [
+    [
+      0,
+      0,
+      1,
+      1
+    ],
+    [
+      1,
+      0,
+      0,
+      1
+    ],
+    [
+      0.16927983,
+      0.74264705,
+      0.74264705,
+      1
+    ],
+    [
+      0.6764706,
+      0.4909557,
+      0.15916954,
+      1
+    ],
+    [
+      0.29633245,
+      0.5808823,
+      0.13240698,
+      1
+    ],
+    [
+      0.7058823,
+      0.17647058,
+      0.17647058,
+      1
+    ]
+  ],
+  "EffectsParameters": {
+    "cameraSpring": 500,
+    "shakePower": 20
+  },
+  "FlightAudio": {
+    "Active": true,
+    "Loop": true,
+    "MaxDistance": 500,
+    "MinDistance": 1,
+    "Pan": 0,
+    "Path": "",
+    "Pitch": 1,
+    "PlayOnAwake": false,
+    "RolloffMode": 1,
+    "SpatialBlend": 0,
+    "Volume": 0.2
+  },
+  "TongueLineMaterial": "Tongue",
+  "TongueLineWidth": 0.5,
+  "TongueTip": {
+    "Color": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "FrameSeconds": 0.05,
+    "Frames": [
+      "9c4842194dc70e347b7052ce707041ff:21300000",
+      "958ad77120f83384a940efc2e0984af4:21300000",
+      "9890f5e73b22ad24e87c92fdb848b5bf:21300000"
+    ],
+    "InitialSpriteId": "9c4842194dc70e347b7052ce707041ff:21300000",
+    "Material": "Sprites-Default",
+    "Order": 0,
+    "PlayOnce": false,
+    "ScaleX": 1,
+    "ScaleY": 1,
+    "SortingLayer": 0,
+    "Z": 1
+  },
+  "Version": 1
+}

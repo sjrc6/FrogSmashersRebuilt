@@ -1,0 +1,5 @@
+Originals/
+.build/
+artifacts/
+**/bin/
+**/obj/

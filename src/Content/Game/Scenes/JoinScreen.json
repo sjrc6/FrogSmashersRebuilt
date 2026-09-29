@@ -1,0 +1,2538 @@
+{
+  "Animators": [],
+  "Audio": [
+    {
+      "Active": false,
+      "Loop": false,
+      "MaxDistance": 500,
+      "MinDistance": 1,
+      "ObjectPath": "SoundController",
+      "Pan": 0,
+      "Path": "Audio/Sound/FS_Outro SFX.ogg",
+      "Pitch": 1,
+      "PlayOnAwake": true,
+      "RolloffMode": 0,
+      "SpatialBlend": 0,
+      "Volume": 0.539
+    }
+  ],
+  "BackgroundColor": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "CameraX": 0.0,
+  "CameraY": 0.0,
+  "Collision": [
+    {
+      "Height": 40,
+      "Name": "Terrain/Ground (5)",
+      "OneWay": false,
+      "Width": 2,
+      "X": -31.0,
+      "Y": -0.85
+    },
+    {
+      "Height": 0.5,
+      "Name": "Terrain/onewayplatform (5)",
+      "OneWay": true,
+      "Width": 10,
+      "X": -15.0,
+      "Y": -10.0
+    },
+    {
+      "Height": 0.5,
+      "Name": "Terrain/onewayplatform (2)",
+      "OneWay": true,
+      "Width": 10,
+      "X": -15.0,
+      "Y": 7.0
+    },
+    {
+      "Height": 40,
+      "Name": "Terrain/Ground (6)",
+      "OneWay": false,
+      "Width": 2,
+      "X": 0.0,
+      "Y": -2.61
+    },
+    {
+      "Height": 2,
+      "Name": "Terrain/Ground",
+      "OneWay": false,
+      "Width": 80,
+      "X": 2.65,
+      "Y": -17.0
+    },
+    {
+      "Height": 2,
+      "Name": "Terrain/Ground (12)",
+      "OneWay": false,
+      "Width": 80,
+      "X": 7.8,
+      "Y": 0.0
+    },
+    {
+      "Height": 2.1,
+      "Name": "Terrain/Ground (10)",
+      "OneWay": false,
+      "Width": 80,
+      "X": 7.8,
+      "Y": 17.11
+    },
+    {
+      "Height": 0.5,
+      "Name": "Terrain/onewayplatform (4)",
+      "OneWay": true,
+      "Width": 10,
+      "X": 16.0,
+      "Y": -10.0
+    },
+    {
+      "Height": 0.5,
+      "Name": "Terrain/onewayplatform (3)",
+      "OneWay": true,
+      "Width": 10,
+      "X": 16.0,
+      "Y": 7.0
+    },
+    {
+      "Height": 40,
+      "Name": "Terrain/Ground (4)",
+      "OneWay": false,
+      "Width": 2,
+      "X": 31.0,
+      "Y": -2.61
+    },
+    {
+      "Height": 40,
+      "Name": "Terrain/Ground (11)",
+      "OneWay": false,
+      "Width": 2,
+      "X": 31.0,
+      "Y": 31.2
+    },
+    {
+      "Height": 1,
+      "Name": "Terrain/Ground (8)",
+      "OneWay": false,
+      "Width": 79.9,
+      "X": 48.1,
+      "Y": -17.5
+    }
+  ],
+  "FlySpawn": {
+    "X": 0,
+    "Y": 0
+  },
+  "Id": "JoinScreen",
+  "KillBounds": {
+    "Bottom": -23.7,
+    "Left": -32.0,
+    "Right": 32.0,
+    "Top": 28.8
+  },
+  "Name": "JoinScreen",
+  "Nodes": [
+    {
+      "Active": true,
+      "LocalPosition": [
+        0.22270584,
+        -0.050741494,
+        -12.071846
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "SoundController",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        4
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Controllers/Scoreboard",
+      "ParentPath": "Controllers"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Controllers",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas2/ColorPrompt/Image (3)",
+      "ParentPath": "JoinCanvas2/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas2/BackPrompt",
+      "ParentPath": "JoinCanvas2"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas2/ColorPrompt/Text (1)",
+      "ParentPath": "JoinCanvas2/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas2/ColorPrompt/GameObject",
+      "ParentPath": "JoinCanvas2/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas2/BackPrompt/Image (1)",
+      "ParentPath": "JoinCanvas2/BackPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas2/BackPrompt/Text (1)",
+      "ParentPath": "JoinCanvas2/BackPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas2/JoinPrompt",
+      "ParentPath": "JoinCanvas2"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas2/ColorPrompt/Image (1)",
+      "ParentPath": "JoinCanvas2/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas2/EffectPos",
+      "ParentPath": "JoinCanvas2"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas2/JoinPrompt/Text",
+      "ParentPath": "JoinCanvas2/JoinPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas2/ColorPrompt/Image (2)",
+      "ParentPath": "JoinCanvas2/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas2/ColorPrompt/GameObject/Text (3)",
+      "ParentPath": "JoinCanvas2/ColorPrompt/GameObject"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas2/ColorPrompt/GameObject/Image (4)",
+      "ParentPath": "JoinCanvas2/ColorPrompt/GameObject"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas2/ColorPrompt/GameObject/Image (5)",
+      "ParentPath": "JoinCanvas2/ColorPrompt/GameObject"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas2/ColorPrompt/Text (2)",
+      "ParentPath": "JoinCanvas2/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas2",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas2/ColorPrompt/Text",
+      "ParentPath": "JoinCanvas2/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas2/ColorPrompt/Image",
+      "ParentPath": "JoinCanvas2/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas2/JoinPrompt/Image",
+      "ParentPath": "JoinCanvas2/JoinPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas2/ColorPrompt",
+      "ParentPath": "JoinCanvas2"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas3/ColorPrompt/Image (3)",
+      "ParentPath": "JoinCanvas3/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas3/BackPrompt",
+      "ParentPath": "JoinCanvas3"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas3/ColorPrompt/Text (1)",
+      "ParentPath": "JoinCanvas3/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas3/ColorPrompt/GameObject",
+      "ParentPath": "JoinCanvas3/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas3/BackPrompt/Image (1)",
+      "ParentPath": "JoinCanvas3/BackPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas3/BackPrompt/Text (1)",
+      "ParentPath": "JoinCanvas3/BackPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas3/JoinPrompt",
+      "ParentPath": "JoinCanvas3"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas3/ColorPrompt/Image (1)",
+      "ParentPath": "JoinCanvas3/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas3/EffectPos",
+      "ParentPath": "JoinCanvas3"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas3/JoinPrompt/Text",
+      "ParentPath": "JoinCanvas3/JoinPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas3/ColorPrompt/Image (2)",
+      "ParentPath": "JoinCanvas3/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas3/ColorPrompt/GameObject/Text (3)",
+      "ParentPath": "JoinCanvas3/ColorPrompt/GameObject"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas3/ColorPrompt/GameObject/Image (4)",
+      "ParentPath": "JoinCanvas3/ColorPrompt/GameObject"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas3/ColorPrompt/GameObject/Image (5)",
+      "ParentPath": "JoinCanvas3/ColorPrompt/GameObject"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas3/ColorPrompt/Text (2)",
+      "ParentPath": "JoinCanvas3/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas3",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas3/ColorPrompt/Text",
+      "ParentPath": "JoinCanvas3/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas3/ColorPrompt/Image",
+      "ParentPath": "JoinCanvas3/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas3/JoinPrompt/Image",
+      "ParentPath": "JoinCanvas3/JoinPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas3/ColorPrompt",
+      "ParentPath": "JoinCanvas3"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "InControl",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas1/ColorPrompt/Image (3)",
+      "ParentPath": "JoinCanvas1/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas1/BackPrompt",
+      "ParentPath": "JoinCanvas1"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas1/ColorPrompt/Text (1)",
+      "ParentPath": "JoinCanvas1/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas1/ColorPrompt/GameObject",
+      "ParentPath": "JoinCanvas1/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas1/BackPrompt/Image (1)",
+      "ParentPath": "JoinCanvas1/BackPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas1/BackPrompt/Text (1)",
+      "ParentPath": "JoinCanvas1/BackPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas1/JoinPrompt",
+      "ParentPath": "JoinCanvas1"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas1/ColorPrompt/Image (1)",
+      "ParentPath": "JoinCanvas1/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas1/EffectPos",
+      "ParentPath": "JoinCanvas1"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas1/JoinPrompt/Text",
+      "ParentPath": "JoinCanvas1/JoinPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas1/ColorPrompt/Image (2)",
+      "ParentPath": "JoinCanvas1/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas1/ColorPrompt/GameObject/Text (3)",
+      "ParentPath": "JoinCanvas1/ColorPrompt/GameObject"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas1/ColorPrompt/GameObject/Image (4)",
+      "ParentPath": "JoinCanvas1/ColorPrompt/GameObject"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas1/ColorPrompt/GameObject/Image (5)",
+      "ParentPath": "JoinCanvas1/ColorPrompt/GameObject"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas1/ColorPrompt/Text (2)",
+      "ParentPath": "JoinCanvas1/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas1",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas1/ColorPrompt/Text",
+      "ParentPath": "JoinCanvas1/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas1/ColorPrompt/Image",
+      "ParentPath": "JoinCanvas1/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas1/JoinPrompt/Image",
+      "ParentPath": "JoinCanvas1/JoinPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas1/ColorPrompt",
+      "ParentPath": "JoinCanvas1"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        36.03,
+        -0.34,
+        10
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        8.12,
+        50.79,
+        1
+      ],
+      "ObjectPath": "Main Camera/BlackBar",
+      "ParentPath": "Main Camera"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        -10
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Main Camera",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        26.06,
+        10
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        76,
+        16,
+        1
+      ],
+      "ObjectPath": "Main Camera/BlackBar (3)",
+      "ParentPath": "Main Camera"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -36.04,
+        -0.34,
+        10
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        8.12,
+        50.789997,
+        1
+      ],
+      "ObjectPath": "Main Camera/BlackBar (1)",
+      "ParentPath": "Main Camera"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        -25.99,
+        10
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        76,
+        16,
+        1
+      ],
+      "ObjectPath": "Main Camera/BlackBar (2)",
+      "ParentPath": "Main Camera"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas4/ColorPrompt/Image (3)",
+      "ParentPath": "JoinCanvas4/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas4/BackPrompt",
+      "ParentPath": "JoinCanvas4"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas4/ColorPrompt/Text (1)",
+      "ParentPath": "JoinCanvas4/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas4/ColorPrompt/GameObject",
+      "ParentPath": "JoinCanvas4/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas4/BackPrompt/Image (1)",
+      "ParentPath": "JoinCanvas4/BackPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas4/BackPrompt/Text (1)",
+      "ParentPath": "JoinCanvas4/BackPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas4/JoinPrompt",
+      "ParentPath": "JoinCanvas4"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas4/ColorPrompt/Image (1)",
+      "ParentPath": "JoinCanvas4/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas4/EffectPos",
+      "ParentPath": "JoinCanvas4"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas4/JoinPrompt/Text",
+      "ParentPath": "JoinCanvas4/JoinPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas4/ColorPrompt/Image (2)",
+      "ParentPath": "JoinCanvas4/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas4/ColorPrompt/GameObject/Text (3)",
+      "ParentPath": "JoinCanvas4/ColorPrompt/GameObject"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas4/ColorPrompt/GameObject/Image (4)",
+      "ParentPath": "JoinCanvas4/ColorPrompt/GameObject"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas4/ColorPrompt/GameObject/Image (5)",
+      "ParentPath": "JoinCanvas4/ColorPrompt/GameObject"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas4/ColorPrompt/Text (2)",
+      "ParentPath": "JoinCanvas4/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas4",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas4/ColorPrompt/Text",
+      "ParentPath": "JoinCanvas4/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas4/ColorPrompt/Image",
+      "ParentPath": "JoinCanvas4/ColorPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas4/JoinPrompt/Image",
+      "ParentPath": "JoinCanvas4/JoinPrompt"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "JoinCanvas4/ColorPrompt",
+      "ParentPath": "JoinCanvas4"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -32,
+        -1,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/DeathPointLeft",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "BackPrompt (1)",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -15,
+        8,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/SpawnPoint",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        16,
+        7,
+        1
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        10,
+        0.5,
+        1
+      ],
+      "ObjectPath": "Terrain/onewayplatform (3)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -15,
+        -9,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/SpawnPoint (2)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -15,
+        -10,
+        1
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        10,
+        0.5,
+        1
+      ],
+      "ObjectPath": "Terrain/onewayplatform (5)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        16,
+        -10,
+        1
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        10,
+        0.5,
+        1
+      ],
+      "ObjectPath": "Terrain/onewayplatform (4)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        2.65,
+        -17,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        80,
+        2,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        -2.61,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        2,
+        40,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (6)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        2,
+        16.5,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/ScreenTop",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        48.1,
+        -17.5,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        79.9,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (8)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -15,
+        7,
+        1
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        10,
+        0.5,
+        1
+      ],
+      "ObjectPath": "Terrain/onewayplatform (2)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        7.8,
+        17.11,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        80,
+        2.1,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (10)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        -1
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "join_screen_v1/white_overlay",
+      "ParentPath": "join_screen_v1"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        -5
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "BackPrompt (1)/Text (2)",
+      "ParentPath": "BackPrompt (1)"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "EventSystem",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -0.5,
+        28.8,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/DeathPointTop",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        -5
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "BackPrompt (1)/Text (1)",
+      "ParentPath": "BackPrompt (1)"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        32,
+        -1,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/DeathPointRight",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        16,
+        -9,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/SpawnPoint (3)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        31,
+        31.2,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        2,
+        40,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (11)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        16,
+        8,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/SpawnPoint (1)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        7.8,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        80,
+        2,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (12)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        3,
+        0
+      ],
+      "LocalRotation": 0.248605091,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Directional Light",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -31,
+        -0.85,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        2,
+        40,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (5)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        31,
+        -2.61,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        2,
+        40,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (4)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -0.5,
+        -23.7,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/DeathPointBot",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        5
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "join_screen_v1",
+      "ParentPath": ""
+    }
+  ],
+  "OrthoSize": 18,
+  "Parallax": [],
+  "ParticleEmitters": [],
+  "SceneEffects": [],
+  "ScreenTop": 16.5,
+  "Spawns": [
+    {
+      "X": -15.0,
+      "Y": 8.0
+    },
+    {
+      "X": 16.0,
+      "Y": 8.0
+    },
+    {
+      "X": -15.0,
+      "Y": -9.0
+    },
+    {
+      "X": 16.0,
+      "Y": -9.0
+    }
+  ],
+  "Sprites": [
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "join_screen_v1",
+      "ObjectPath": "join_screen_v1",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "SourceId": 2106920738,
+      "SpriteId": "a24cea73c494f9e4599cfeb245daf0d8:21300000",
+      "Visible": true,
+      "X": 0.0,
+      "Y": 0.0,
+      "Z": 5
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "white_overlay",
+      "ObjectPath": "join_screen_v1/white_overlay",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "SourceId": 732480912,
+      "SpriteId": "b99568ab35d90ce40af24144f5cbbcb5:21300000",
+      "Visible": true,
+      "X": 0.0,
+      "Y": 0.0,
+      "Z": 4
+    },
+    {
+      "Active": true,
+      "Color": [
+        0.21323532,
+        0.21323532,
+        0.21323532,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 10,
+      "Material": "Sprites-Default",
+      "Name": "onewayplatform (2)",
+      "ObjectPath": "Terrain/onewayplatform (2)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 10,
+      "ScaleY": 0.5,
+      "SortingLayer": 0,
+      "SourceId": -121,
+      "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
+      "Visible": true,
+      "X": -15.0,
+      "Y": 7.0,
+      "Z": 1
+    },
+    {
+      "Active": true,
+      "Color": [
+        0.21323532,
+        0.21323532,
+        0.21323532,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 10,
+      "Material": "Sprites-Default",
+      "Name": "onewayplatform (4)",
+      "ObjectPath": "Terrain/onewayplatform (4)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 10,
+      "ScaleY": 0.5,
+      "SortingLayer": 0,
+      "SourceId": -97,
+      "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
+      "Visible": true,
+      "X": 16.0,
+      "Y": -10.0,
+      "Z": 1
+    },
+    {
+      "Active": true,
+      "Color": [
+        0.21323532,
+        0.21323532,
+        0.21323532,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 10,
+      "Material": "Sprites-Default",
+      "Name": "onewayplatform (5)",
+      "ObjectPath": "Terrain/onewayplatform (5)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 10,
+      "ScaleY": 0.5,
+      "SortingLayer": 0,
+      "SourceId": -92,
+      "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
+      "Visible": true,
+      "X": -15.0,
+      "Y": -10.0,
+      "Z": 1
+    },
+    {
+      "Active": true,
+      "Color": [
+        0.21323532,
+        0.21323532,
+        0.21323532,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 10,
+      "Material": "Sprites-Default",
+      "Name": "onewayplatform (3)",
+      "ObjectPath": "Terrain/onewayplatform (3)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 10,
+      "ScaleY": 0.5,
+      "SortingLayer": 0,
+      "SourceId": -87,
+      "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
+      "Visible": true,
+      "X": 16.0,
+      "Y": 7.0,
+      "Z": 1
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground",
+      "ObjectPath": "Terrain/Ground",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 80,
+      "ScaleY": 2,
+      "SortingLayer": 0,
+      "SourceId": 499085390,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": 2.65,
+      "Y": -17.0,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (6)",
+      "ObjectPath": "Terrain/Ground (6)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 2,
+      "ScaleY": 40,
+      "SortingLayer": 0,
+      "SourceId": 500117947,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": 0.0,
+      "Y": -2.61,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (8)",
+      "ObjectPath": "Terrain/Ground (8)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 79.9,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "SourceId": 675777397,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": 48.1,
+      "Y": -17.5,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (10)",
+      "ObjectPath": "Terrain/Ground (10)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 80,
+      "ScaleY": 2.1,
+      "SortingLayer": 0,
+      "SourceId": 715537757,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": 7.8,
+      "Y": 17.11,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (11)",
+      "ObjectPath": "Terrain/Ground (11)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 2,
+      "ScaleY": 40,
+      "SortingLayer": 0,
+      "SourceId": 1614613632,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": 31.0,
+      "Y": 31.2,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (12)",
+      "ObjectPath": "Terrain/Ground (12)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 80,
+      "ScaleY": 2,
+      "SortingLayer": 0,
+      "SourceId": 1745838008,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": 7.8,
+      "Y": 0.0,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (5)",
+      "ObjectPath": "Terrain/Ground (5)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 2,
+      "ScaleY": 40,
+      "SortingLayer": 0,
+      "SourceId": 1764531881,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": -31.0,
+      "Y": -0.85,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (4)",
+      "ObjectPath": "Terrain/Ground (4)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 2,
+      "ScaleY": 40,
+      "SortingLayer": 0,
+      "SourceId": 1805359856,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": 31.0,
+      "Y": -2.61,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "BlackBar",
+      "ObjectPath": "Main Camera/BlackBar",
+      "Order": 5,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 8.12,
+      "ScaleY": 50.79,
+      "SortingLayer": 0,
+      "SourceId": -116,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": 36.03,
+      "Y": -0.34,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "BlackBar (3)",
+      "ObjectPath": "Main Camera/BlackBar (3)",
+      "Order": 5,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 76,
+      "ScaleY": 16,
+      "SortingLayer": 0,
+      "SourceId": -115,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": 0.0,
+      "Y": 26.06,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "BlackBar (2)",
+      "ObjectPath": "Main Camera/BlackBar (2)",
+      "Order": 5,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 76,
+      "ScaleY": 16,
+      "SortingLayer": 0,
+      "SourceId": -114,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": 0.0,
+      "Y": -25.99,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "BlackBar (1)",
+      "ObjectPath": "Main Camera/BlackBar (1)",
+      "Order": 5,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 8.12,
+      "ScaleY": 50.789997,
+      "SortingLayer": 0,
+      "SourceId": -113,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": -36.04,
+      "Y": -0.34,
+      "Z": 0
+    }
+  ]
+}

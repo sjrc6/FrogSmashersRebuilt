@@ -1,0 +1,12 @@
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.dds binary
+*.ttf binary
+*.ico binary
+*.bmp binary
+*.xnb binary
+*.ogg binary
+*.wav binary
+*.dll binary
+*.so binary

@@ -1,0 +1,1387 @@
+{
+  "Animators": [],
+  "Audio": [
+    {
+      "Active": true,
+      "Loop": true,
+      "MaxDistance": 500,
+      "MinDistance": 1,
+      "ObjectPath": "Audio Source",
+      "Pan": 0,
+      "Path": "Audio/Sound/Gorn_ElevatorAmb_02.ogg",
+      "Pitch": 1,
+      "PlayOnAwake": true,
+      "RolloffMode": 0,
+      "SpatialBlend": 0,
+      "Volume": 0.13
+    }
+  ],
+  "BackgroundColor": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "CameraX": 0.0,
+  "CameraY": 0.0,
+  "Collision": [
+    {
+      "Height": 1,
+      "Name": "Terrain/Ground",
+      "OneWay": false,
+      "Width": 80,
+      "X": -98.2,
+      "Y": -17.5
+    },
+    {
+      "Height": 11.3,
+      "Name": "Terrain/Ground (11)",
+      "OneWay": false,
+      "Width": 34.67,
+      "X": -56.9,
+      "Y": 3.4
+    },
+    {
+      "Height": 12,
+      "Name": "Terrain/Ground (5)",
+      "OneWay": false,
+      "Width": 8,
+      "X": -28.0,
+      "Y": -10.46
+    },
+    {
+      "Height": 16,
+      "Name": "Terrain/Ground (16)",
+      "OneWay": false,
+      "Width": 8,
+      "X": -28.0,
+      "Y": 3.0
+    },
+    {
+      "Height": 16,
+      "Name": "Terrain/Ground (6)",
+      "OneWay": false,
+      "Width": 24,
+      "X": -20.0,
+      "Y": 18.0
+    },
+    {
+      "Height": 8,
+      "Name": "Terrain/Ground (14)",
+      "OneWay": false,
+      "Width": 32,
+      "X": -16.0,
+      "Y": -14.0
+    },
+    {
+      "Height": 8,
+      "Name": "Terrain/Ground (12)",
+      "OneWay": false,
+      "Width": 16,
+      "X": 0.0,
+      "Y": -11.0
+    },
+    {
+      "Height": 8,
+      "Name": "Terrain/Ground (13)",
+      "OneWay": false,
+      "Width": 32,
+      "X": 16.0,
+      "Y": -14.0
+    },
+    {
+      "Height": 16,
+      "Name": "Terrain/Ground (17)",
+      "OneWay": false,
+      "Width": 24,
+      "X": 20.0,
+      "Y": 18.0
+    },
+    {
+      "Height": 16,
+      "Name": "Terrain/Ground (4)",
+      "OneWay": false,
+      "Width": 8,
+      "X": 28.0,
+      "Y": -10.4
+    },
+    {
+      "Height": 16,
+      "Name": "Terrain/Ground (7)",
+      "OneWay": false,
+      "Width": 8,
+      "X": 28.0,
+      "Y": 5.0
+    },
+    {
+      "Height": 11.3,
+      "Name": "Terrain/Ground (10)",
+      "OneWay": false,
+      "Width": 34.67,
+      "X": 58.9,
+      "Y": 3.4
+    },
+    {
+      "Height": 15.9,
+      "Name": "Terrain/Ground (9)",
+      "OneWay": false,
+      "Width": 12,
+      "X": 94.1,
+      "Y": -10.0
+    },
+    {
+      "Height": 1,
+      "Name": "Terrain/Ground (8)",
+      "OneWay": false,
+      "Width": 80,
+      "X": 95.4,
+      "Y": -17.5
+    }
+  ],
+  "FlySpawn": {
+    "X": 0,
+    "Y": 0
+  },
+  "Id": "7Showdown",
+  "KillBounds": {
+    "Bottom": -20.9,
+    "Left": -34.0,
+    "Right": 34.0,
+    "Top": 22.2
+  },
+  "Name": "Showdown",
+  "Nodes": [
+    {
+      "Active": true,
+      "LocalPosition": [
+        0.22270584,
+        -0.050741494,
+        -12.071846
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "SoundController",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        4
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Controllers/Scoreboard",
+      "ParentPath": "Controllers"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Controllers",
+      "ParentPath": ""
+    },
+    {
+      "Active": false,
+      "LocalPosition": [
+        18.4,
+        10.1,
+        0
+      ],
+      "LocalRotation": -3.141592654,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "RoofDustParticle",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        36.03,
+        -0.34,
+        10
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        8.12,
+        50.79,
+        1
+      ],
+      "ObjectPath": "Main Camera (1)/BlackBar",
+      "ParentPath": "Main Camera (1)"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        -10
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Main Camera (1)",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        26.06,
+        10
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        76,
+        16,
+        1
+      ],
+      "ObjectPath": "Main Camera (1)/BlackBar (3)",
+      "ParentPath": "Main Camera (1)"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -36.04,
+        -0.34,
+        10
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        8.12,
+        50.789997,
+        1
+      ],
+      "ObjectPath": "Main Camera (1)/BlackBar (1)",
+      "ParentPath": "Main Camera (1)"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        -25.99,
+        10
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        76,
+        16,
+        1
+      ],
+      "ObjectPath": "Main Camera (1)/BlackBar (2)",
+      "ParentPath": "Main Camera (1)"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "InControl",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -34,
+        -1,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/DeathPointLeft",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        94.1,
+        -10,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        12,
+        15.9,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (9)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": false,
+      "LocalPosition": [
+        14.76,
+        -9.6,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        8,
+        2,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (3)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -56.9,
+        3.4,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        34.67,
+        11.3,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (11)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -6.2,
+        -6.76,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/SpawnPoint",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -20.3,
+        -9.9,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/SpawnPoint (2)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0.3,
+        1.2920399,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Audio Source",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -20,
+        18,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        24,
+        16,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (6)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -98.2,
+        -17.5,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        80,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        2,
+        16.5,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/ScreenTop",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        95.4,
+        -17.5,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        80,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (8)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0.1,
+        5
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "showdown_bg_v1",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "EventSystem",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -0.5,
+        22.2,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/DeathPointTop",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        -1
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "showdown_bg_v1/showdown_bg_lightflicker_v1",
+      "ParentPath": "showdown_bg_v1"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -16,
+        -14,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        32,
+        8,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (14)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        16,
+        -14,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        32,
+        8,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (13)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        34,
+        -1,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/DeathPointRight",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        -11,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        16,
+        8,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (12)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        28,
+        5,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        8,
+        16,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (7)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        20,
+        -9.9,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/SpawnPoint (3)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -28,
+        3,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        8,
+        16,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (16)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        5.92,
+        -6.81,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/SpawnPoint (1)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        58.9,
+        3.4,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        34.67,
+        11.3,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (10)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        3,
+        0
+      ],
+      "LocalRotation": 0.248605091,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Directional Light",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -28,
+        -10.46,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        8,
+        12,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (5)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        28,
+        -10.4,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        8,
+        16,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (4)",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -0.5,
+        -20.9,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Terrain/DeathPointBot",
+      "ParentPath": "Terrain"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        20,
+        18,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        24,
+        16,
+        1
+      ],
+      "ObjectPath": "Terrain/Ground (17)",
+      "ParentPath": "Terrain"
+    }
+  ],
+  "OrthoSize": 18,
+  "Parallax": [],
+  "ParticleEmitters": [],
+  "SceneEffects": [],
+  "ScreenTop": 16.5,
+  "Spawns": [
+    {
+      "X": -6.2,
+      "Y": -6.76
+    },
+    {
+      "X": 5.92,
+      "Y": -6.81
+    },
+    {
+      "X": -20.3,
+      "Y": -9.9
+    },
+    {
+      "X": 20.0,
+      "Y": -9.9
+    }
+  ],
+  "Sprites": [
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "showdown_bg_v1",
+      "ObjectPath": "showdown_bg_v1",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "SourceId": 861268633,
+      "SpriteId": "331b95910c59b2e488c2206e861e083a:21300000",
+      "Visible": true,
+      "X": 0.0,
+      "Y": 0.1,
+      "Z": 5
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "showdown_bg_lightflicker_v1",
+      "ObjectPath": "showdown_bg_v1/showdown_bg_lightflicker_v1",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "SourceId": 987782420,
+      "SpriteId": "786f9a52294fbae4c8c716d5f71d0f03:21300000",
+      "Visible": true,
+      "X": 0.0,
+      "Y": 0.1,
+      "Z": 4
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (9)",
+      "ObjectPath": "Terrain/Ground (9)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 12,
+      "ScaleY": 15.9,
+      "SortingLayer": 0,
+      "SourceId": 80661532,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": false,
+      "X": 94.1,
+      "Y": -10.0,
+      "Z": 0
+    },
+    {
+      "Active": false,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (3)",
+      "ObjectPath": "Terrain/Ground (3)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 8,
+      "ScaleY": 2,
+      "SortingLayer": 0,
+      "SourceId": 96447167,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": false,
+      "X": 14.76,
+      "Y": -9.6,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (11)",
+      "ObjectPath": "Terrain/Ground (11)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 34.67,
+      "ScaleY": 11.3,
+      "SortingLayer": 0,
+      "SourceId": 115733251,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": false,
+      "X": -56.9,
+      "Y": 3.4,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (6)",
+      "ObjectPath": "Terrain/Ground (6)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 24,
+      "ScaleY": 16,
+      "SortingLayer": 0,
+      "SourceId": 446114702,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": false,
+      "X": -20.0,
+      "Y": 18.0,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground",
+      "ObjectPath": "Terrain/Ground",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 80,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "SourceId": 499085390,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": false,
+      "X": -98.2,
+      "Y": -17.5,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (8)",
+      "ObjectPath": "Terrain/Ground (8)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 80,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "SourceId": 675777397,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": false,
+      "X": 95.4,
+      "Y": -17.5,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (14)",
+      "ObjectPath": "Terrain/Ground (14)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 32,
+      "ScaleY": 8,
+      "SortingLayer": 0,
+      "SourceId": 1188384911,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": false,
+      "X": -16.0,
+      "Y": -14.0,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (13)",
+      "ObjectPath": "Terrain/Ground (13)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 32,
+      "ScaleY": 8,
+      "SortingLayer": 0,
+      "SourceId": 1237664826,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": false,
+      "X": 16.0,
+      "Y": -14.0,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (12)",
+      "ObjectPath": "Terrain/Ground (12)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 16,
+      "ScaleY": 8,
+      "SortingLayer": 0,
+      "SourceId": 1280612078,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": false,
+      "X": 0.0,
+      "Y": -11.0,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (7)",
+      "ObjectPath": "Terrain/Ground (7)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 8,
+      "ScaleY": 16,
+      "SortingLayer": 0,
+      "SourceId": 1560947299,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": false,
+      "X": 28.0,
+      "Y": 5.0,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (16)",
+      "ObjectPath": "Terrain/Ground (16)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 8,
+      "ScaleY": 16,
+      "SortingLayer": 0,
+      "SourceId": 1582417563,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": false,
+      "X": -28.0,
+      "Y": 3.0,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (10)",
+      "ObjectPath": "Terrain/Ground (10)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 34.67,
+      "ScaleY": 11.3,
+      "SortingLayer": 0,
+      "SourceId": 1694577892,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": false,
+      "X": 58.9,
+      "Y": 3.4,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (5)",
+      "ObjectPath": "Terrain/Ground (5)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 8,
+      "ScaleY": 12,
+      "SortingLayer": 0,
+      "SourceId": 1764531881,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": false,
+      "X": -28.0,
+      "Y": -10.46,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (4)",
+      "ObjectPath": "Terrain/Ground (4)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 8,
+      "ScaleY": 16,
+      "SortingLayer": 0,
+      "SourceId": 1805359856,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": false,
+      "X": 28.0,
+      "Y": -10.4,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 8,
+      "Material": "Sprites-Default",
+      "Name": "Ground (17)",
+      "ObjectPath": "Terrain/Ground (17)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 24,
+      "ScaleY": 16,
+      "SortingLayer": 0,
+      "SourceId": 2054094437,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": false,
+      "X": 20.0,
+      "Y": 18.0,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "BlackBar",
+      "ObjectPath": "Main Camera (1)/BlackBar",
+      "Order": 5,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 8.12,
+      "ScaleY": 50.79,
+      "SortingLayer": 0,
+      "SourceId": -23,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": 36.03,
+      "Y": -0.34,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "BlackBar (3)",
+      "ObjectPath": "Main Camera (1)/BlackBar (3)",
+      "Order": 5,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 76,
+      "ScaleY": 16,
+      "SortingLayer": 0,
+      "SourceId": -22,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": 0.0,
+      "Y": 26.06,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "BlackBar (2)",
+      "ObjectPath": "Main Camera (1)/BlackBar (2)",
+      "Order": 5,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 76,
+      "ScaleY": 16,
+      "SortingLayer": 0,
+      "SourceId": -21,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": 0.0,
+      "Y": -25.99,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "BlackBar (1)",
+      "ObjectPath": "Main Camera (1)/BlackBar (1)",
+      "Order": 5,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 8.12,
+      "ScaleY": 50.789997,
+      "SortingLayer": 0,
+      "SourceId": -20,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": -36.04,
+      "Y": -0.34,
+      "Z": 0
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+/Originals/
+**/bin/
+**/obj/
+/.build/
+/artifacts/
+**/*.user
+**/__pycache__/
+*.py[cod]
+/llm_docs/

@@ -1,0 +1,9 @@
+<Solution>
+  <Project Path="src/Core/FrogSmashers.Core.csproj" />
+  <Project Path="src/Network/FrogSmashers.Network.csproj" />
+  <Project Path="src/Client/FrogSmashers.Client.csproj" />
+  <Project Path="src/Tests/FrogSmashers.Tests.csproj" />
+  <Project Path="src/Client.Tests/FrogSmashers.Client.Tests.csproj" />
+  <Project Path="src/Client.GraphicsTests/FrogSmashers.Client.GraphicsTests.csproj" />
+  <Project Path="src/Client.Automation/FrogSmashers.Client.Automation.csproj" />
+</Solution>

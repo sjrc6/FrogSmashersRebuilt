@@ -1,0 +1,300 @@
+{
+  "Sounds": {
+    "2DownSmash/Burp": [
+      "Audio/Sound/burpruan.wav",
+      "Audio/Sound/Frog_Burp_01.ogg",
+      "Audio/Sound/Frog_Burp_02.ogg"
+    ],
+    "3Moon/CharacterCollision": [
+      "Audio/Sound/Gorn_Punch Variation_01.ogg",
+      "Audio/Sound/Gorn_Punch Variation_02.ogg",
+      "Audio/Sound/Gorn_Punch Variation_03.ogg",
+      "Audio/Sound/Bat_SwingVoice_04.ogg",
+      "Audio/Sound/Bat_SwingVoice_05.ogg",
+      "Audio/Sound/Bat_SwingVoice_06.ogg",
+      "Audio/Sound/Bat_SwingVoice_07.ogg",
+      "Audio/Sound/Bat_SwingVoice_08.ogg",
+      "Audio/Sound/Bat_SwingVoice_09.ogg",
+      "Audio/Sound/Bat_SwingVoice_10.ogg",
+      "Audio/Sound/Bat_SwingVoice_11.ogg",
+      "Audio/Sound/Bat_SwingVoice_12.ogg",
+      "Audio/Sound/Bat_SwingVoice_13.ogg",
+      "Audio/Sound/Bat_SwingVoice_14.ogg",
+      "Audio/Sound/Bat_SwingVoice_15.ogg",
+      "Audio/Sound/Bat_SwingVoice_16.ogg"
+    ],
+    "BackgroundExplosion": [
+      "Audio/Sound/Finale_Explosion_01.ogg",
+      "Audio/Sound/Finale_Explosion_02.ogg",
+      "Audio/Sound/Finale_Explosion_03.ogg",
+      "Audio/Sound/Finale_Explosion_04.ogg",
+      "Audio/Sound/Finale_Explosion_05.ogg",
+      "Audio/Sound/Finale_Explosion_06.ogg",
+      "Audio/Sound/Finale_Explosion_07.ogg",
+      "Audio/Sound/Finale_Explosion_08.ogg",
+      "Audio/Sound/Finale_Explosion_09.ogg",
+      "Audio/Sound/Finale_Explosion_10.ogg",
+      "Audio/Sound/Finale_Explosion_11.ogg",
+      "Audio/Sound/Finale_Explosion_12.ogg",
+      "Audio/Sound/Finale_Explosion_13.ogg",
+      "Audio/Sound/Finale_Explosion_14.ogg",
+      "Audio/Sound/Finale_Explosion_15.ogg"
+    ],
+    "BatChargeup": [
+      "Audio/Sound/Bat_Swing 04.ogg"
+    ],
+    "BatHit1": [
+      "Audio/Sound/Bat_Hit_Lvl1 01.ogg",
+      "Audio/Sound/Bat_Hit_Lvl1 02.ogg",
+      "Audio/Sound/Bat_Hit_Lvl1 03.ogg",
+      "Audio/Sound/Bat_Hit_Lvl1 04.ogg",
+      "Audio/Sound/Bat_Hit_Lvl1 05.ogg"
+    ],
+    "BatHit2": [
+      "Audio/Sound/Bat_Hit_Lvl2 01.ogg",
+      "Audio/Sound/Bat_Hit_Lvl2 02.ogg",
+      "Audio/Sound/Bat_Hit_Lvl2 03.ogg",
+      "Audio/Sound/Bat_Hit_Lvl2 04.ogg",
+      "Audio/Sound/Bat_Hit_Lvl2 05.ogg"
+    ],
+    "BatHit3": [
+      "Audio/Sound/Bat_Hit_Lvl3 01.ogg",
+      "Audio/Sound/Bat_Hit_Lvl3 02.ogg",
+      "Audio/Sound/Bat_Hit_Lvl3 03.ogg",
+      "Audio/Sound/Bat_Hit_Lvl3 04.ogg",
+      "Audio/Sound/Bat_Hit_Lvl3 05.ogg"
+    ],
+    "BatHit4": [
+      "Audio/Sound/Bat_Hit_Lvl4 01.ogg",
+      "Audio/Sound/Bat_Hit_Lvl4 02.ogg",
+      "Audio/Sound/Bat_Hit_Lvl4 03.ogg",
+      "Audio/Sound/Bat_Hit_Lvl4 04.ogg",
+      "Audio/Sound/Bat_Hit_Lvl4 05.ogg"
+    ],
+    "BatHit5": [
+      "Audio/Sound/Bat_Hit_Lvl5 01.ogg",
+      "Audio/Sound/Bat_Hit_Lvl5 02.ogg",
+      "Audio/Sound/Bat_Hit_Lvl5 03.ogg",
+      "Audio/Sound/Bat_Hit_Lvl5 04.ogg",
+      "Audio/Sound/Bat_Hit_Lvl5 05.ogg"
+    ],
+    "BatHitVoice1": [
+      "Audio/Sound/Bat_HitVoice1_01.ogg",
+      "Audio/Sound/Bat_HitVoice1_02.ogg",
+      "Audio/Sound/Bat_HitVoice1_03.ogg",
+      "Audio/Sound/Bat_HitVoice1_04.ogg",
+      "Audio/Sound/Bat_HitVoice1_05.ogg",
+      "Audio/Sound/Bat_HitVoice1_06.ogg",
+      "Audio/Sound/Bat_HitVoice1_07.ogg",
+      "Audio/Sound/Bat_HitVoice1_08.ogg",
+      "Audio/Sound/Bat_HitVoice1_09.ogg"
+    ],
+    "BatHitVoice2": [
+      "Audio/Sound/Bat_HitVoice2_01.ogg",
+      "Audio/Sound/Bat_HitVoice2_02.ogg",
+      "Audio/Sound/Bat_HitVoice2_03.ogg",
+      "Audio/Sound/Bat_HitVoice2_04.ogg",
+      "Audio/Sound/Bat_HitVoice2_05.ogg",
+      "Audio/Sound/Bat_HitVoice2_06.ogg",
+      "Audio/Sound/Bat_HitVoice2_07.ogg",
+      "Audio/Sound/Bat_HitVoice2_08.ogg"
+    ],
+    "BatHitVoice3": [
+      "Audio/Sound/Bat_HitVoice3_01.ogg",
+      "Audio/Sound/Bat_HitVoice3_02.ogg",
+      "Audio/Sound/Bat_HitVoice3_03.ogg",
+      "Audio/Sound/Bat_HitVoice3_04.ogg",
+      "Audio/Sound/Bat_HitVoice3_05.ogg"
+    ],
+    "BatHitVoice4": [
+      "Audio/Sound/Bat_HitVoice4_01.ogg",
+      "Audio/Sound/Bat_HitVoice4_02.ogg",
+      "Audio/Sound/Bat_HitVoice4_03.ogg"
+    ],
+    "BatHitVoice5": [
+      "Audio/Sound/Bat_HitVoice4_01.ogg",
+      "Audio/Sound/Bat_HitVoice4_02.ogg",
+      "Audio/Sound/Bat_HitVoice4_03.ogg"
+    ],
+    "BatSwing": [
+      "Audio/Sound/Bat_Swing 02.ogg"
+    ],
+    "BatSwingVoice": [
+      "Audio/Sound/Bat_SwingVoice_01.ogg",
+      "Audio/Sound/Bat_SwingVoice_02.ogg",
+      "Audio/Sound/Bat_SwingVoice_03.ogg",
+      "Audio/Sound/Bat_SwingVoice_04.ogg",
+      "Audio/Sound/Bat_SwingVoice_05.ogg",
+      "Audio/Sound/Bat_SwingVoice_06.ogg",
+      "Audio/Sound/Bat_SwingVoice_07.ogg",
+      "Audio/Sound/Bat_SwingVoice_08.ogg",
+      "Audio/Sound/Bat_SwingVoice_09.ogg",
+      "Audio/Sound/Bat_SwingVoice_10.ogg",
+      "Audio/Sound/Bat_SwingVoice_11.ogg",
+      "Audio/Sound/Bat_SwingVoice_12.ogg",
+      "Audio/Sound/Bat_SwingVoice_13.ogg",
+      "Audio/Sound/Bat_SwingVoice_14.ogg",
+      "Audio/Sound/Bat_SwingVoice_15.ogg",
+      "Audio/Sound/Bat_SwingVoice_16.ogg"
+    ],
+    "Burp": [
+      "Audio/Sound/Frog_Burp_03.ogg",
+      "Audio/Sound/Frog_Burp_01.ogg",
+      "Audio/Sound/Frog_Burp_02.ogg"
+    ],
+    "CharacterCollision": [
+      "Audio/Sound/Frog_CharacterCollision_01.ogg",
+      "Audio/Sound/Frog_CharacterCollision_02.ogg",
+      "Audio/Sound/Frog_CharacterCollision_03.ogg",
+      "Audio/Sound/Frog_CharacterCollision_04.ogg",
+      "Audio/Sound/Frog_CharacterCollision_05.ogg",
+      "Audio/Sound/Frog_CharacterCollision_06.ogg",
+      "Audio/Sound/Frog_CharacterCollision_07.ogg",
+      "Audio/Sound/Frog_CharacterCollision_08.ogg"
+    ],
+    "CharacterSpawn": [
+      "Audio/Sound/Frog_SpawnCloud_05.ogg"
+    ],
+    "DramaSting": [
+      "Audio/Sound/intro/Intro_DramamticStab_01.ogg"
+    ],
+    "Footstep": [
+      "Audio/Sound/Frog_Footstep_01.ogg",
+      "Audio/Sound/Frog_Footstep_02.ogg",
+      "Audio/Sound/Frog_Footstep_03.ogg",
+      "Audio/Sound/Frog_Footstep_04.ogg",
+      "Audio/Sound/Frog_Footstep_05.ogg",
+      "Audio/Sound/Frog_Footstep_06.ogg",
+      "Audio/Sound/Frog_Footstep_07.ogg",
+      "Audio/Sound/Frog_Footstep_08.ogg",
+      "Audio/Sound/Frog_Footstep_09.ogg",
+      "Audio/Sound/Frog_Footstep_10.ogg",
+      "Audio/Sound/Frog_Footstep_12.ogg",
+      "Audio/Sound/Frog_Footstep_13.ogg",
+      "Audio/Sound/Frog_Footstep_14.ogg",
+      "Audio/Sound/Frog_Footstep_15.ogg",
+      "Audio/Sound/Frog_Footstep_16.ogg"
+    ],
+    "FrogBounce": [
+      "Audio/Sound/Frog_Bounce 01.ogg",
+      "Audio/Sound/Frog_Bounce 02.ogg",
+      "Audio/Sound/Frog_Bounce 03.ogg",
+      "Audio/Sound/Frog_Bounce 04.ogg",
+      "Audio/Sound/Frog_Bounce 05.ogg",
+      "Audio/Sound/Frog_Bounce 06.ogg"
+    ],
+    "FrogBounceVoice": [
+      "Audio/Sound/Frog_BounceVoice_01.ogg",
+      "Audio/Sound/Frog_BounceVoice_02.ogg",
+      "Audio/Sound/Frog_BounceVoice_03.ogg",
+      "Audio/Sound/Frog_BounceVoice_04.ogg",
+      "Audio/Sound/Frog_BounceVoice_05.ogg"
+    ],
+    "FrogFly": [],
+    "FrogSit": [
+      "Audio/Sound/intro/Intro_FrogSit_01.ogg"
+    ],
+    "FrogTurn": [
+      "Audio/Sound/intro/Intro_FrogTurn_01.ogg"
+    ],
+    "Gasp1": [
+      "Audio/Sound/intro/Intro_Gasp_04.ogg"
+    ],
+    "Gasp2": [
+      "Audio/Sound/intro/Intro_Gasp_07.ogg"
+    ],
+    "GetBat": [
+      "Audio/Sound/intro/Intro_PullOutBat.ogg"
+    ],
+    "Growl": [
+      "Audio/Sound/intro/Intro_Growl_02.ogg"
+    ],
+    "Jump": [
+      "Audio/Sound/Frog_Jump.ogg"
+    ],
+    "Knockout1": [
+      "Audio/Sound/Frog_Knockout_Lvl1.ogg"
+    ],
+    "Knockout2": [
+      "Audio/Sound/Frog_Knockout_Lvl2.ogg"
+    ],
+    "Knockout3": [
+      "Audio/Sound/Frog_Knockout_Lvl3.ogg"
+    ],
+    "KnockoutSuicide": [
+      "Audio/Sound/Frog_Knockout_Suicide.ogg"
+    ],
+    "Land": [
+      "Audio/Sound/Frog_Collide Surface B 01.ogg",
+      "Audio/Sound/Frog_Collide Surface B 02.ogg",
+      "Audio/Sound/Frog_Collide Surface B 03.ogg",
+      "Audio/Sound/Frog_Collide Surface B 04.ogg",
+      "Audio/Sound/Frog_Collide Surface B 05.ogg",
+      "Audio/Sound/Frog_Collide Surface B 06.ogg",
+      "Audio/Sound/Frog_Collide Surface B 07.ogg",
+      "Audio/Sound/Frog_Collide Surface B 08.ogg",
+      "Audio/Sound/Frog_Collide Surface B 09.ogg",
+      "Audio/Sound/Frog_Collide Surface B 10.ogg",
+      "Audio/Sound/Frog_Collide Surface B 11.ogg",
+      "Audio/Sound/Frog_Collide Surface B 12.ogg",
+      "Audio/Sound/Frog_Collide Surface B 13.ogg",
+      "Audio/Sound/Frog_Collide Surface B 14.ogg",
+      "Audio/Sound/Frog_Collide Surface B 15.ogg",
+      "Audio/Sound/Frog_Collide Surface B 16.ogg"
+    ],
+    "Launch1": [],
+    "Launch2": [],
+    "Launch3": [
+      "Audio/Sound/Frog_Launch1.ogg"
+    ],
+    "LaunchVoice1": [],
+    "LaunchVoice2": [],
+    "LaunchVoice3": [
+      "Audio/Sound/Frog_LaunchVoice3B_01.ogg",
+      "Audio/Sound/Frog_LaunchVoice3B_02.ogg",
+      "Audio/Sound/Frog_LaunchVoice3B_03.ogg",
+      "Audio/Sound/Frog_LaunchVoice3B_04.ogg"
+    ],
+    "StandUp": [
+      "Audio/Sound/Frog_Jump.ogg"
+    ],
+    "Surprise": [
+      "Audio/Sound/intro/Intro_surprise7.ogg"
+    ],
+    "TapBat": [
+      "Audio/Sound/Frog_Footstep_03.ogg",
+      "Audio/Sound/Frog_Footstep_04.ogg",
+      "Audio/Sound/Frog_Footstep_05.ogg",
+      "Audio/Sound/Frog_Footstep_06.ogg",
+      "Audio/Sound/Frog_Footstep_07.ogg",
+      "Audio/Sound/Frog_Footstep_08.ogg"
+    ],
+    "TitleSong": [
+      "Audio/Sound/intro/Frog Smashers_Title Song 1.ogg"
+    ],
+    "TongueCollide": [
+      "Audio/Sound/Tongue_Collide Enemy 1.ogg",
+      "Audio/Sound/Tongue_Collide Enemy 2.ogg"
+    ],
+    "TongueCollideSurface": [
+      "Audio/Sound/Tongue_Collide Enemy 1.ogg"
+    ],
+    "TongueHit": [
+      "Audio/Sound/Tongue_Collide Enemy 1.ogg",
+      "Audio/Sound/Tongue_Collide Enemy 2.ogg"
+    ],
+    "TongueLaunch": [
+      "Audio/Sound/Tongue_Launch 1.ogg",
+      "Audio/Sound/Tongue_Launch 2.ogg",
+      "Audio/Sound/Tongue_Launch 3.ogg"
+    ],
+    "VictorySting": [
+      "Audio/Sound/VictorySting_01.ogg"
+    ],
+    "flight": [
+      "",
+      "Audio/Sound/Frog_FlyLoop_Lvl2.ogg",
+      "Audio/Sound/Frog_FlyLoop_Lvl3.ogg"
+    ]
+  }
+}

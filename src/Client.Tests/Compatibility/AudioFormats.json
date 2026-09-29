@@ -1,0 +1,892 @@
+{
+  "Ambience_FinalFrogstination": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 1533847
+  },
+  "Ambience_Moon": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 982441
+  },
+  "Ambience_Skyline": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 1122827
+  },
+  "Bat_HitVoice1_01": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 4904
+  },
+  "Bat_HitVoice1_02": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 6712
+  },
+  "Bat_HitVoice1_03": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 5866
+  },
+  "Bat_HitVoice1_04": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 8768
+  },
+  "Bat_HitVoice1_05": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 6930
+  },
+  "Bat_HitVoice1_06": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 7316
+  },
+  "Bat_HitVoice1_07": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 7800
+  },
+  "Bat_HitVoice1_08": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 7220
+  },
+  "Bat_HitVoice1_09": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 8671
+  },
+  "Bat_HitVoice2_01": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 5339
+  },
+  "Bat_HitVoice2_02": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 5647
+  },
+  "Bat_HitVoice2_03": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 5184
+  },
+  "Bat_HitVoice2_04": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 5441
+  },
+  "Bat_HitVoice2_05": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 6006
+  },
+  "Bat_HitVoice2_06": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 4979
+  },
+  "Bat_HitVoice2_07": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 5724
+  },
+  "Bat_HitVoice2_08": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 7715
+  },
+  "Bat_HitVoice3_01": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 6966
+  },
+  "Bat_HitVoice3_02": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 8456
+  },
+  "Bat_HitVoice3_03": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 7391
+  },
+  "Bat_HitVoice3_04": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 8306
+  },
+  "Bat_HitVoice3_05": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 8732
+  },
+  "Bat_HitVoice4_01": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 17670
+  },
+  "Bat_HitVoice4_02": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 18837
+  },
+  "Bat_HitVoice4_03": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 17434
+  },
+  "Bat_Hit_Lvl1 01": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 20924
+  },
+  "Bat_Hit_Lvl1 02": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 18538
+  },
+  "Bat_Hit_Lvl1 03": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 18156
+  },
+  "Bat_Hit_Lvl1 04": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 16589
+  },
+  "Bat_Hit_Lvl1 05": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 22707
+  },
+  "Bat_Hit_Lvl2 01": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 23516
+  },
+  "Bat_Hit_Lvl2 02": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 23387
+  },
+  "Bat_Hit_Lvl2 03": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 34847
+  },
+  "Bat_Hit_Lvl2 04": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 25148
+  },
+  "Bat_Hit_Lvl2 05": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 22005
+  },
+  "Bat_Hit_Lvl3 01": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 32165
+  },
+  "Bat_Hit_Lvl3 02": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 32966
+  },
+  "Bat_Hit_Lvl3 03": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 27949
+  },
+  "Bat_Hit_Lvl3 04": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 22624
+  },
+  "Bat_Hit_Lvl3 05": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 27819
+  },
+  "Bat_Hit_Lvl4 01": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 50007
+  },
+  "Bat_Hit_Lvl4 02": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 49090
+  },
+  "Bat_Hit_Lvl4 03": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 38387
+  },
+  "Bat_Hit_Lvl4 04": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 55200
+  },
+  "Bat_Hit_Lvl4 05": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 48760
+  },
+  "Bat_Hit_Lvl5 01": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 99533
+  },
+  "Bat_Hit_Lvl5 02": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 96538
+  },
+  "Bat_Hit_Lvl5 03": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 93354
+  },
+  "Bat_Hit_Lvl5 04": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 98655
+  },
+  "Bat_Hit_Lvl5 05": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 93071
+  },
+  "Bat_Swing 02": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 6464
+  },
+  "Bat_Swing 04": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 5953
+  },
+  "Bat_SwingVoice_01": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 8700
+  },
+  "Bat_SwingVoice_02": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 8700
+  },
+  "Bat_SwingVoice_03": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 6669
+  },
+  "Bat_SwingVoice_04": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 8971
+  },
+  "Bat_SwingVoice_05": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 9376
+  },
+  "Bat_SwingVoice_06": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 8159
+  },
+  "Bat_SwingVoice_07": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 10323
+  },
+  "Bat_SwingVoice_08": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 16279
+  },
+  "Bat_SwingVoice_09": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 12354
+  },
+  "Bat_SwingVoice_10": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 14294
+  },
+  "Bat_SwingVoice_11": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 9347
+  },
+  "Bat_SwingVoice_12": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 11343
+  },
+  "Bat_SwingVoice_13": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 10151
+  },
+  "Bat_SwingVoice_14": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 8211
+  },
+  "Bat_SwingVoice_15": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 10571
+  },
+  "Bat_SwingVoice_16": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 7410
+  },
+  "FS_Outro SFX": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 1122632
+  },
+  "Finale_Explosion_01": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 221985
+  },
+  "Finale_Explosion_02": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 215201
+  },
+  "Finale_Explosion_03": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 309997
+  },
+  "Finale_Explosion_04": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 178711
+  },
+  "Finale_Explosion_05": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 199480
+  },
+  "Finale_Explosion_06": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 183611
+  },
+  "Finale_Explosion_07": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 309099
+  },
+  "Finale_Explosion_08": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 183751
+  },
+  "Finale_Explosion_09": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 159611
+  },
+  "Finale_Explosion_10": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 177020
+  },
+  "Finale_Explosion_11": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 144491
+  },
+  "Finale_Explosion_12": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 192573
+  },
+  "Finale_Explosion_13": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 176793
+  },
+  "Finale_Explosion_14": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 192640
+  },
+  "Finale_Explosion_15": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 201544
+  },
+  "Frog Smashers_Title Song 1": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 953379
+  },
+  "Frog_Bounce 01": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 24991
+  },
+  "Frog_Bounce 02": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 25266
+  },
+  "Frog_Bounce 03": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 21536
+  },
+  "Frog_Bounce 04": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 21259
+  },
+  "Frog_Bounce 05": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 17960
+  },
+  "Frog_Bounce 06": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 20854
+  },
+  "Frog_BounceVoice_01": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 11309
+  },
+  "Frog_BounceVoice_02": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 11311
+  },
+  "Frog_BounceVoice_03": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 11310
+  },
+  "Frog_BounceVoice_04": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 14263
+  },
+  "Frog_BounceVoice_05": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 9477
+  },
+  "Frog_Burp_01": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 24177
+  },
+  "Frog_Burp_02": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 16021
+  },
+  "Frog_Burp_03": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 36133
+  },
+  "Frog_CharacterCollision_01": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 9160
+  },
+  "Frog_CharacterCollision_02": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 6419
+  },
+  "Frog_CharacterCollision_03": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 7635
+  },
+  "Frog_CharacterCollision_04": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 12185
+  },
+  "Frog_CharacterCollision_05": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 7389
+  },
+  "Frog_CharacterCollision_06": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 9465
+  },
+  "Frog_CharacterCollision_07": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 8798
+  },
+  "Frog_CharacterCollision_08": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 8208
+  },
+  "Frog_Collide Surface B 01": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 30942
+  },
+  "Frog_Collide Surface B 02": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 28433
+  },
+  "Frog_Collide Surface B 03": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 20336
+  },
+  "Frog_Collide Surface B 04": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 20333
+  },
+  "Frog_Collide Surface B 05": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 16676
+  },
+  "Frog_Collide Surface B 06": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 19236
+  },
+  "Frog_Collide Surface B 07": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 17904
+  },
+  "Frog_Collide Surface B 08": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 15991
+  },
+  "Frog_Collide Surface B 09": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 22031
+  },
+  "Frog_Collide Surface B 10": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 25266
+  },
+  "Frog_Collide Surface B 11": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 20336
+  },
+  "Frog_Collide Surface B 12": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 20333
+  },
+  "Frog_Collide Surface B 13": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 16676
+  },
+  "Frog_Collide Surface B 14": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 19236
+  },
+  "Frog_Collide Surface B 15": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 17904
+  },
+  "Frog_Collide Surface B 16": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 15991
+  },
+  "Frog_FallInFront_01": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 94113
+  },
+  "Frog_FlyLoop_Lvl2": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 82150
+  },
+  "Frog_FlyLoop_Lvl3": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 161531
+  },
+  "Frog_Footstep_01": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 1299
+  },
+  "Frog_Footstep_02": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 1564
+  },
+  "Frog_Footstep_03": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 1565
+  },
+  "Frog_Footstep_04": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 1565
+  },
+  "Frog_Footstep_05": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 1564
+  },
+  "Frog_Footstep_06": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 1565
+  },
+  "Frog_Footstep_07": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 1564
+  },
+  "Frog_Footstep_08": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 1565
+  },
+  "Frog_Footstep_09": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 1565
+  },
+  "Frog_Footstep_10": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 1547
+  },
+  "Frog_Footstep_12": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 1547
+  },
+  "Frog_Footstep_13": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 1547
+  },
+  "Frog_Footstep_14": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 1547
+  },
+  "Frog_Footstep_15": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 1547
+  },
+  "Frog_Footstep_16": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 1547
+  },
+  "Frog_Jump": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 11726
+  },
+  "Frog_Knockout_Lvl1": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 49329
+  },
+  "Frog_Knockout_Lvl2": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 54676
+  },
+  "Frog_Knockout_Lvl3": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 111560
+  },
+  "Frog_Knockout_Suicide": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 32563
+  },
+  "Frog_Launch1": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 42841
+  },
+  "Frog_LaunchVoice3B_01": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 34989
+  },
+  "Frog_LaunchVoice3B_02": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 29554
+  },
+  "Frog_LaunchVoice3B_03": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 30624
+  },
+  "Frog_LaunchVoice3B_04": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 22777
+  },
+  "Frog_SpawnCloud_05": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 33502
+  },
+  "Gorn_ElevatorAmb_02": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 331240
+  },
+  "Gorn_Punch Variation_01": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 16359
+  },
+  "Gorn_Punch Variation_02": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 20828
+  },
+  "Gorn_Punch Variation_03": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 19591
+  },
+  "High Action SuperEdit": {
+    "Channels": 2,
+    "SampleRate": 44100,
+    "Frames": 5763543
+  },
+  "Intro_Ambience_01": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 952791
+  },
+  "Intro_Ambience_02": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 476396
+  },
+  "Intro_DramamticStab_01": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 184876
+  },
+  "Intro_Fly2": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 101259
+  },
+  "Intro_FrogSit_01": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 13099
+  },
+  "Intro_FrogTurn_01": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 9489
+  },
+  "Intro_Gasp_04": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 7202
+  },
+  "Intro_Gasp_07": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 13502
+  },
+  "Intro_Growl_02": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 64784
+  },
+  "Intro_PullOutBat": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 15786
+  },
+  "Intro_surprise7": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 8549
+  },
+  "Tongue_Collide Enemy 1": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 13277
+  },
+  "Tongue_Collide Enemy 2": {
+    "Channels": 1,
+    "SampleRate": 48000,
+    "Frames": 10694
+  },
+  "Tongue_Launch 1": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 10353
+  },
+  "Tongue_Launch 2": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 8826
+  },
+  "Tongue_Launch 3": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 10822
+  },
+  "VictorySting_01": {
+    "Channels": 2,
+    "SampleRate": 48000,
+    "Frames": 362260
+  },
+  "burpruan": {
+    "Channels": 2,
+    "SampleRate": 44100,
+    "Frames": 22191
+  }
+}

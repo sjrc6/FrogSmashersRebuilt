@@ -1,0 +1,14 @@
+Frog Smashers Rebuilt is a modified version of Frog Smashers.
+
+Frog Smashers Rebuilt Credits:
+MonoGame port and other changes: Tater (@sjrc6)
+
+Original Frog Smashers credits:
+Programming / Design: Ruan Rothmann (@rrza)
+Art / Animation: Mike Scott (@mikescottiskiff)
+Additional Art: Ben Rausch (@Ben_Rausch) and Stuart Coutts
+Sound: Jason Sutherland
+
+Original game: https://raithza.itch.io/frogsmashers
+Source: https://github.com/ruanrothmann/frogsmashers
+License: LICENSE.md

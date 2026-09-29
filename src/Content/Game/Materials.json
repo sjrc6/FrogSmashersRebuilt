@@ -1,0 +1,476 @@
+{
+  "Materials": {
+    "BGSmoke": {
+      "Colors": {
+        "_Color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "_EmissionColor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "_TintColor": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      "Parameters": {
+        "PixelSnap": 0,
+        "_BumpScale": 1,
+        "_Cutoff": 0.5,
+        "_DetailNormalMapScale": 1,
+        "_DstBlend": 0,
+        "_GlossMapScale": 1,
+        "_Glossiness": 0.5,
+        "_GlossyReflections": 1,
+        "_InvFade": 0.42,
+        "_Metallic": 0,
+        "_Mode": 0,
+        "_OcclusionStrength": 1,
+        "_Parallax": 0.02,
+        "_SmoothnessTextureChannel": 0,
+        "_SpecularHighlights": 1,
+        "_SrcBlend": 1,
+        "_UVSec": 0,
+        "_ZWrite": 1
+      },
+      "RenderQueue": -1,
+      "Shader": "Unity-Builtin-203",
+      "TextureTransforms": {
+        "_MainTex": [
+          1,
+          1,
+          0,
+          0
+        ]
+      },
+      "Textures": {
+        "_MainTex": "Textures/Sprites/BackGrounds/Skyline/far_bg_smoke_particle"
+      }
+    },
+    "LocalizedShake": {
+      "Colors": {
+        "_Color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "_EmissionColor": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "Parameters": {
+        "PixelSnap": 0,
+        "_BumpScale": 1,
+        "_Cutoff": 0.5,
+        "_DetailNormalMapScale": 1,
+        "_DstBlend": 0,
+        "_GlossMapScale": 1,
+        "_Glossiness": 0.5,
+        "_GlossyReflections": 1,
+        "_Metallic": 0,
+        "_Mode": 0,
+        "_OcclusionStrength": 1,
+        "_Parallax": 0.02,
+        "_SmoothnessTextureChannel": 0,
+        "_SpecularHighlights": 1,
+        "_SrcBlend": 1,
+        "_UVSec": 0,
+        "_ZWrite": 1,
+        "_xOffset": 0,
+        "_yOffset": 0
+      },
+      "RenderQueue": 5000,
+      "Shader": "LocalizedShake",
+      "TextureTransforms": {
+        "_MainTex": [
+          1,
+          1,
+          0,
+          0
+        ]
+      },
+      "Textures": {
+        "_MainTex": "Textures/Materials/RadialGradient"
+      }
+    },
+    "SelectiveColorReplace": {
+      "Colors": {
+        "_Color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "_EmissionColor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "_ReplaceColor": [
+          0.6666667,
+          0.6901961,
+          0.34509805,
+          1
+        ],
+        "_SecondReplaceColor": [
+          0.49019608,
+          0.3882353,
+          0.29411766,
+          1
+        ]
+      },
+      "Parameters": {
+        "PixelSnap": 0,
+        "_BumpScale": 1,
+        "_Cutoff": 0.5,
+        "_DetailNormalMapScale": 1,
+        "_DstBlend": 0,
+        "_GlossMapScale": 1,
+        "_Glossiness": 0.5,
+        "_GlossyReflections": 1,
+        "_Metallic": 0,
+        "_Mode": 0,
+        "_OcclusionStrength": 1,
+        "_Parallax": 0.02,
+        "_SmoothnessTextureChannel": 0,
+        "_SpecularHighlights": 1,
+        "_SrcBlend": 1,
+        "_UVSec": 0,
+        "_ZWrite": 1
+      },
+      "RenderQueue": 3001,
+      "Shader": "SelectiveColorReplace",
+      "TextureTransforms": {},
+      "Textures": {}
+    },
+    "Shimmer": {
+      "Colors": {
+        "_Color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "_EmissionColor": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "Parameters": {
+        "PackedNormal": 1,
+        "PixelSnap": 0,
+        "_BumpScale": 1,
+        "_Cutoff": 0.5,
+        "_DetailNormalMapScale": 1,
+        "_DstBlend": 0,
+        "_GlossMapScale": 1,
+        "_Glossiness": 0.5,
+        "_GlossyReflections": 1,
+        "_Metallic": 0,
+        "_Mode": 0,
+        "_OcclusionStrength": 1,
+        "_Parallax": 0.02,
+        "_SmoothnessTextureChannel": 0,
+        "_SpecularHighlights": 1,
+        "_SrcBlend": 1,
+        "_UVSec": 0,
+        "_WarpAmount": 1,
+        "_ZWrite": 1,
+        "_xAmount": 3,
+        "_xSpeed": 0.4,
+        "_yAmount": 2,
+        "_ySpeed": 0.24
+      },
+      "RenderQueue": -1,
+      "Shader": "Shimmer",
+      "TextureTransforms": {
+        "_Noise1": [
+          1,
+          1,
+          0,
+          0
+        ]
+      },
+      "Textures": {
+        "_Noise1": "Textures/Materials/water/1160-normal"
+      }
+    },
+    "ShimmerSkyline": {
+      "Colors": {
+        "_Color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "_EmissionColor": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "Parameters": {
+        "PackedNormal": 1,
+        "PixelSnap": 0,
+        "_BumpScale": 1,
+        "_Cutoff": 0.5,
+        "_DetailNormalMapScale": 1,
+        "_DstBlend": 0,
+        "_GlossMapScale": 1,
+        "_Glossiness": 0.5,
+        "_GlossyReflections": 1,
+        "_Metallic": 0,
+        "_Mode": 0,
+        "_OcclusionStrength": 1,
+        "_Parallax": 0.02,
+        "_SmoothnessTextureChannel": 0,
+        "_SpecularHighlights": 1,
+        "_SrcBlend": 1,
+        "_UVSec": 0,
+        "_WarpAmount": 1,
+        "_ZWrite": 1,
+        "_xAmount": 4,
+        "_xSpeed": 1,
+        "_yAmount": 3,
+        "_ySpeed": 2
+      },
+      "RenderQueue": -1,
+      "Shader": "Shimmer",
+      "TextureTransforms": {
+        "_Noise1": [
+          0.5,
+          0.5,
+          0,
+          0
+        ]
+      },
+      "Textures": {
+        "_Noise1": "Textures/Materials/water/1160-normal"
+      }
+    },
+    "ShimmerWater": {
+      "Colors": {
+        "_Color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "_EmissionColor": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "Parameters": {
+        "PackedNormal": 1,
+        "PixelSnap": 0,
+        "_BumpScale": 1,
+        "_Cutoff": 0.5,
+        "_DetailNormalMapScale": 1,
+        "_DstBlend": 0,
+        "_GlossMapScale": 1,
+        "_Glossiness": 0.5,
+        "_GlossyReflections": 1,
+        "_Metallic": 0,
+        "_Mode": 0,
+        "_OcclusionStrength": 1,
+        "_Parallax": 0.02,
+        "_SmoothnessTextureChannel": 0,
+        "_SpecularHighlights": 1,
+        "_SrcBlend": 1,
+        "_UVSec": 0,
+        "_WarpAmount": 1,
+        "_ZWrite": 1,
+        "_xAmount": 3,
+        "_xSpeed": 0.4,
+        "_yAmount": 2,
+        "_ySpeed": 0.24
+      },
+      "RenderQueue": -1,
+      "Shader": "Shimmer",
+      "TextureTransforms": {
+        "_Noise1": [
+          1,
+          1,
+          0,
+          0
+        ]
+      },
+      "Textures": {
+        "_Noise1": "Textures/Materials/water/6055-normal"
+      }
+    },
+    "Smoke": {
+      "Colors": {
+        "_Color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "_EmissionColor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "_TintColor": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      "Parameters": {
+        "PixelSnap": 0,
+        "_BumpScale": 1,
+        "_Cutoff": 0.5,
+        "_DetailNormalMapScale": 1,
+        "_DstBlend": 0,
+        "_GlossMapScale": 1,
+        "_Glossiness": 0.5,
+        "_GlossyReflections": 1,
+        "_InvFade": 0.42,
+        "_Metallic": 0,
+        "_Mode": 0,
+        "_OcclusionStrength": 1,
+        "_Parallax": 0.02,
+        "_SmoothnessTextureChannel": 0,
+        "_SpecularHighlights": 1,
+        "_SrcBlend": 1,
+        "_UVSec": 0,
+        "_ZWrite": 1
+      },
+      "RenderQueue": 5000,
+      "Shader": "Unity-Builtin-203",
+      "TextureTransforms": {
+        "_MainTex": [
+          1,
+          1,
+          0,
+          0
+        ]
+      },
+      "Textures": {
+        "_MainTex": "Textures/Sprites/Effects/smokeParticle"
+      }
+    },
+    "Tongue": {
+      "Colors": {
+        "_Color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "_EmissionColor": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "Parameters": {
+        "_BumpScale": 1,
+        "_Cutoff": 0.5,
+        "_DetailNormalMapScale": 1,
+        "_DstBlend": 0,
+        "_GlossMapScale": 1,
+        "_Glossiness": 0.5,
+        "_GlossyReflections": 1,
+        "_Metallic": 0,
+        "_Mode": 0,
+        "_OcclusionStrength": 1,
+        "_Parallax": 0.02,
+        "_SmoothnessTextureChannel": 0,
+        "_SpecularHighlights": 1,
+        "_SrcBlend": 1,
+        "_UVSec": 0,
+        "_ZWrite": 1
+      },
+      "RenderQueue": -1,
+      "Shader": "Unity-Builtin-10752",
+      "TextureTransforms": {
+        "_MainTex": [
+          1,
+          1,
+          0,
+          0
+        ]
+      },
+      "Textures": {
+        "_MainTex": "Textures/Sprites/Frog/tongue_section"
+      }
+    },
+    "Trail": {
+      "Colors": {
+        "_Color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "_EmisColor": [
+          0.2,
+          0.2,
+          0.2,
+          0
+        ],
+        "_EmissionColor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "_TintColor": [
+          0.78676474,
+          0.32974696,
+          0.32974696,
+          1
+        ]
+      },
+      "Parameters": {
+        "PixelSnap": 0,
+        "_BumpScale": 1,
+        "_Cutoff": 0.451,
+        "_DetailNormalMapScale": 1,
+        "_DstBlend": 0,
+        "_GlossMapScale": 1,
+        "_Glossiness": 0.5,
+        "_GlossyReflections": 1,
+        "_InvFade": 1,
+        "_Metallic": 0,
+        "_Mode": 0,
+        "_OcclusionStrength": 1,
+        "_Parallax": 0.02,
+        "_SmoothnessTextureChannel": 0,
+        "_SpecularHighlights": 1,
+        "_SrcBlend": 1,
+        "_UVSec": 0,
+        "_ZWrite": 1
+      },
+      "RenderQueue": -1,
+      "Shader": "ColorCutout",
+      "TextureTransforms": {},
+      "Textures": {}
+    }
+  }
+}

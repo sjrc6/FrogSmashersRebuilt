@@ -1,0 +1,1610 @@
+{
+  "Effects": {
+    "BackgroundEscapeShip": {
+      "Animations": {
+        "frames": [
+          "3b15071d9aa2ee947a1143e8a7f8c9cc:21300000",
+          "51c6b33273668bb4daf57735458e7d61:21300000",
+          "d2c0cedc72b7dcf4c8c0232ecc87b77a:21300000",
+          "fa77df1fb0d61cb48979bf3e4f50bde2:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.1,
+      "Frames": [
+        "3b15071d9aa2ee947a1143e8a7f8c9cc:21300000",
+        "51c6b33273668bb4daf57735458e7d61:21300000",
+        "d2c0cedc72b7dcf4c8c0232ecc87b77a:21300000",
+        "fa77df1fb0d61cb48979bf3e4f50bde2:21300000"
+      ],
+      "InitialSpriteId": "fa77df1fb0d61cb48979bf3e4f50bde2:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.1,
+        "playOnce": 0
+      },
+      "PlayOnce": false,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "BackgroundEscapeShip (1)": {
+      "Animations": {
+        "frames": [
+          "3b15071d9aa2ee947a1143e8a7f8c9cc:21300000",
+          "51c6b33273668bb4daf57735458e7d61:21300000",
+          "d2c0cedc72b7dcf4c8c0232ecc87b77a:21300000",
+          "fa77df1fb0d61cb48979bf3e4f50bde2:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.1,
+      "Frames": [
+        "3b15071d9aa2ee947a1143e8a7f8c9cc:21300000",
+        "51c6b33273668bb4daf57735458e7d61:21300000",
+        "d2c0cedc72b7dcf4c8c0232ecc87b77a:21300000",
+        "fa77df1fb0d61cb48979bf3e4f50bde2:21300000"
+      ],
+      "InitialSpriteId": "a60620ab9a3c34448bbe9f8a11aabd7a:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.1,
+        "playOnce": 0
+      },
+      "PlayOnce": false,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "BackgroundEscapeShip (2)": {
+      "Animations": {
+        "frames": [
+          "3b15071d9aa2ee947a1143e8a7f8c9cc:21300000",
+          "51c6b33273668bb4daf57735458e7d61:21300000",
+          "d2c0cedc72b7dcf4c8c0232ecc87b77a:21300000",
+          "fa77df1fb0d61cb48979bf3e4f50bde2:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.1,
+      "Frames": [
+        "3b15071d9aa2ee947a1143e8a7f8c9cc:21300000",
+        "51c6b33273668bb4daf57735458e7d61:21300000",
+        "d2c0cedc72b7dcf4c8c0232ecc87b77a:21300000",
+        "fa77df1fb0d61cb48979bf3e4f50bde2:21300000"
+      ],
+      "InitialSpriteId": "a60620ab9a3c34448bbe9f8a11aabd7a:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.1,
+        "playOnce": 0
+      },
+      "PlayOnce": false,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "BouncePuff": {
+      "Animations": {
+        "frames": [
+          "a4170a9a4226e4642a39d496be331540:21300000",
+          "8e5ea33e9598e9649889cf7253b156a7:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.05,
+      "Frames": [
+        "a4170a9a4226e4642a39d496be331540:21300000",
+        "8e5ea33e9598e9649889cf7253b156a7:21300000"
+      ],
+      "InitialSpriteId": "d3dedcccd8351aa4d96b5af5f5bcbaea:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.05,
+        "playOnce": 1
+      },
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "Confetti.": {
+      "Animations": {
+        "frames": [
+          "867479c3993891e4abfcf73e6acaf01c:21300000",
+          "8fde67b390e289e4494093c559f92e26:21300000",
+          "a3ee228ee9c88f74ebdb9583dd5f13a3:21300000",
+          "ae3ccd3222eb6d94d80baaf60d6e89c9:21300000",
+          "a3ee228ee9c88f74ebdb9583dd5f13a3:21300000",
+          "8fde67b390e289e4494093c559f92e26:21300000",
+          "867479c3993891e4abfcf73e6acaf01c:21300000",
+          "92601c618891adb4ab12af3cfbc15a17:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.2,
+      "Frames": [
+        "867479c3993891e4abfcf73e6acaf01c:21300000",
+        "8fde67b390e289e4494093c559f92e26:21300000",
+        "a3ee228ee9c88f74ebdb9583dd5f13a3:21300000",
+        "ae3ccd3222eb6d94d80baaf60d6e89c9:21300000",
+        "a3ee228ee9c88f74ebdb9583dd5f13a3:21300000",
+        "8fde67b390e289e4494093c559f92e26:21300000",
+        "867479c3993891e4abfcf73e6acaf01c:21300000",
+        "92601c618891adb4ab12af3cfbc15a17:21300000"
+      ],
+      "InitialSpriteId": "92601c618891adb4ab12af3cfbc15a17:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.2,
+        "playOnce": 0,
+        "velocityX": 0,
+        "velocityY": -2,
+        "velocityZ": 0
+      },
+      "PlayOnce": false,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": -10
+    },
+    "DirectionalHitEffect": {
+      "Animations": {
+        "frames": [
+          "4f22185e73b109c48849b72a9bba1bbf:21300000",
+          "51f3d1af7b0d4c34994ec87792af4f2f:21300000",
+          "db21be8f22081154785ce7312f40fe69:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.05,
+      "Frames": [
+        "4f22185e73b109c48849b72a9bba1bbf:21300000",
+        "51f3d1af7b0d4c34994ec87792af4f2f:21300000",
+        "db21be8f22081154785ce7312f40fe69:21300000"
+      ],
+      "InitialSpriteId": "0711e4208fd370744b14d8b2f72b6613:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.05,
+        "playOnce": 1
+      },
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "FaderTrail": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [],
+      "InitialSpriteId": "",
+      "Material": "Trail",
+      "Order": 0,
+      "Parameters": {
+        "counter": 0,
+        "life": 0.3,
+        "lifeM": 1
+      },
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "Fireball": {
+      "Animations": {
+        "frames": [
+          "3ab32368bc369854bb6e11b79cd5efd9:21300000",
+          "6bc6db7be6787bb499995949be81211c:21300000",
+          "3e7d3bbc945c347408b39c3d84476bcd:21300000",
+          "b1e71d76910e9414093227a34cadfbcf:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.05,
+      "Frames": [
+        "3ab32368bc369854bb6e11b79cd5efd9:21300000",
+        "6bc6db7be6787bb499995949be81211c:21300000",
+        "3e7d3bbc945c347408b39c3d84476bcd:21300000",
+        "b1e71d76910e9414093227a34cadfbcf:21300000"
+      ],
+      "InitialSpriteId": "b1e71d76910e9414093227a34cadfbcf:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.05,
+        "playOnce": 0
+      },
+      "PlayOnce": false,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 55.704346
+    },
+    "Fly": {
+      "Animations": {
+        "frames": [
+          "5c16e5610919a604f8778e6816f9a17a:21300000",
+          "8e95665d50c28bb4f94cd5d41bf34630:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.05,
+      "Frames": [
+        "5c16e5610919a604f8778e6816f9a17a:21300000",
+        "8e95665d50c28bb4f94cd5d41bf34630:21300000"
+      ],
+      "InitialSpriteId": "8e95665d50c28bb4f94cd5d41bf34630:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.05,
+        "maxSpeed": 7.5,
+        "playOnce": 0
+      },
+      "PlayOnce": false,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": -3
+    },
+    "Hexagon": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "c54419da60ccf924e99ecc6b1e84ec19:21300000"
+      ],
+      "InitialSpriteId": "c54419da60ccf924e99ecc6b1e84ec19:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {},
+      "PlayOnce": true,
+      "ScaleX": 2,
+      "ScaleY": 2,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "HitEffect": {
+      "Animations": {
+        "deathFrames": [
+          "618ab05f075afb445b8b80a669f42f2c:21300000",
+          "5bad12d91c22299418c3f3a5862e2489:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "322b2cbe828f0074987420510ec37adf:21300000"
+      ],
+      "InitialSpriteId": "322b2cbe828f0074987420510ec37adf:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "deathFrameRate": 0.04,
+        "flipColors": 0,
+        "growTime": 0.1,
+        "life": 0.25,
+        "rotationDelay": 0.075
+      },
+      "PlayOnce": true,
+      "ScaleX": 0,
+      "ScaleY": 0,
+      "SortingLayer": 0,
+      "Z": -10
+    },
+    "HitParticle": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [
+        [
+          0,
+          0,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "a6657dacaccd1f3428f8a827c154be84:21300000"
+      ],
+      "InitialSpriteId": "a6657dacaccd1f3428f8a827c154be84:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "alphaOut": 1,
+        "colorChangeDelay": 0.05,
+        "endSize": 0.05,
+        "life": 0.25,
+        "startSize": 0.2,
+        "velocityX": 0,
+        "velocityY": 0
+      },
+      "PlayOnce": true,
+      "ScaleX": 0,
+      "ScaleY": 0,
+      "SortingLayer": 0,
+      "Z": -10
+    },
+    "HitStar": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          0,
+          0,
+          0,
+          1
+        ]
+      ],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "a6657dacaccd1f3428f8a827c154be84:21300000"
+      ],
+      "InitialSpriteId": "a6657dacaccd1f3428f8a827c154be84:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "deathFrameRate": 0.04,
+        "flipColors": 1,
+        "growTime": 0.1,
+        "life": 0.25,
+        "rotationDelay": 0.075,
+        "scale": 0,
+        "scaleCounter": 3.14
+      },
+      "PlayOnce": true,
+      "ScaleX": 0,
+      "ScaleY": 0,
+      "SortingLayer": 0,
+      "Z": -10
+    },
+    "HitStarPowerHit": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          0.90344834,
+          1,
+          0,
+          1
+        ],
+        [
+          0,
+          0,
+          0,
+          1
+        ],
+        [
+          1,
+          0,
+          0,
+          1
+        ],
+        [
+          0.90344834,
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          0,
+          1,
+          0.95862055,
+          1
+        ]
+      ],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "a6657dacaccd1f3428f8a827c154be84:21300000"
+      ],
+      "InitialSpriteId": "a6657dacaccd1f3428f8a827c154be84:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "deathFrameRate": 0.04,
+        "flipColors": 1,
+        "growTime": 0.1,
+        "life": 0.25,
+        "rotationDelay": 0.075,
+        "scale": 0,
+        "scaleCounter": 1.6
+      },
+      "PlayOnce": true,
+      "ScaleX": 0,
+      "ScaleY": 0,
+      "SortingLayer": 0,
+      "Z": -10
+    },
+    "IntroScreenCharacterParticle": {
+      "Animations": {
+        "frames": [
+          "abbb9e6b597716942b1e5b503c8d8a6c:21300000",
+          "54a07d0a3ab3ee341b27c3f4fad86435:21300000",
+          "db8ad89fbc0141e4e93cadad914713b4:21300000",
+          "d3eabbfd59e21014cb5a23ccc34a2102:21300000",
+          "453571027e02cb94e8254494493151d1:21300000",
+          "12ca7e7042215da40962071e23e34d28:21300000",
+          "76e9fb53d061d0d4aabeb96804ea776f:21300000",
+          "83cee1e810f5ffb44928f4e1ce6325c3:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.05,
+      "Frames": [
+        "abbb9e6b597716942b1e5b503c8d8a6c:21300000",
+        "54a07d0a3ab3ee341b27c3f4fad86435:21300000",
+        "db8ad89fbc0141e4e93cadad914713b4:21300000",
+        "d3eabbfd59e21014cb5a23ccc34a2102:21300000",
+        "453571027e02cb94e8254494493151d1:21300000",
+        "12ca7e7042215da40962071e23e34d28:21300000",
+        "76e9fb53d061d0d4aabeb96804ea776f:21300000",
+        "83cee1e810f5ffb44928f4e1ce6325c3:21300000"
+      ],
+      "InitialSpriteId": "83cee1e810f5ffb44928f4e1ce6325c3:21300000",
+      "Material": "SelectiveColorReplace",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.05,
+        "playOnce": 0,
+        "velocityX": 0,
+        "velocityY": -2,
+        "velocityZ": 0
+      },
+      "PlayOnce": false,
+      "ScaleX": 0.5,
+      "ScaleY": 0.5,
+      "SortingLayer": 0,
+      "Z": -10
+    },
+    "IntroScreenCharacterParticle 1": {
+      "Animations": {
+        "frames": [
+          "8653b9aaf3dc69b49be2afcc11307e8d:21300000",
+          "e3da050bce91e7f4f9c2cbf91979e796:21300000",
+          "a1a4c1ea7f7d13d468d8d71589705181:21300000",
+          "b9f63b540659daf47a95741ff78db226:21300000",
+          "efe298454ec2dff40afa1310dc2f974c:21300000",
+          "e29ff58a2a3ca53479001e72fb25a5c4:21300000",
+          "d3490c4c2f1ff9e42acd9d62af332414:21300000",
+          "5396627038258a044a8491a0d00fb44a:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.05,
+      "Frames": [
+        "8653b9aaf3dc69b49be2afcc11307e8d:21300000",
+        "e3da050bce91e7f4f9c2cbf91979e796:21300000",
+        "a1a4c1ea7f7d13d468d8d71589705181:21300000",
+        "b9f63b540659daf47a95741ff78db226:21300000",
+        "efe298454ec2dff40afa1310dc2f974c:21300000",
+        "e29ff58a2a3ca53479001e72fb25a5c4:21300000",
+        "d3490c4c2f1ff9e42acd9d62af332414:21300000",
+        "5396627038258a044a8491a0d00fb44a:21300000"
+      ],
+      "InitialSpriteId": "8653b9aaf3dc69b49be2afcc11307e8d:21300000",
+      "Material": "SelectiveColorReplace",
+      "Order": 0,
+      "Parameters": {
+        "accelX": 0,
+        "accelY": -10,
+        "accelZ": 0,
+        "animSpeed": 0.05,
+        "playOnce": 0,
+        "velocityX": 0,
+        "velocityY": -2,
+        "velocityZ": 0
+      },
+      "PlayOnce": false,
+      "ScaleX": 0.5,
+      "ScaleY": 0.5,
+      "SortingLayer": 0,
+      "Z": -10
+    },
+    "IntroScreenCharacterParticle 2": {
+      "Animations": {
+        "frames": [
+          "52feb4fa7c6af2643a6f770cac58c856:21300000",
+          "41e916281daf49f4f8e825eba595eeea:21300000",
+          "8e07c652f94762e44bfbcd61488eafb5:21300000",
+          "2f60d639c3aeacf47901742321a1715d:21300000",
+          "19cc87d4981da2c4aa3aee564a616da9:21300000",
+          "bc14e30a1c446684fbf7470c5f8d5d1a:21300000",
+          "958c8c6ae12f9494586b6bf3ba2691f5:21300000",
+          "d1e96c577654fa2459902b9da3ce41d1:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.05,
+      "Frames": [
+        "52feb4fa7c6af2643a6f770cac58c856:21300000",
+        "41e916281daf49f4f8e825eba595eeea:21300000",
+        "8e07c652f94762e44bfbcd61488eafb5:21300000",
+        "2f60d639c3aeacf47901742321a1715d:21300000",
+        "19cc87d4981da2c4aa3aee564a616da9:21300000",
+        "bc14e30a1c446684fbf7470c5f8d5d1a:21300000",
+        "958c8c6ae12f9494586b6bf3ba2691f5:21300000",
+        "d1e96c577654fa2459902b9da3ce41d1:21300000"
+      ],
+      "InitialSpriteId": "52feb4fa7c6af2643a6f770cac58c856:21300000",
+      "Material": "SelectiveColorReplace",
+      "Order": 0,
+      "Parameters": {
+        "accelX": 0,
+        "accelY": -12.5,
+        "accelZ": 0,
+        "animSpeed": 0.05,
+        "playOnce": 0,
+        "velocityX": 0,
+        "velocityY": -2,
+        "velocityZ": 0
+      },
+      "PlayOnce": false,
+      "ScaleX": 0.5,
+      "ScaleY": 0.5,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "JumpPuffSkew": {
+      "Animations": {
+        "frames": [
+          "443719f26855dbc41992ea4ff6f586ff:21300000",
+          "cd3b295a5d015864dbd2a950ae8bddf0:21300000",
+          "027a4cbcb295ea04490c4b313bcbf78e:21300000",
+          "1c5dbeb594ded4148b4119cb349300d5:21300000",
+          "35d5534c752b9954ea972627ad789f82:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.05,
+      "Frames": [
+        "443719f26855dbc41992ea4ff6f586ff:21300000",
+        "cd3b295a5d015864dbd2a950ae8bddf0:21300000",
+        "027a4cbcb295ea04490c4b313bcbf78e:21300000",
+        "1c5dbeb594ded4148b4119cb349300d5:21300000",
+        "35d5534c752b9954ea972627ad789f82:21300000"
+      ],
+      "InitialSpriteId": "006dd2b330d08de448448a6f066ae231:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.05,
+        "playOnce": 1
+      },
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "JumpPuffStraight": {
+      "Animations": {
+        "frames": [
+          "a4170a9a4226e4642a39d496be331540:21300000",
+          "8e5ea33e9598e9649889cf7253b156a7:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.05,
+      "Frames": [
+        "a4170a9a4226e4642a39d496be331540:21300000",
+        "8e5ea33e9598e9649889cf7253b156a7:21300000"
+      ],
+      "InitialSpriteId": "d3dedcccd8351aa4d96b5af5f5bcbaea:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.05,
+        "playOnce": 1
+      },
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "KnockedUpEffect": {
+      "Animations": {
+        "frames": [
+          "61aaf9bc61707c14a8ba090de2925cfc:21300000",
+          "f1fc81ef1cff6ef43a169aa49d9d490e:21300000",
+          "a886493c6ac9a5a46ac9a92c214c08d8:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.05,
+      "Frames": [
+        "61aaf9bc61707c14a8ba090de2925cfc:21300000",
+        "f1fc81ef1cff6ef43a169aa49d9d490e:21300000",
+        "a886493c6ac9a5a46ac9a92c214c08d8:21300000"
+      ],
+      "InitialSpriteId": "8dfc959086bbc5c43a0c77a3af8e0216:21300000",
+      "Material": "SelectiveColorReplace",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.05,
+        "fallDelay": 0.5,
+        "fallSpeed": 30,
+        "playOnce": 0,
+        "rotSpeed": 270
+      },
+      "PlayOnce": false,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "LineParticle": {
+      "Animations": {
+        "frames": [
+          "1a02af104c8077444b977913c9330dd5:21300000",
+          "53fdd9324e77bdf4a84e9b5e6f609f5e:21300000",
+          "14eda4f2d4523d04cbd9038cdd6d4b47:21300000",
+          "af8ae2cf90cf6c04dbb1356f3091b64b:21300000"
+        ]
+      },
+      "Color": [
+        0.78676474,
+        0.78676474,
+        0.78676474,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.05,
+      "Frames": [
+        "1a02af104c8077444b977913c9330dd5:21300000",
+        "53fdd9324e77bdf4a84e9b5e6f609f5e:21300000",
+        "14eda4f2d4523d04cbd9038cdd6d4b47:21300000",
+        "af8ae2cf90cf6c04dbb1356f3091b64b:21300000"
+      ],
+      "InitialSpriteId": "14eda4f2d4523d04cbd9038cdd6d4b47:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.05,
+        "playOnce": 1,
+        "velocityX": 0,
+        "velocityY": 0,
+        "velocityZ": 0
+      },
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "LocalizedShake": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "0a218dd982e50114ab9f11748feeb128:21300000"
+      ],
+      "InitialSpriteId": "0a218dd982e50114ab9f11748feeb128:21300000",
+      "Material": "LocalizedShake",
+      "Order": 0,
+      "Parameters": {
+        "MagnitudeX": 0,
+        "MagnitudeY": 0,
+        "life": 0,
+        "velocity": 0
+      },
+      "PlayOnce": true,
+      "ScaleX": 10,
+      "ScaleY": 10,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "RoofDustParticle": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [],
+      "InitialSpriteId": "",
+      "Material": "",
+      "Order": 0,
+      "Parameters": {},
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "RunDustPuff": {
+      "Animations": {
+        "frames": [
+          "23bcd9c82ca7cc64880a9963e31e066b:21300000",
+          "ff470b44b7c428042aa8b5893e7e38ef:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.05,
+      "Frames": [
+        "23bcd9c82ca7cc64880a9963e31e066b:21300000",
+        "ff470b44b7c428042aa8b5893e7e38ef:21300000"
+      ],
+      "InitialSpriteId": "f302c39d5b50f0942aabf607bd875b17:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.05,
+        "playOnce": 1
+      },
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "ShingEffect": {
+      "Animations": {
+        "frames": [
+          "f41a902114570334cb20079134fe0e6e:21300000",
+          "fb1bc3b755900ef4183951ee7e35821a:21300000",
+          "54f0d72b172bcfa46afb378dc0ef7a52:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.03,
+      "Frames": [
+        "f41a902114570334cb20079134fe0e6e:21300000",
+        "fb1bc3b755900ef4183951ee7e35821a:21300000",
+        "54f0d72b172bcfa46afb378dc0ef7a52:21300000"
+      ],
+      "InitialSpriteId": "8dbdc315dde1a5e47bc940c62c92abda:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.03,
+        "playOnce": 1
+      },
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "SideScorePlum": {
+      "Animations": {
+        "deathAnim": [
+          "9bc8b789db27a00439c9018a866584d3:21300000",
+          "91c02fbf2837eb1448bd680a395ff866:21300000",
+          "8553597bdfe933646aade60978e73b6e:21300000"
+        ],
+        "loop": [
+          "298f4dab080c6214ba34f7e95d3582a5:21300000",
+          "364c810ddc50e144ea025eb7019d09f8:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "364c810ddc50e144ea025eb7019d09f8:21300000"
+      ],
+      "InitialSpriteId": "364c810ddc50e144ea025eb7019d09f8:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animTime": 0.1,
+        "frameDelay": 0.05,
+        "textFadeTime": 1.5
+      },
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "SmokePuff": {
+      "Animations": {
+        "frames": [
+          "9d13da54cedadbe4bbae89ae0c663611:21300000",
+          "c2d6b97f164d8e244a3b46ade872beec:21300000",
+          "2e281d0e81462774481350c870b9b867:21300000",
+          "79be3a8d2a12b024eaeb7a3e2ffd98f9:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.05,
+      "Frames": [
+        "9d13da54cedadbe4bbae89ae0c663611:21300000",
+        "c2d6b97f164d8e244a3b46ade872beec:21300000",
+        "2e281d0e81462774481350c870b9b867:21300000",
+        "79be3a8d2a12b024eaeb7a3e2ffd98f9:21300000"
+      ],
+      "InitialSpriteId": "a9db91fb128f08e409eb973c7a228c0c:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.05,
+        "playOnce": 1
+      },
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "SmokePuff2": {
+      "Animations": {
+        "frames": [
+          "b3aa0422f1e750e438bdd76405d610e0:21300000",
+          "d7d737e232f13c348b7bb0897b7c8c03:21300000",
+          "342312b50e3bbbd4c8d14d77cf5ee0d4:21300000",
+          "b591d43d32e7fae40a28b9eea8c8c75b:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.05,
+      "Frames": [
+        "b3aa0422f1e750e438bdd76405d610e0:21300000",
+        "d7d737e232f13c348b7bb0897b7c8c03:21300000",
+        "342312b50e3bbbd4c8d14d77cf5ee0d4:21300000",
+        "b591d43d32e7fae40a28b9eea8c8c75b:21300000"
+      ],
+      "InitialSpriteId": "02e4af5595d3f604195ce68435bf8f61:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.05,
+        "playOnce": 1
+      },
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "SmokeRing": {
+      "Animations": {
+        "frames": [
+          "7d2c717e61a19a547aaed290f67d2154:21300000",
+          "c5126e00bbdd2ba43b31712f6e81ff08:21300000",
+          "7d2c717e61a19a547aaed290f67d2154:21300000",
+          "7544713cb7e8d6a4a81ba9a865df9e1d:21300000",
+          "4d5dacf2e9b6a3a4c8460bd26e096379:21300000",
+          "6a57cec42c15da24f87838d07c91b7c7:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.05,
+      "Frames": [
+        "7d2c717e61a19a547aaed290f67d2154:21300000",
+        "c5126e00bbdd2ba43b31712f6e81ff08:21300000",
+        "7d2c717e61a19a547aaed290f67d2154:21300000",
+        "7544713cb7e8d6a4a81ba9a865df9e1d:21300000",
+        "4d5dacf2e9b6a3a4c8460bd26e096379:21300000",
+        "6a57cec42c15da24f87838d07c91b7c7:21300000"
+      ],
+      "InitialSpriteId": "7544713cb7e8d6a4a81ba9a865df9e1d:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.05,
+        "playOnce": 1
+      },
+      "PlayOnce": true,
+      "ScaleX": 0.8,
+      "ScaleY": 0.8,
+      "SortingLayer": 0,
+      "Z": 3
+    },
+    "SpawnPuff": {
+      "Animations": {
+        "frames": [
+          "283c6cdcd23688e45a6cca92db6abdbb:21300000",
+          "8a715c7e23e3b2149a1c08f32c2c9d65:21300000",
+          "39ece0f10ac67174e91686092b00f5a9:21300000",
+          "1cdf44a9896323946854abaa9cbf8da0:21300000",
+          "b670235d8e2a9e14683ded3f52c7b24f:21300000",
+          "b616dbb238c3a6747b0eaa79b3fbf542:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.06,
+      "Frames": [
+        "283c6cdcd23688e45a6cca92db6abdbb:21300000",
+        "8a715c7e23e3b2149a1c08f32c2c9d65:21300000",
+        "39ece0f10ac67174e91686092b00f5a9:21300000",
+        "1cdf44a9896323946854abaa9cbf8da0:21300000",
+        "b670235d8e2a9e14683ded3f52c7b24f:21300000",
+        "b616dbb238c3a6747b0eaa79b3fbf542:21300000"
+      ],
+      "InitialSpriteId": "584f3cf244d8aa94b9ad26c86f4b9a2d:21300000",
+      "Material": "SelectiveColorReplace",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.06,
+        "playOnce": 1
+      },
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "SpawnPuffParticles": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [],
+      "InitialSpriteId": "",
+      "Material": "",
+      "Order": 0,
+      "Parameters": {},
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "TongueHitEffect": {
+      "Animations": {
+        "frames": [
+          "05f2a8f9986dbe647b3b5b8d5e366289:21300000",
+          "39576321651ece946930dbff47d84526:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.05,
+      "Frames": [
+        "05f2a8f9986dbe647b3b5b8d5e366289:21300000",
+        "39576321651ece946930dbff47d84526:21300000"
+      ],
+      "InitialSpriteId": "61d9500d4324e5d4cb03d22b919ca666:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.05,
+        "playOnce": 1
+      },
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "TurnAroundPuff": {
+      "Animations": {
+        "frames": [
+          "0b3277fc3a4b67a4996911aad40f6bcf:21300000",
+          "c0d3e131da297234fbf5a1045d32c6e7:21300000",
+          "5d171cab747a99644b74ae879632ac91:21300000",
+          "2679aca3514b00849b7ca8d02bef5213:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.0333,
+      "Frames": [
+        "0b3277fc3a4b67a4996911aad40f6bcf:21300000",
+        "c0d3e131da297234fbf5a1045d32c6e7:21300000",
+        "5d171cab747a99644b74ae879632ac91:21300000",
+        "2679aca3514b00849b7ca8d02bef5213:21300000"
+      ],
+      "InitialSpriteId": "74e54ddb77944c649b608ea7cb02609d:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.0333,
+        "playOnce": 1
+      },
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "WallPuff": {
+      "Animations": {
+        "frames": [
+          "22a1a142bbc31b14c978bffc1b87b7cf:21300000",
+          "9aad2bc8534705743a1ecb59b50d6647:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.05,
+      "Frames": [
+        "22a1a142bbc31b14c978bffc1b87b7cf:21300000",
+        "9aad2bc8534705743a1ecb59b50d6647:21300000"
+      ],
+      "InitialSpriteId": "190f44bd2f4a0f046907789f7bf4d595:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.05,
+        "playOnce": 1
+      },
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "bgship": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "a60620ab9a3c34448bbe9f8a11aabd7a:21300000"
+      ],
+      "InitialSpriteId": "a60620ab9a3c34448bbe9f8a11aabd7a:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {},
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "big_cloud_1": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "2dbb2ebab2d170d499945c02dce5c685:21300000"
+      ],
+      "InitialSpriteId": "2dbb2ebab2d170d499945c02dce5c685:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {},
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "big_cloud_2": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "0b368164881259e4881e6c9deb7e4f5f:21300000"
+      ],
+      "InitialSpriteId": "0b368164881259e4881e6c9deb7e4f5f:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {},
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "big_cloud_3": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "8a0cabffb475d8243922297029c57159:21300000"
+      ],
+      "InitialSpriteId": "8a0cabffb475d8243922297029c57159:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {},
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "big_cloud_4": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "8b778d0f94a341f49afa7f7526714805:21300000"
+      ],
+      "InitialSpriteId": "8b778d0f94a341f49afa7f7526714805:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {},
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "fly_line_v2_01": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "1a02af104c8077444b977913c9330dd5:21300000"
+      ],
+      "InitialSpriteId": "1a02af104c8077444b977913c9330dd5:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {},
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "fly_line_v2_02": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "53fdd9324e77bdf4a84e9b5e6f609f5e:21300000"
+      ],
+      "InitialSpriteId": "53fdd9324e77bdf4a84e9b5e6f609f5e:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {},
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "fly_line_v2_03": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "14eda4f2d4523d04cbd9038cdd6d4b47:21300000"
+      ],
+      "InitialSpriteId": "14eda4f2d4523d04cbd9038cdd6d4b47:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {},
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "really_big_cloud": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "e839dd6956a8bbb4f8e576d0850c29aa:21300000"
+      ],
+      "InitialSpriteId": "e839dd6956a8bbb4f8e576d0850c29aa:21300000",
+      "Material": "Sprites-Default",
+      "Order": 1,
+      "Parameters": {},
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "small_bg_ship": {
+      "Animations": {
+        "frames": [
+          "25bba1ddfc46e9d489a2c34fccf35fdc:21300000",
+          "060c5466ae6d50f4da34f280ae391b04:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.1,
+      "Frames": [
+        "25bba1ddfc46e9d489a2c34fccf35fdc:21300000",
+        "060c5466ae6d50f4da34f280ae391b04:21300000"
+      ],
+      "InitialSpriteId": "25bba1ddfc46e9d489a2c34fccf35fdc:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.1,
+        "playOnce": 0
+      },
+      "PlayOnce": false,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "small_cloud2": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "e1974c033d9eff244b7420d3bfbce76b:21300000"
+      ],
+      "InitialSpriteId": "e1974c033d9eff244b7420d3bfbce76b:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {},
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "small_cloud_1": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "47d970cd238523e4481486f1a94c8293:21300000"
+      ],
+      "InitialSpriteId": "47d970cd238523e4481486f1a94c8293:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {},
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "small_cloud_3": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "e2dc611bd3d41d8419bcf10bc4ef040d:21300000"
+      ],
+      "InitialSpriteId": "e2dc611bd3d41d8419bcf10bc4ef040d:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {},
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "small_cloud_4": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "3d68f015ca6bec4439f0541ec494834d:21300000"
+      ],
+      "InitialSpriteId": "3d68f015ca6bec4439f0541ec494834d:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {},
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "small_cloud_5": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.04,
+      "Frames": [
+        "681a962ba1dafa3498c7b40f8dc0cd1e:21300000"
+      ],
+      "InitialSpriteId": "681a962ba1dafa3498c7b40f8dc0cd1e:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {},
+      "PlayOnce": true,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    }
+  }
+}

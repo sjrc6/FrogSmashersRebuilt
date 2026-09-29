@@ -1,0 +1,784 @@
+{
+  "Animators": [
+    {
+      "Clips": [
+        "IntroEndLoop",
+        "IntroAnim"
+      ],
+      "DefaultClip": "IntroAnim",
+      "ObjectPath": "IntroAnim"
+    }
+  ],
+  "Audio": [
+    {
+      "Active": false,
+      "Loop": false,
+      "MaxDistance": 500,
+      "MinDistance": 1,
+      "ObjectPath": "SoundController",
+      "Pan": 0,
+      "Path": "Audio/Sound/FS_Outro SFX.ogg",
+      "Pitch": 1,
+      "PlayOnAwake": true,
+      "RolloffMode": 0,
+      "SpatialBlend": 0,
+      "Volume": 0.539
+    },
+    {
+      "Active": true,
+      "Loop": true,
+      "MaxDistance": 500,
+      "MinDistance": 1,
+      "ObjectPath": "IntroAnim/fly_01",
+      "Pan": 0,
+      "Path": "Audio/Sound/intro/Intro_Fly2.ogg",
+      "Pitch": 1.27,
+      "PlayOnAwake": true,
+      "RolloffMode": 1,
+      "SpatialBlend": 1,
+      "Volume": 0.124
+    },
+    {
+      "Active": true,
+      "Loop": true,
+      "MaxDistance": 500,
+      "MinDistance": 1,
+      "ObjectPath": "IntroAnim",
+      "Pan": 0,
+      "Path": "Audio/Sound/intro/Intro_Ambience_01.ogg",
+      "Pitch": 1,
+      "PlayOnAwake": true,
+      "RolloffMode": 0,
+      "SpatialBlend": 0,
+      "Volume": 0.3
+    },
+    {
+      "Active": true,
+      "Loop": true,
+      "MaxDistance": 500,
+      "MinDistance": 1,
+      "ObjectPath": "IntroAnim",
+      "Pan": 0,
+      "Path": "Audio/Sound/intro/Frog Smashers_Title Song 1.ogg",
+      "Pitch": 1,
+      "PlayOnAwake": false,
+      "RolloffMode": 0,
+      "SpatialBlend": 0,
+      "Volume": 0.5
+    }
+  ],
+  "BackgroundColor": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "CameraPanCurve": [
+    {
+      "InSlope": [
+        0
+      ],
+      "OutSlope": [
+        0
+      ],
+      "Time": 0,
+      "Value": [
+        0
+      ]
+    },
+    {
+      "InSlope": [
+        1.1307746
+      ],
+      "OutSlope": [
+        1.1307746
+      ],
+      "Time": 0.32619458,
+      "Value": [
+        0.13939604
+      ]
+    },
+    {
+      "InSlope": [
+        1.488924
+      ],
+      "OutSlope": [
+        1.488924
+      ],
+      "Time": 0.66590554,
+      "Value": [
+        0.8104481
+      ]
+    },
+    {
+      "InSlope": [
+        0
+      ],
+      "OutSlope": [
+        0
+      ],
+      "Time": 1,
+      "Value": [
+        1
+      ]
+    }
+  ],
+  "CameraX": 0.0,
+  "CameraY": 0.0,
+  "Collision": [],
+  "FlySpawn": {
+    "X": 0,
+    "Y": 0
+  },
+  "Id": "TitleScreen",
+  "IntroParticleEffects": [
+    "IntroScreenCharacterParticle",
+    "IntroScreenCharacterParticle 1",
+    "IntroScreenCharacterParticle 2"
+  ],
+  "KillBounds": {
+    "Bottom": -30,
+    "Left": -50,
+    "Right": 50,
+    "Top": 40
+  },
+  "Name": "TitleScreen",
+  "Nodes": [
+    {
+      "Active": true,
+      "LocalPosition": [
+        0.22270584,
+        -0.050741494,
+        -12.071846
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "SoundController",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "InControl",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        36.03,
+        -0.34,
+        10
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        8.12,
+        50.79,
+        1
+      ],
+      "ObjectPath": "Main Camera/BlackBar",
+      "ParentPath": "Main Camera"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        -10
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Main Camera",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        26.06,
+        10
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        76,
+        16,
+        1
+      ],
+      "ObjectPath": "Main Camera/BlackBar (3)",
+      "ParentPath": "Main Camera"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -36.04,
+        -0.34,
+        10
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        8.12,
+        50.789997,
+        1
+      ],
+      "ObjectPath": "Main Camera/BlackBar (1)",
+      "ParentPath": "Main Camera"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        -25.99,
+        10
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        76,
+        16,
+        1
+      ],
+      "ObjectPath": "Main Camera/BlackBar (2)",
+      "ParentPath": "Main Camera"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        -1.38,
+        3.19,
+        1
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "IntroAnim/fly_01",
+      "ParentPath": "IntroAnim"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        -1
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "IntroAnim",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        5,
+        -8.66
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        0.5,
+        0.5,
+        1
+      ],
+      "ObjectPath": "Start",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        1
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "bg",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        -3
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        20,
+        20,
+        1
+      ],
+      "ObjectPath": "IntroAnim/FadeSprite",
+      "ParentPath": "IntroAnim"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        7,
+        -8.66
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "title_v1",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "EventSystem",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        0,
+        0
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Controllers",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        7.41,
+        0.2
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "bg/bg (2)",
+      "ParentPath": "bg"
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        3,
+        0
+      ],
+      "LocalRotation": 0.248605091,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "Directional Light",
+      "ParentPath": ""
+    },
+    {
+      "Active": true,
+      "LocalPosition": [
+        0,
+        6,
+        0.1
+      ],
+      "LocalRotation": 0.0,
+      "LocalScale": [
+        1,
+        1,
+        1
+      ],
+      "ObjectPath": "bg/bg (1)",
+      "ParentPath": "bg"
+    }
+  ],
+  "OrthoSize": 3,
+  "Parallax": [],
+  "ParticleEmitters": [],
+  "PresentationParameters": {
+    "cameraPanDelay": 1.5,
+    "cameraPanning": 0,
+    "characterParticleLaunchVelocity": 15,
+    "panTime": 4,
+    "panTo": 6,
+    "shakeAmountDecay": 1.5,
+    "shakeMaxAmount": 0.15,
+    "shakeMaxSpeed": 40,
+    "shakeSpeedDecay": 1
+  },
+  "SceneEffects": [],
+  "Spawns": [],
+  "Sprites": [
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "bg (2)",
+      "ObjectPath": "bg/bg (2)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "SourceId": 1732903105,
+      "SpriteId": "94b38bc675516c6409deea6d383f7e8c:21300000",
+      "Visible": true,
+      "X": 0.0,
+      "Y": 7.41,
+      "Z": 1.2
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "bg (1)",
+      "ObjectPath": "bg/bg (1)",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "SourceId": 1880662646,
+      "SpriteId": "94b38bc675516c6409deea6d383f7e8c:21300000",
+      "Visible": true,
+      "X": 0.0,
+      "Y": 6.0,
+      "Z": 1.1
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "bg",
+      "ObjectPath": "bg",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "SourceId": 250098654,
+      "SpriteId": "2866c6c180f10a448869e085c49897af:21300000",
+      "Visible": true,
+      "X": 0.0,
+      "Y": 0.0,
+      "Z": 1
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.05,
+      "Frames": [
+        "05930d8386bdf814baffb7f8a1ae2590:21300000",
+        "8d3f1ffc7a2b069419d23a4caa530fdf:21300000"
+      ],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "fly_01",
+      "ObjectPath": "IntroAnim/fly_01",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "SourceId": 22978121,
+      "SpriteId": "8d3f1ffc7a2b069419d23a4caa530fdf:21300000",
+      "Visible": true,
+      "X": -1.38,
+      "Y": 3.19,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "IntroAnim",
+      "ObjectPath": "IntroAnim",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "SourceId": 140900722,
+      "SpriteId": "",
+      "Visible": true,
+      "X": 0.0,
+      "Y": 0.0,
+      "Z": -1
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        0
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "FadeSprite",
+      "ObjectPath": "IntroAnim/FadeSprite",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 20,
+      "ScaleY": 20,
+      "SortingLayer": 0,
+      "SourceId": 270360327,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": 0.0,
+      "Y": 0.0,
+      "Z": -4
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.2,
+      "Frames": [
+        "4300b8af91cf43145a65c6cfd7c2d38f:21300000",
+        "6c58e00e8d4cc2d4f972f2dadf506ab7:21300000"
+      ],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "Start",
+      "ObjectPath": "Start",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 0.5,
+      "ScaleY": 0.5,
+      "SortingLayer": 0,
+      "SourceId": 194574901,
+      "SpriteId": "6c58e00e8d4cc2d4f972f2dadf506ab7:21300000",
+      "Visible": true,
+      "X": 0.0,
+      "Y": 5.0,
+      "Z": -8.66
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "title_v1",
+      "ObjectPath": "title_v1",
+      "Order": 0,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "SourceId": 849521093,
+      "SpriteId": "a0bc0c044d91de34996f66fa32514278:21300000",
+      "Visible": true,
+      "X": 0.0,
+      "Y": 7.0,
+      "Z": -8.66
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "BlackBar",
+      "ObjectPath": "Main Camera/BlackBar",
+      "Order": 5,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 8.12,
+      "ScaleY": 50.79,
+      "SortingLayer": 0,
+      "SourceId": -19,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": 36.03,
+      "Y": -0.34,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "BlackBar (3)",
+      "ObjectPath": "Main Camera/BlackBar (3)",
+      "Order": 5,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 76,
+      "ScaleY": 16,
+      "SortingLayer": 0,
+      "SourceId": -18,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": 0.0,
+      "Y": 26.06,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "BlackBar (2)",
+      "ObjectPath": "Main Camera/BlackBar (2)",
+      "Order": 5,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 76,
+      "ScaleY": 16,
+      "SortingLayer": 0,
+      "SourceId": -17,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": 0.0,
+      "Y": -25.99,
+      "Z": 0
+    },
+    {
+      "Active": true,
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "FrameSeconds": 0.1,
+      "Frames": [],
+      "Layer": 0,
+      "Material": "Sprites-Default",
+      "Name": "BlackBar (1)",
+      "ObjectPath": "Main Camera/BlackBar (1)",
+      "Order": 5,
+      "PlayOnce": false,
+      "Rotation": 0.0,
+      "ScaleX": 8.12,
+      "ScaleY": 50.789997,
+      "SortingLayer": 0,
+      "SourceId": -16,
+      "SpriteId": "50afad37a70be3e4faea1738cc982a2c:21300000",
+      "Visible": true,
+      "X": -36.04,
+      "Y": -0.34,
+      "Z": 0
+    }
+  ]
+}

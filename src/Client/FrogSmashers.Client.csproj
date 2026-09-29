@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>FrogSmashersRebuilt</AssemblyName>
+    <ApplicationIcon>Icons/FrogSmashersRebuilt.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Core/FrogSmashers.Core.csproj" />
+    <ProjectReference Include="../Network/FrogSmashers.Network.csproj" />
+    <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.5.1" />
+    <None Include="../Content/Content.mgcb" Link="Content.mgcb" />
+    <None
+      Include="../ContentBuild/**/*"
+      Link="Content/%(RecursiveDir)%(Filename)%(Extension)"
+      CopyToOutputDirectory="PreserveNewest"
+    />
+    <EmbeddedResource Include="Icons/Icon.bmp" LogicalName="Icon.bmp" />
+    <None
+      Update="Icons/FrogSmashersRebuilt.png"
+      TargetPath="FrogSmashersRebuilt.png"
+      CopyToOutputDirectory="PreserveNewest"
+    />
+  </ItemGroup>
+</Project>
