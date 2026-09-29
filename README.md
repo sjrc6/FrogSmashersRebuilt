@@ -29,3 +29,6 @@ Additional art: **Ben Rausch and Stuart Coutts**. \
 Sound: **Jason Sutherland**. \
 [Fork](https://github.com/PNone/frogsmashers) features and fixes: **PNone**.
 
+### License
+[LICENSE.md](LICENSE.md)
+
