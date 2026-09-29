@@ -641,6 +641,32 @@ public sealed partial class Renderer : IDisposable
 
     public void Panel(Rectangle rect, Color color) => Batch.Draw(assets.White, rect, color);
 
+    public void Image(string path, Rectangle source, Vector2 topCenter, float maxWidth)
+    {
+        float outputScale = compositor.Frame.Width / (float)Width;
+        float pixelScale = Math.Max(1, MathF.Floor(maxWidth * outputScale / source.Width));
+        var position =
+            new Vector2(
+                MathF.Round(topCenter.X * outputScale - source.Width * pixelScale / 2),
+                MathF.Round(topCenter.Y * outputScale)
+            ) / outputScale;
+        EndUi();
+        canvas.Begin(-1);
+        Batch.Draw(
+            assets.Texture(path),
+            position,
+            source,
+            Color.White,
+            0,
+            Vector2.Zero,
+            pixelScale / outputScale,
+            SpriteEffects.None,
+            0
+        );
+        canvas.End();
+        BeginUi();
+    }
+
     internal Texture2D Frame => compositor.Frame;
 
     public void DrawRoundScores(World world, float elapsed)

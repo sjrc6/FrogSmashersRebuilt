@@ -31,6 +31,7 @@ internal static class ContentSimulationTests
         if (contentPath != null)
         {
             var content = GameContent.Load(contentPath);
+            BotNavigationTests.DownSmash(content);
             foreach (var map in content.Maps)
             {
                 foreach (var box in map.Collision)

@@ -75,6 +75,7 @@ internal static class Program
             CombatTests.TongueCollisions();
             MatchTests.Scoring();
             MatchTests.RoundProgression();
+            BotNavigationTests.PlatformsAndCombat();
             ContentSimulationTests.AuthoredMaps();
             InputReplayTests.RoundTrip();
             foreach (int peers in new[] { 2, 4, 8 })

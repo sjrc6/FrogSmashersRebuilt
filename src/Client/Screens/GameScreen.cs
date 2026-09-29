@@ -11,7 +11,6 @@ internal enum GameScreen
     Playing,
     Settings,
     Bindings,
-    Credits,
     Error,
     Outro,
 }

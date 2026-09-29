@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Diagnostics;
 using FrogSmashers.Core;
 using FrogSmashers.Network;
 using Microsoft.Xna.Framework;
@@ -42,8 +44,10 @@ internal sealed class MenuController
     public string Status { get; set; } = "";
     public string JoinAddress { get; private set; } = "127.0.0.1";
     public string SteamCode { get; private set; } = "";
-    public bool ShowingCinematic =>
-        Screen is GameScreen.Intro or GameScreen.Title or GameScreen.Main or GameScreen.Credits or GameScreen.Outro;
+    public bool ShowingCinematic => Screen is GameScreen.Intro or GameScreen.Title or GameScreen.Outro;
+    public bool ShowingMenuBackground =>
+        Screen == GameScreen.Main
+        || SettingsReturn == GameScreen.Main && Screen is GameScreen.Settings or GameScreen.Bindings;
     public bool ShowingMatch =>
         Screen == GameScreen.Playing
         || SettingsReturn == GameScreen.Playing && Screen is GameScreen.Settings or GameScreen.Bindings;
@@ -114,9 +118,6 @@ internal sealed class MenuController
             case GameScreen.Bindings:
                 UpdateBindings(input, elapsedSeconds);
                 break;
-            case GameScreen.Credits:
-                UpdateCredits(input);
-                break;
             case GameScreen.Error:
                 UpdateError(input);
                 break;
@@ -171,9 +172,6 @@ internal sealed class MenuController
                     Screen = GameScreen.Intro;
                     return;
                 case 4:
-                    Screen = GameScreen.Credits;
-                    return;
-                case 5:
                     game.Setup.Seats.Clear();
                     for (int i = 0; i < 4; i++)
                     {
@@ -181,6 +179,9 @@ internal sealed class MenuController
                     }
 
                     game.StartLocal();
+                    return;
+                case 5:
+                    OpenCredits();
                     return;
                 case 6:
                     game.Exit();
@@ -458,11 +459,23 @@ internal sealed class MenuController
         }
     }
 
-    private void UpdateCredits(MenuInput input)
+    private void OpenCredits()
     {
-        if (input.Back || input.Accept)
+        string path = Path.Combine(AppContext.BaseDirectory, "CREDITS.txt");
+        try
         {
-            game.MainMenu();
+            if (!File.Exists(path))
+            {
+                throw new FileNotFoundException("CREDITS.txt is missing from the game folder.");
+            }
+
+            using var process = Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception exception)
+            when (exception is Win32Exception or IOException or UnauthorizedAccessException or InvalidOperationException
+            )
+        {
+            game.Fail($"Could not open CREDITS.txt. You can open it from the game folder.\n{exception.Message}");
         }
     }
 

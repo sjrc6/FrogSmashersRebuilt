@@ -292,7 +292,7 @@
       "Active": true,
       "LocalPosition": [
         0,
-        5,
+        4.2,
         -8.66
       ],
       "LocalRotation": 0.0,
@@ -642,7 +642,7 @@
       "SpriteId": "6c58e00e8d4cc2d4f972f2dadf506ab7:21300000",
       "Visible": true,
       "X": 0.0,
-      "Y": 5.0,
+      "Y": 4.2,
       "Z": -8.66
     },
     {

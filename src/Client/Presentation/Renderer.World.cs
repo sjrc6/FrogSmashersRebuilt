@@ -44,7 +44,7 @@ public sealed partial class Renderer
     private int QueueFor(string material) =>
         assets.Data.Materials.TryGetValue(material, out var data) && data.RenderQueue >= 0 ? data.RenderQueue : 3000;
 
-    private void DrawGameplayScene(World world, World? previous, float alpha, float dt)
+    private void DrawGameplayScene(World world, World? previous, float alpha, float dt, bool showGameplayUi)
     {
         compositor.BeginScene(EffectSystem.ToColor(world.Map.BackgroundColor));
         drawCommands.Clear();
@@ -145,12 +145,16 @@ public sealed partial class Renderer
 
             AddCommand(0, 0, "SelectiveColorReplace", 0, DrawKind.Character, player: slot);
             var message = scores.OverheadMessage(slot);
-            if (message != null)
+            if (showGameplayUi && message != null)
             {
                 AddCommand(0, 0, "", 0, DrawKind.OverheadScore, message, slot);
             }
 
-            if (pos.Y > world.Map.ScreenTop && assets.Data.Effects.TryGetValue("Hexagon", out var dot))
+            if (
+                showGameplayUi
+                && pos.Y > world.Map.ScreenTop
+                && assets.Data.Effects.TryGetValue("Hexagon", out var dot)
+            )
             {
                 AddCommand(dot.SortingLayer, dot.Order, dot.Material, -6, DrawKind.OffscreenMarker, dot, slot);
             }
@@ -172,7 +176,7 @@ public sealed partial class Renderer
             AddCommand(fly.SortingLayer, fly.Order, fly.Material, fly.Z, DrawKind.Fly, fly);
         }
 
-        if (!world.IsShowdown)
+        if (showGameplayUi && !world.IsShowdown)
         {
             AddCommand(0, 0, "", 2.78f, DrawKind.ScoreText);
             AddCommand(0, 0, "SelectiveColorReplace", 2.78f, DrawKind.ScoreIcons);
@@ -185,7 +189,7 @@ public sealed partial class Renderer
             DrawCommandItem(command, world);
         }
 
-        if (ShowColliders)
+        if (showGameplayUi && ShowColliders)
         {
             canvas.Begin(0);
             foreach (var box in world.Map.Collision)
@@ -316,7 +320,7 @@ public sealed partial class Renderer
         canvas.End();
     }
 
-    public void DrawWorld(World world, World? previous, float alpha)
+    public void DrawWorld(World world, World? previous, float alpha, bool showGameplayUi = true)
     {
         SetMap(world.Map);
         float dt = time == lastPresentedTime ? 0 : frameSeconds;
@@ -357,7 +361,7 @@ public sealed partial class Renderer
             }
         }
 
-        DrawGameplayScene(world, previous, alpha, dt);
+        DrawGameplayScene(world, previous, alpha, dt, showGameplayUi);
         PostProcess();
     }
 }

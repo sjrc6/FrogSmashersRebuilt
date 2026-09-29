@@ -133,6 +133,41 @@ def verify_title_menu():
             ["--input-script", str(title_script), "--frames", "60", "--capture", str(out / (name + ".png"))],
         )
         assert value["Page"] == expected, value
+        if expected == "Main":
+            assert value["MenuBackground"] and value["Map"] == "2DownSmash" and value["Players"] == 4, value
+
+
+def verify_menu_background():
+    record = out / "menu-background.fsr"
+    record.unlink(missing_ok=True)
+    record.with_name(record.name + ".json").unlink(missing_ok=True)
+    movement = out / "menu-movement.json"
+    movement.write_text(json.dumps([dict(From=0, To=1000, Keys=["D", "T", "U"])]))
+    hashes = []
+    for fps in (60, 144):
+        value = run(
+            f"menu-background-{fps}",
+            [
+                "--no-intro", "--map", "4", "--record", str(record),
+                "--render-fps", str(fps), "--frames", str(fps * 3),
+            ] + (["--input-script", str(movement)] if fps == 144 else []),
+        )
+        assert (
+            value["Page"] == "Main" and value["MenuBackground"] and value["Map"] == "2DownSmash"
+            and value["Players"] == 4 and value["TickNumber"] == 360 and value["Phase"] == "Playing"
+        ), value
+        hashes.append(value["Hash"])
+    assert len(set(hashes)) == 1, "Menu CPUs depend on keyboard input or render rate"
+    assert not record.exists() and not record.with_name(record.name + ".json").exists()
+
+    watch = out / "menu-watch-cpu-input.json"
+    keys = [(frame, "Down") for frame in (1, 3, 5, 7)] + [(11, "Enter"), (120, "Escape"), (122, "Q")]
+    watch.write_text(json.dumps([dict(From=frame, To=frame + 1, Keys=[key]) for frame, key in keys]))
+    options = ["--no-intro", "--map", "4", "--input-script", str(watch)]
+    value = run("menu-watch-cpu", options + ["--frames", "100"], sound=True)
+    assert value["Page"] == "Playing" and not value["MenuBackground"] and value["Map"] == "5Skyline", value
+    value = run("menu-return", options + ["--frames", "180"], sound=True)
+    assert value["Page"] == "Main" and value["MenuBackground"] and value["Map"] == "2DownSmash", value
 
 
 def verify_font_settings():
@@ -206,6 +241,8 @@ def verify_local_replay():
         sound=True,
     )
     assert local["Page"] == "Playing" and local["Players"] == 2 and local["TickNumber"] > 300
+    assert not local["MenuBackground"]
+    assert json.loads(record.with_name(record.name + ".json").read_text())["Rules"]["WinScore"] != 2147483647
     replay = run(
         "local-replay", ["--replay", str(record), "--frames", "300", "--capture", str(out / "replay.png")]
     )
@@ -312,6 +349,7 @@ def main():
     pause_script = verify_pause()
     verify_smoke_pause(pause_script)
     verify_title_menu()
+    verify_menu_background()
     verify_font_settings()
     record = verify_local_replay()
     verify_replay_exit(record)

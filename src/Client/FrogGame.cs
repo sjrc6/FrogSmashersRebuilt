@@ -158,6 +158,18 @@ public class FrogGame : Game
         }
 
         Menus.Update(elapsedSeconds);
+        if (Match.IsMenuBackground)
+        {
+            if (Menus.ShowingMenuBackground)
+            {
+                Match.Update(elapsedSeconds);
+            }
+            else
+            {
+                Match.Close();
+            }
+        }
+
         CheckInvitations();
         base.Update(gameTime);
     }
@@ -272,10 +284,10 @@ public class FrogGame : Game
 
     internal void MainMenu()
     {
-        Match.Close();
+        Cinematics.Stop();
         Online.CloseLobby();
+        Match.StartMenuBackground(Options.Seed);
         Menus.ShowMain();
-        Cinematics.ShowJoin();
     }
 
     internal void Fail(string message)
@@ -317,7 +329,7 @@ public class FrogGame : Game
         Renderer.BeginUi();
         menuRenderer.Draw();
         timing.RecordFrame(gameTime.ElapsedGameTime.TotalSeconds);
-        if (showDiagnostics && Match.World != null)
+        if (showDiagnostics && Match.World != null && !Match.IsMenuBackground)
         {
             DrawDiagnostics();
         }
@@ -336,7 +348,7 @@ public class FrogGame : Game
         {
             Renderer.DrawPresentation(Cinematics.Draw());
         }
-        else if (Match.World != null && Menus.ShowingMatch)
+        else if (Match.World != null && (Menus.ShowingMatch || Menus.ShowingMenuBackground))
         {
             var world = Match.World;
             if (world.Phase == MatchPhase.RoundScores)
@@ -348,7 +360,12 @@ public class FrogGame : Game
             }
             else
             {
-                Renderer.DrawWorld(world, Match.PreviousWorld, Match.Interpolation);
+                Renderer.DrawWorld(
+                    world,
+                    Match.PreviousWorld,
+                    Match.Interpolation,
+                    showGameplayUi: !Match.IsMenuBackground
+                );
             }
 
             Audio.ListenerPosition = Renderer.ListenerPosition;

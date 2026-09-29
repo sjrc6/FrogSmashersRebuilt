@@ -42,6 +42,7 @@ internal sealed class AutomatedGame : FrogGame
         bool framesComplete = automation.Frames > 0 && RenderedFrames >= automation.Frames;
         bool ticksComplete =
             automation.Ticks > 0
+            && !Match.IsMenuBackground
             && Match.World != null
             && (Match.World.TickNumber >= automation.Ticks || Match.World.Phase == MatchPhase.MatchFinished)
             && Match.TerminalConfirmed;
@@ -73,6 +74,7 @@ internal sealed class AutomatedGame : FrogGame
         var result = new
         {
             Page = Menus.Screen.ToString(),
+            MenuBackground = Match.IsMenuBackground,
             Paused = Menus.LocalPresentationPaused,
             Fullscreen,
             HardwareModeSwitch,

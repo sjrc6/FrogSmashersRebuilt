@@ -10,6 +10,12 @@
     <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.5.1" />
     <None Include="../Content/Content.mgcb" Link="Content.mgcb" />
     <None
+      Include="../../CREDITS.txt"
+      Link="CREDITS.txt"
+      CopyToOutputDirectory="PreserveNewest"
+      CopyToPublishDirectory="PreserveNewest"
+    />
+    <None
       Include="../ContentBuild/**/*"
       Link="Content/%(RecursiveDir)%(Filename)%(Extension)"
       CopyToOutputDirectory="PreserveNewest"

@@ -27,20 +27,20 @@ internal sealed class MenuRenderer
             case GameScreen.Title:
                 break;
             case GameScreen.Main:
-                if (game.Cinematics.SceneName == "JoinScreen")
-                {
-                    game.Renderer.Text("FROG SMASHERS", 640, 175, new Color(30, 45, 53), 2.2f, true);
-                }
-
-                game.Renderer.Panel(new Rectangle(400, 292, 480, 350), PanelColor);
-                game.Renderer.Text("REBUILT", 640, 253, Accent, 1.1f, true);
+                game.Renderer.Panel(new Rectangle(0, 0, Renderer.Width, Renderer.Height), Color.Black * .15f);
+                game.Renderer.Image(
+                    "Textures/Sprites/logo_rebuilt",
+                    new Rectangle(50, 39, 160, 97),
+                    new Vector2(640, 22),
+                    480
+                );
+                game.Renderer.Panel(new Rectangle(440, 332, 400, 310), new Color(14, 23, 29, 210));
                 Menu(
-                    ["LOCAL MATCH", "ONLINE MATCH", "SETTINGS", "PLAY INTRO", "CREDITS", "WATCH CPU MATCH", "QUIT"],
+                    ["LOCAL", "ONLINE", "SETTINGS", "PLAY INTRO", "WATCH CPUS", "CREDITS", "QUIT"],
                     menu.Selected,
-                    330,
+                    352,
                     38
                 );
-                Footer("UP/DOWN + ENTER  |  CONTROLLER D-PAD + A");
                 break;
             case GameScreen.Seats:
                 DrawSeats();
@@ -138,37 +138,6 @@ internal sealed class MenuRenderer
                 break;
             case GameScreen.Bindings:
                 DrawBindings();
-                break;
-            case GameScreen.Credits:
-                game.Renderer.Panel(new Rectangle(170, 140, 940, 480), PanelColor);
-                Header("FROG SMASHERS");
-                game.Renderer.Text("ORIGINAL GAME", 640, 217, Accent, 1.3f, true);
-                game.Renderer.Text("Ruan Rothmann - programming / design", 640, 265, Color.White, 1, true);
-                game.Renderer.Text(
-                    "Mike Scott - art / animation   |   Jason Sutherland - sound",
-                    640,
-                    305,
-                    Color.White,
-                    .85f,
-                    true
-                );
-                game.Renderer.Text(
-                    "Ben Rausch / Stuart Coutts - additional art   |   PNone - fork",
-                    640,
-                    345,
-                    Muted,
-                    .85f,
-                    true
-                );
-                game.Renderer.Text("Rebuilt with MonoGame and Steamworks.NET", 640, 391, Color.White, 1, true);
-                game.Renderer.Text(
-                    "Original game content is noncommercial, with attribution.\nSee Content/CREDITS.txt and Content/ORIGINAL_LICENSE.md.",
-                    260,
-                    463,
-                    Muted,
-                    .85f
-                );
-                Footer("ENTER / ESC: BACK");
                 break;
             case GameScreen.Error:
                 Header("COULD NOT CONTINUE");

@@ -5,8 +5,8 @@ A MonoGame port of Frog Smashers for Windows and Linux. Up to eight players with
 ## Docs
 
 Controls: [controls.md](docs/controls.md) \
-Source layout: [layout.md](docs/layout.md)
-
+Source layout: [layout.md](docs/layout.md) \
+Assets/Content: [Content readme](src/Content/README.md)
 ## Build
 
 - Install the .NET SDK specified by `global.json`:

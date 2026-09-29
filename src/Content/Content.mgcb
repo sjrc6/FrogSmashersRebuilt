@@ -3910,6 +3910,17 @@
 /processorParam:TextureFormat=Color
 /build:Textures/Sprites/black.png
 
+#begin Textures/Sprites/logo_rebuilt.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyEnabled=False
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=False
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Textures/Sprites/logo_rebuilt.png
+
 #begin Textures/Sprites/logo_v2.png
 /importer:TextureImporter
 /processor:TextureProcessor

@@ -27,6 +27,7 @@ internal sealed class MatchController : IDisposable
     public World? PreviousWorld { get; private set; }
     public NetworkSession? Network { get; private set; }
     public bool ReplayPlayback { get; private set; }
+    public bool IsMenuBackground { get; private set; }
     public bool Paused { get; set; }
     public string? Error { get; private set; }
     public float Interpolation => (float)Math.Clamp(accumulator / TickSeconds, 0, 1);
@@ -60,6 +61,27 @@ internal sealed class MatchController : IDisposable
         CreateWorld(options);
         replay = recordingPath != null ? InputReplay.Start(World!) : null;
         recordingSettings = JsonSerializer.Serialize(options, jsonOptions);
+        ResetPresentation();
+    }
+
+    public void StartMenuBackground(uint seed)
+    {
+        Close();
+        IsMenuBackground = true;
+        seats = Enumerable.Range(0, 4).Select(index => new LocalSeat(-1, index)).ToArray();
+        CreateWorld(
+            new MatchOptions
+            {
+                Seed = seed,
+                Rules = new GameRules
+                {
+                    PlayerCount = 4,
+                    MapOrder = [1],
+                    // Keep the menu action running without round-end screens.
+                    WinScore = int.MaxValue,
+                },
+            }
+        );
         ResetPresentation();
     }
 
@@ -302,6 +324,7 @@ internal sealed class MatchController : IDisposable
         PreviousWorld = null;
         replay = null;
         ReplayPlayback = false;
+        IsMenuBackground = false;
         Error = null;
         Paused = false;
         audio.Reset();
