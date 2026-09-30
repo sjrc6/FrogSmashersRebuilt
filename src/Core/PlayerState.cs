@@ -31,6 +31,7 @@ public enum TonguePhase
 public sealed class PlayerState
 {
     public int Slot;
+    public int ColorIndex;
     public int Team;
     public int Facing = 1;
     public int LastHitBy = -1;

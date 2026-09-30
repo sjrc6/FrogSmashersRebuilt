@@ -3,62 +3,57 @@ using System.Net.Sockets;
 
 namespace FrogSmashers.Network;
 
-public sealed class UdpLobby : IGameLobby
+public sealed class UdpLobby : GameLobby
 {
     private readonly RelayLobby lobby;
+    protected override IGameLobby Active => lobby;
+    public override bool IsHost => lobby.IsHost;
 
     public static UdpLobby Host(
         int port,
-        int peerCount,
-        int localPlayers,
+        int capacity,
+        LobbyPlayer[] players,
         string contentHash,
         string settingsJson,
         bool allowLan = false,
-        int[]? localTeams = null
+        IReadOnlyList<LobbySlot>? initialRooms = null
     ) =>
         new(
             new UdpWire(new IPEndPoint(allowLan ? IPAddress.Any : IPAddress.Loopback, port)),
             null,
-            peerCount,
-            localPlayers,
+            capacity,
+            players,
             contentHash,
             settingsJson,
-            localTeams
+            initialRooms
         );
 
-    public static UdpLobby Join(
-        string hostname,
-        int port,
-        int localPlayers,
-        string contentHash,
-        int[]? localTeams = null
-    )
+    public static UdpLobby Join(string hostname, int port, LobbyPlayer[] players, string contentHash)
     {
-        var ip = Dns.GetHostAddresses(hostname).First(x => x.AddressFamily == AddressFamily.InterNetwork);
+        var ip = Dns.GetHostAddresses(hostname).First(address => address.AddressFamily == AddressFamily.InterNetwork);
         return new(
             new UdpWire(new IPEndPoint(IPAddress.Any, 0)),
             new IPEndPoint(ip, port).ToString(),
-            0,
-            localPlayers,
+            8,
+            players,
             contentHash,
-            "",
-            localTeams
+            ""
         );
     }
 
     private UdpLobby(
         IWire wire,
         string? host,
-        int peers,
-        int localPlayers,
+        int capacity,
+        LobbyPlayer[] players,
         string hash,
         string settings,
-        int[]? localTeams
+        IReadOnlyList<LobbySlot>? initialRooms = null
     )
     {
         try
         {
-            lobby = new RelayLobby(wire, host, peers, localPlayers, hash, settings, localTeams);
+            lobby = new RelayLobby(wire, host, capacity, players, hash, settings, initialRooms);
         }
         catch
         {
@@ -67,17 +62,9 @@ public sealed class UdpLobby : IGameLobby
         }
     }
 
-    public void Poll() => lobby.Poll();
+    public override void Poll() => lobby.Poll();
 
-    public bool Ready => lobby.Ready;
-    public string Status => lobby.Status;
-    public string? Error => lobby.Error;
-    public int LocalPeer => lobby.LocalPeer;
-    public int[][] PeerSlots => lobby.PeerSlots;
-    public int[] PlayerTeams => lobby.PlayerTeams;
-    public string MatchSettingsJson => lobby.MatchSettingsJson;
+    public override IPeerTransport CreateTransport() => lobby.CreateTransport();
 
-    public IPeerTransport CreateTransport() => lobby.CreateTransport();
-
-    public void Dispose() => lobby.Dispose();
+    public override void Dispose() => lobby.Dispose();
 }

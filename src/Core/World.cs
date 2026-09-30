@@ -35,7 +35,7 @@ public sealed partial class World
     public World(GameContent content, GameRules rules, uint seed = 1)
         : this(content.Maps, rules, seed, content.CharacterParameters) { }
 
-    private World(
+    public World(
         IReadOnlyList<MapData> availableMaps,
         GameRules rules,
         uint seed,
@@ -47,10 +47,18 @@ public sealed partial class World
             throw new ArgumentOutOfRangeException(nameof(rules.PlayerCount));
         }
 
+        if (rules.Colors.Length != 8 || rules.Colors.Any(color => color is < 0 or > 7))
+        {
+            throw new ArgumentException("Invalid player colors");
+        }
+
         if (availableMaps.Count == 0)
         {
             throw new ArgumentException("A world needs at least one map");
         }
+
+        if (rules.Lobby && availableMaps.Any(map => map.Spawns.Count < rules.PlayerCount))
+            throw new ArgumentException("A lobby needs a spawn point for every room");
 
         if (rules.Teams.Length < rules.PlayerCount || rules.Teams.Any(team => team < 0 || team > 7))
         {
@@ -70,14 +78,13 @@ public sealed partial class World
         Rules = new GameRules
         {
             PlayerCount = rules.PlayerCount,
+            Lobby = rules.Lobby,
+            Colors = rules.Colors.ToArray(),
             TeamMode = rules.TeamMode,
             Teams = (int[])rules.Teams.Clone(),
             WinScore = rules.WinScore,
             MatchRounds = rules.MatchRounds,
             CharactersBounceEachOther = rules.CharactersBounceEachOther,
-            WeirdBounceTrajectories = rules.WeirdBounceTrajectories,
-            OnlyBounceBeforeRecover = rules.OnlyBounceBeforeRecover,
-            PreservePlatformEmbedding = rules.PreservePlatformEmbedding,
             Showdown = rules.Showdown,
             RoundFinishTicks = rules.RoundFinishTicks,
             ScoreScreenTicks = rules.ScoreScreenTicks,
@@ -89,7 +96,13 @@ public sealed partial class World
         randomState = seed == 0 ? 1u : seed;
         Players = Enumerable
             .Range(0, rules.PlayerCount)
-            .Select(i => new PlayerState { Slot = i, Team = rules.Teams[i] })
+            .Select(i => new PlayerState
+            {
+                Slot = i,
+                Team = rules.Teams[i],
+                ColorIndex = rules.Colors[i],
+                Eliminated = rules.Lobby,
+            })
             .ToArray();
         IsShowdown = rules.Showdown;
         CurrentMapIndex = ChooseMap(0);
@@ -181,7 +194,10 @@ public sealed partial class World
             TickPlayer(Players[slot], inputs[slot]);
         }
 
-        UpdateFly();
+        if (!Rules.Lobby)
+        {
+            UpdateFly();
+        }
         if (Phase == MatchPhase.RoundFinished && --PhaseTicks <= 0)
         {
             if (Rules.ScoreScreenTicks > 0)

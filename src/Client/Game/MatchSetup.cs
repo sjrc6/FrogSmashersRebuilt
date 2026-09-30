@@ -1,41 +1,44 @@
-using FrogSmashers.Core;
-
 namespace FrogSmashers.Client;
 
 internal sealed class MatchSetup
 {
-    public MatchOptions Options { get; set; }
-    public GameRules Rules => Options.Rules;
-    public int FirstMap { get; set; }
-    public bool ShuffleMaps { get; set; }
-    public List<LocalSeat> Seats { get; } = [];
+    public MatchPreferences Preferences { get; }
+    public LocalLobby Lobby { get; } = new();
+    public IReadOnlyList<LocalSeat> Seats => Lobby.Seats;
+    public uint Seed { get; }
+    public int FirstMap
+    {
+        get => Preferences.FirstMap;
+        set => Preferences.FirstMap = value;
+    }
 
     public MatchSetup(ClientSettings settings, uint seed)
     {
-        Options = new MatchOptions { Rules = settings.Rules, Seed = seed };
-        FirstMap = settings.FirstMap;
-        ShuffleMaps = settings.ShuffleMaps;
+        Preferences = settings.MatchDefaults with { };
+        Seed = seed;
     }
 
-    public void ConfigureRules(int[]? customMapOrder)
+    public MatchOptions CreateOptions(int[]? customMapOrder = null)
     {
-        Rules.PlayerCount = Seats.Count;
-        Rules.Teams = Enumerable
+        var rules = Preferences.CreateRules();
+        rules.PlayerCount = Seats.Count;
+        rules.Teams = Enumerable
             .Range(0, 8)
             .Select(index => index < Seats.Count && Seats[index].Team >= 0 ? Seats[index].Team : index % 2)
             .ToArray();
-        if (customMapOrder != null)
+        rules.Colors = Enumerable
+            .Range(0, 8)
+            .Select(index => index < Seats.Count ? Seats[index].Color : index)
+            .ToArray();
+        var order =
+            customMapOrder?.ToArray()
+            ?? (FirstMap == 6 ? [6] : Enumerable.Range(0, 6).Select(index => (index + FirstMap) % 6).ToArray());
+        if (customMapOrder == null && Preferences.ShuffleMaps)
         {
-            Rules.MapOrder = customMapOrder;
-            return;
+            new Random((int)Seed).Shuffle(order);
         }
 
-        var order = FirstMap == 6 ? [6] : Enumerable.Range(0, 6).Select(index => (index + FirstMap) % 6).ToArray();
-        if (ShuffleMaps)
-        {
-            new Random((int)Options.Seed).Shuffle(order);
-        }
-
-        Rules.MapOrder = order;
+        rules.MapOrder = order;
+        return new MatchOptions { Rules = rules, Seed = Seed };
     }
 }

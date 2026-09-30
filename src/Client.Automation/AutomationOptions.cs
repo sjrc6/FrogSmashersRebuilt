@@ -3,6 +3,7 @@ namespace FrogSmashers.Client.Automation;
 internal sealed class AutomationOptions
 {
     public LaunchOptions Game { get; private set; } = null!;
+    public int StartPlayers { get; private set; }
     public int Frames { get; private set; }
     public long Ticks { get; private set; }
     public int RenderFps { get; private set; } = 60;
@@ -23,6 +24,9 @@ internal sealed class AutomationOptions
                     : throw new ArgumentException("Missing value for " + arguments[index - 1]);
             switch (arguments[index])
             {
+                case "--start-players":
+                    options.StartPlayers = int.Parse(Value());
+                    break;
                 case "--frames":
                     options.Frames = int.Parse(Value());
                     break;

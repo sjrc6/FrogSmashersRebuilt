@@ -32,6 +32,7 @@ internal static class ContentSimulationTests
         {
             var content = GameContent.Load(contentPath);
             BotNavigationTests.DownSmash(content);
+            AuthoredLobby(content);
             foreach (var map in content.Maps)
             {
                 foreach (var box in map.Collision)
@@ -91,5 +92,110 @@ internal static class ContentSimulationTests
                 );
             }
         }
+    }
+
+    private static void AuthoredLobby(GameContent content)
+    {
+        var map = content.PresentationScenes["Lobby"];
+        Check(
+            map.Collision.Count(box => box.OneWay && box.Name.StartsWith("Room")) == 8,
+            "Lobby must have eight room platforms and an empty center"
+        );
+        bool SolidAt(decimal x, decimal y) =>
+            map.Collision.Any(box =>
+                !box.OneWay
+                && x >= box.X - box.Width / 2
+                && x <= box.X + box.Width / 2
+                && y >= box.Y - box.Height / 2
+                && y <= box.Y + box.Height / 2
+            );
+        foreach (decimal x in new[] { -14.5m, 14.5m })
+        foreach (decimal y in new[] { 15m, 0m, -15m })
+        {
+            Check(SolidAt(x, y), "An interior lobby wall has no collision");
+            Check(!SolidAt(x, y - 5), "A lobby doorway was blocked");
+        }
+        Check(
+            SolidAt(-45, 12) && SolidAt(45, 12) && SolidAt(0, 25) && SolidAt(0, -25),
+            "Lobby outer walls must contain players on all four sides"
+        );
+        foreach (var box in map.Collision)
+        {
+            decimal[] edges =
+            [
+                (box.X - box.Width / 2) * 10,
+                (box.X + box.Width / 2) * 10,
+                (box.Y - box.Height / 2) * 10,
+                (box.Y + box.Height / 2) * 10,
+            ];
+            Check(
+                edges.All(edge => edge == decimal.Round(edge)),
+                "Lobby collision is not aligned to background pixels"
+            );
+        }
+        var rules = new GameRules
+        {
+            Lobby = true,
+            PlayerCount = 8,
+            MapOrder = [0],
+        };
+        var world = new World([map], rules, 7, content.CharacterParameters);
+        var inputs = new InputFrame[8];
+        for (int tick = 0; tick < 120; tick++)
+            world.Tick(inputs);
+        Check(world.Players.All(player => !player.Alive), "Lobby spawned unjoined players");
+        for (int room = 0; room < 8; room++)
+            world.SetLobbySlot(room, true, 7 - room);
+        world.Tick(inputs);
+        for (int room = 0; room < 8; room++)
+        {
+            var player = world.Players[room];
+            Check(
+                player.Alive
+                    && player.X == FromDecimal(map.Spawns[room].X)
+                    && player.Y == FromDecimal(map.Spawns[room].Y),
+                "Lobby player did not spawn in assigned room"
+            );
+            Check(player.ColorIndex == 7 - room, "Selected lobby color was lost on spawning");
+        }
+        for (int tick = 0; tick < 60; tick++)
+            world.Tick(inputs);
+        Check(world.Players.All(player => player.OnGround), "Room platforms did not support all eight spawns");
+        inputs[0] = new(0, -1, InputButtons.Jump);
+        for (int tick = 0; tick < 30; tick++)
+            world.Tick(inputs);
+        inputs[0] = default;
+        for (int tick = 0; tick < 180; tick++)
+            world.Tick(inputs);
+        Check(
+            world.Players[0].OnGround && world.Players[0].Y < FromDecimal(map.Spawns[0].Y) - 5,
+            "Dropping from a room platform did not land on a floor-gap platform"
+        );
+        world.SetLobbySlot(0, false, 2);
+        world.Tick(inputs);
+        Check(!world.Players[0].Alive && world.Players[0].Eliminated, "Backing out left an active frog");
+        world.SetLobbySlot(0, true, 2);
+        world.Tick(inputs);
+        Check(
+            world.Players[0].ColorIndex == 2 && world.Players[0].Y == FromDecimal(map.Spawns[0].Y),
+            "Rejoining did not reset the frog to its room"
+        );
+        world.Players[0].Y = FromDecimal(map.KillBounds.Bottom) - 2;
+        world.Tick(inputs);
+        for (int tick = 0; tick < 200; tick++)
+            world.Tick(inputs);
+        Check(
+            world.Players[0].Alive
+                && world.Players.All(player => player.Score == 0)
+                && world.Phase == MatchPhase.Playing
+                && !world.Fly.Active,
+            "Lobby KO did not respawn without scoring"
+        );
+        var copy = new World([map], rules, 7, content.CharacterParameters);
+        copy.Restore(world.Capture());
+        Check(
+            copy.HashState() == world.HashState() && copy.Players[0].ColorIndex == 2,
+            "Lobby snapshot lost colors or player membership"
+        );
     }
 }

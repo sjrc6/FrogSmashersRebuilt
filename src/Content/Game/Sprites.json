@@ -87736,6 +87736,64 @@
         ]
       ],
       "Width": 128
+    },
+    "lobby-background": {
+      "Height": 540,
+      "Name": "lobby_background_v1",
+      "Path": "Textures/Sprites/BackGrounds/lobby_background_v1",
+      "PivotX": 0.5,
+      "PivotY": 0.5,
+      "PixelsPerUnit": 10,
+      "PointFilter": true,
+      "RectHeight": 540,
+      "RectWidth": 960,
+      "RectX": 0,
+      "RectY": 0,
+      "Triangles": [
+        3,
+        0,
+        1,
+        2,
+        1,
+        0
+      ],
+      "UV": [
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "Vertices": [
+        [
+          -48,
+          27
+        ],
+        [
+          48,
+          -27
+        ],
+        [
+          48,
+          27
+        ],
+        [
+          -48,
+          -27
+        ]
+      ],
+      "Width": 960
     }
   }
 }

@@ -8,6 +8,7 @@ internal sealed class AutomatedGame : FrogGame
 {
     private readonly AutomationOptions automation;
     private double virtualClock;
+    private long? networkFinishMilliseconds;
     protected override bool LimitFrameRate => automation.Frames == 0;
     protected override bool SaveSettingsOnExit => false;
     protected override long TickLimit => automation.Ticks > 0 ? automation.Ticks : long.MaxValue;
@@ -20,6 +21,8 @@ internal sealed class AutomatedGame : FrogGame
         {
             var input = new ScriptedInput(automation.InputScript);
             Controls.KeyboardSource = () => input.State(RenderedFrames);
+            Controls.GamePadSource = pad => input.Pad(RenderedFrames, pad);
+            Controls.MouseSource = () => input.Mouse(RenderedFrames);
         }
     }
 
@@ -36,6 +39,17 @@ internal sealed class AutomatedGame : FrogGame
         return elapsed;
     }
 
+    protected override void Update(GameTime gameTime)
+    {
+        base.Update(gameTime);
+        if (
+            automation.StartPlayers > 0
+            && Online.Lobby is { IsHost: true, Starting: false } online
+            && online.Roster.Count == automation.StartPlayers
+        )
+            online.StartMatch(JsonSerializer.Serialize(Setup.CreateOptions(Options.MapOrder)));
+    }
+
     protected override void Draw(GameTime gameTime)
     {
         base.Draw(gameTime);
@@ -49,6 +63,14 @@ internal sealed class AutomatedGame : FrogGame
         if (!framesComplete && !ticksComplete && Menus.Screen != GameScreen.Error)
         {
             return;
+        }
+
+        if (ticksComplete && Match.Network != null && Menus.Screen != GameScreen.Error)
+        {
+            // Artificial tick limits have no outro. Keep polling briefly so the other process receives our final hash.
+            networkFinishMilliseconds ??= Environment.TickCount64;
+            if (Environment.TickCount64 - networkFinishMilliseconds.Value < 500)
+                return;
         }
 
         if (automation.Capture != null)
@@ -74,6 +96,29 @@ internal sealed class AutomatedGame : FrogGame
         var result = new
         {
             Page = Menus.Screen.ToString(),
+            Menus.Owner,
+            Menus.Selected,
+            Menus.SelectedSeat,
+            MenuItems = Menus.Entries().Select(entry => entry.Label).ToArray(),
+            LocalDevices = Setup.Seats.Select(seat => seat.Device).ToArray(),
+            LobbySlots = Menus.ShowingLobby ? Lobby.Roster.Slots : null,
+            LobbyPlayers = Menus.ShowingLobby
+                ? Lobby
+                    .World?.Players.Select(player => new
+                    {
+                        player.Alive,
+                        player.ColorIndex,
+                        X = player.X.ToFloat(),
+                        Y = player.Y.ToFloat(),
+                    })
+                    .ToArray()
+                : null,
+            LobbySpawnPuffs = Menus.ShowingLobby
+                ? Renderer.Effects.Active.Count(effect => effect.Name == "SpawnPuff")
+                : 0,
+            LobbyTick = Menus.ShowingLobby ? Lobby.World?.TickNumber : null,
+            MatchDefaults = Setup.Preferences,
+            Settings.Volume,
             MenuBackground = Match.IsMenuBackground,
             Paused = Menus.LocalPresentationPaused,
             Fullscreen,

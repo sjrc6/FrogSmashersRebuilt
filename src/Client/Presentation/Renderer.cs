@@ -639,12 +639,34 @@ public sealed partial class Renderer : IDisposable
     public void Text(string text, float x, float y, Color? color = null, float scale = 1, bool center = false) =>
         assets.Font.Draw(Batch, text, new(x, y), color ?? Color.White, scale, center);
 
+    public void CenteredText(
+        string text,
+        float x,
+        float y,
+        Color? color = null,
+        float scale = 1,
+        bool center = false
+    ) => assets.Font.DrawCenteredVertical(Batch, text, new(x, y), color ?? Color.White, scale, center);
+
     public void Panel(Rectangle rect, Color color) => Batch.Draw(assets.White, rect, color);
+
+    private float ImagePixelScale(Rectangle source, float maxWidth)
+    {
+        float outputScale = compositor.Frame.Width / (float)Width;
+        return Math.Max(1, MathF.Floor(maxWidth * outputScale / source.Width));
+    }
+
+    internal Vector2 ImageSize(Rectangle source, float maxWidth)
+    {
+        float outputScale = compositor.Frame.Width / (float)Width;
+        float pixelScale = ImagePixelScale(source, maxWidth);
+        return new Vector2(source.Width, source.Height) * (pixelScale / outputScale);
+    }
 
     public void Image(string path, Rectangle source, Vector2 topCenter, float maxWidth)
     {
         float outputScale = compositor.Frame.Width / (float)Width;
-        float pixelScale = Math.Max(1, MathF.Floor(maxWidth * outputScale / source.Width));
+        float pixelScale = ImagePixelScale(source, maxWidth);
         var position =
             new Vector2(
                 MathF.Round(topCenter.X * outputScale - source.Width * pixelScale / 2),
@@ -751,6 +773,8 @@ public sealed partial class Renderer : IDisposable
 
     public void Dispose()
     {
+        lobbyOutline?.Dispose();
+        lobbyBackground?.Dispose();
         canvas.Dispose();
         compositor.Dispose();
     }

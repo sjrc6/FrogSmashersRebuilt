@@ -48,6 +48,21 @@ internal static class ReplayTests
         }
 
         Check(refused, "Snapshot restored into incompatible rules");
+        var oldSnapshot = expected.ToArray();
+        System.Buffers.Binary.BinaryPrimitives.WriteInt32LittleEndian(oldSnapshot.AsSpan(4), 1);
+        refused = false;
+        try
+        {
+            a.Restore(oldSnapshot);
+        }
+        catch (InvalidDataException exception)
+        {
+            refused = exception.Message.Contains("unsupported version");
+        }
+        Check(
+            refused && expected.SequenceEqual(a.Capture()),
+            "Old snapshot versions fail clearly without changing the world"
+        );
         Console.WriteLine(
             $"Replay+snapshot roundtrip: 8 players, 2400 ticks, {checkpoints.Count} rewind points, hash {a.HashState():x16}"
         );

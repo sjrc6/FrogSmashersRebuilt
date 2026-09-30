@@ -27,46 +27,41 @@ internal sealed class OnlineController : IDisposable
         steam = SteamClient.Connect();
     }
 
-    public void Connect(string target, bool host, int expectedPeers, MatchSetup setup)
+    public void Connect(
+        string target,
+        bool host,
+        int capacity,
+        LobbyRoster localRoster,
+        MatchOptions match,
+        bool allowLan
+    )
     {
         if (target.StartsWith("steam", StringComparison.Ordinal))
-        {
             PrepareSteam();
-        }
-
         CloseLobby();
-        int[] teams = setup.Seats.Select(seat => seat.Team).ToArray();
-        int playerCount = setup.Seats.Count;
-        string matchSettings = JsonSerializer.Serialize(setup.Options);
+        var players = localRoster.Players(0);
+        string settings = JsonSerializer.Serialize(match);
         if (host)
-        {
             Lobby = target switch
             {
                 "udp" => UdpLobby.Host(
                     options.Port,
-                    expectedPeers,
-                    playerCount,
+                    capacity,
+                    players,
                     fingerprint,
-                    matchSettings,
-                    options.Lan,
-                    localTeams: teams
+                    settings,
+                    allowLan,
+                    localRoster.Slots
                 ),
-                "steam" => SteamLobby.Host(expectedPeers, playerCount, fingerprint, matchSettings, localTeams: teams),
+                "steam" => SteamLobby.Host(capacity, players, fingerprint, settings, initialRooms: localRoster.Slots),
                 _ => throw new ArgumentException("Host transport must be udp or steam"),
             };
-        }
         else if (target.StartsWith("steam:", StringComparison.Ordinal))
-        {
-            Lobby = SteamLobby.Join(ulong.Parse(target[6..]), playerCount, fingerprint, localTeams: teams);
-        }
+            Lobby = SteamLobby.Join(ulong.Parse(target[6..]), players, fingerprint);
         else if (target.StartsWith("udp:", StringComparison.Ordinal))
-        {
-            Lobby = UdpLobby.Join(target[4..], options.Port, playerCount, fingerprint, localTeams: teams);
-        }
+            Lobby = UdpLobby.Join(target[4..], options.Port, players, fingerprint);
         else
-        {
             throw new ArgumentException("Join address must start with udp: or steam:");
-        }
     }
 
     public ulong PollInvites()

@@ -7,8 +7,7 @@ public sealed partial class World
 {
     private bool Ray(FixedVector origin, bool horizontal, Fixed distance, bool includeOneWay, out Fixed allowed)
     {
-        return collisionMaps[CurrentMapIndex]
-            .Raycast(origin, horizontal, distance, includeOneWay, Rules.PreservePlatformEmbedding, out allowed);
+        return collisionMaps[CurrentMapIndex].Raycast(origin, horizontal, distance, includeOneWay, out allowed);
     }
 
     private void MoveAndCollide(PlayerState player, InputFrame input)

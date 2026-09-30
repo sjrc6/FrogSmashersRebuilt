@@ -25,6 +25,5 @@ internal static class PlayerPalette
             _ => Colors[team % Colors.Length],
         };
 
-    public static Color For(World world, int slot) =>
-        world.Rules.TeamMode ? Team(world.Players[slot].Team) : Colors[slot % Colors.Length];
+    public static Color For(World world, int slot) => Colors[world.Players[slot].ColorIndex];
 }

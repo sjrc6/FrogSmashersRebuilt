@@ -107,9 +107,10 @@ public sealed partial class World
         player.TonguePhase = TonguePhase.Extending;
         player.TongueDelayLeft = tuning.TongueDelay;
         var direction = GetAimDirection(player, input);
-        if (direction.Y == Fixed.Zero && input.X != 0)
+        if (input.X != 0)
         {
-            direction = new(input.X, 0);
+            int horizontal = input.Strafe ? player.Facing : input.X;
+            direction = new(horizontal, direction.Y);
         }
 
         direction = direction.Normalized;

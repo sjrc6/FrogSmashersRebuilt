@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using FrogSmashers.Core;
 using FrogSmashers.Network;
 
 namespace FrogSmashers.Tests;
@@ -9,8 +10,16 @@ internal static class LobbyTests
     public static void Run(Action<bool, string> check)
     {
         using var hostWire = new ManualWire();
-        using var host = new RelayLobby(hostWire, null, 2, 1, "fingerprint", "{}", [2]);
-        string nonce = Guid.NewGuid().ToString("N");
+        using var clientWire = new ManualWire();
+        using var host = new RelayLobby(hostWire, null, 6, [new(0, Team: 2, Spawned: true)], "fingerprint", "{}");
+        using var client = new RelayLobby(
+            clientWire,
+            "host",
+            8,
+            [new(0, Team: 1), new(1, Team: 0, Spawned: true)],
+            "fingerprint",
+            ""
+        );
         foreach (
             string malformed in new[]
             {
@@ -19,96 +28,231 @@ internal static class LobbyTests
                 "[]",
                 "{\"Kind\":null}",
                 "{\"Nonce\":null}",
-                "{\"Counts\":null}",
+                "{\"Slots\":null}",
+                "{\"Players\":null}",
+                "{\"Players\":[null]}",
                 "{\"Settings\":null}",
                 "{\"Hash\":null}",
                 "{\"ClientNonce\":null}",
-                "{\"Teams\":null}",
-                "{\"Teams\":[8]}",
-                "{\"Counts\":{}}",
-                "{\"Counts\":[1,1,1,1,1,1,1,1,1]}",
-                "{\"Kind\":\"hello\",\"Players\":1,\"Hash\":\"fingerprint\",\"Nonce\":\"zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz\"}",
+                "{\"Slots\":{}}",
             }
         )
         {
             hostWire.Incoming.Enqueue(new("stranger", Packet(malformed)));
             host.Poll();
             check(
-                host.Error == null && !host.Ready && host.PeerSlots.Length == 0,
+                host.Error == null && !host.Ready && host.Roster.Count == 1,
                 "Malformed lobby control changed host state"
             );
         }
-
-        var clientWire = new ManualWire();
-        using var client = new RelayLobby(clientWire, "host", 0, 2, "fingerprint", "", [-1, 0]);
-        clientWire.Incoming.Enqueue(
-            new(
-                "host",
-                Packet(
-                    JsonSerializer.Serialize(
-                        new RelayLobby.Control
-                        {
-                            Kind = LobbyMessageKind.Welcome,
-                            Peer = 1,
-                            Counts = [1, 2],
-                            Hash = "fingerprint",
-                            Nonce = new string('z', 32),
-                            ClientNonce = nonce,
-                            Settings = "{}",
-                        }
-                    )
-                )
-            )
-        );
-        client.Poll();
-        check(!client.Ready && client.PeerSlots.Length == 0, "Bad welcome was accepted");
-        for (int n = 0; n < 6; n++)
+        void Pump()
         {
-            Route(clientWire, hostWire, "client");
-            host.Poll();
-            Route(hostWire, clientWire, "host");
-            client.Poll();
+            for (int i = 0; i < 8; i++)
+            {
+                client.Poll();
+                Route(clientWire, hostWire, "client");
+                host.Poll();
+                Route(hostWire, clientWire, "host");
+            }
         }
-
-        check(host.Ready && client.Ready, "Lobby start barrier failed");
+        Pump();
+        check(
+            client.Connected && host.Roster.Count == 3 && client.Roster.Count == 3,
+            "Mixed local party did not join the forming lobby"
+        );
+        check(!host.Starting && !client.Ready, "Lobby started without host action");
+        check(
+            host.Roster.Slots.Where(slot => slot.Player != null).Select(slot => slot.Player!.Color).Distinct().Count()
+                == 3,
+            "Joining party reused occupied colors"
+        );
+        check(host.EditSlot(5, SlotType.Open, false), "Capacity edit rejected");
+        Pump();
+        check(client.Roster.Capacity == 5, "Capacity change was not rebroadcast");
+        check(host.EditSlot(4, SlotType.Open, false), "Slot close rejected");
+        Pump();
+        check(
+            client.Roster.Capacity == 4 && !client.Roster.Slots[4].Open,
+            "Slot edits did not update advertised capacity"
+        );
+        check(host.EditSlot(4, SlotType.Open, true), "Slot reopen rejected");
+        Pump();
+        check(client.Roster.Capacity == 5, "Reopened slot capacity was not rebroadcast");
+        var choosing = client.Roster.Players(client.LocalPeer);
+        check(
+            client.SetPlayers(choosing.Select(p => p.Id == 0 ? p with { Color = 6 } : p).ToArray()),
+            "Color choice was rejected"
+        );
+        Pump();
+        check(
+            host.Roster.Players(client.LocalPeer).Any(p => p.Id == 0 && p.Color == 6 && !p.Spawned),
+            "Pending frog color did not reach the host"
+        );
+        check(!host.StartMatch("{}"), "Unspawned player was allowed into match");
+        var players = client.Roster.Players(client.LocalPeer);
+        check(
+            client.SetPlayers(players.Select(player => player with { Spawned = true }).ToArray()),
+            "Player confirmation rejected"
+        );
+        Pump();
+        check(host.Roster.Players(1).All(player => player.Spawned), "Confirmation did not reach host");
+        var inputs = new InputFrame[8];
+        inputs[0] = new(1, 0, InputButtons.Attack);
+        inputs[1] = new(-1, 1, InputButtons.Jump);
+        client.SendLobbyInputs(inputs);
+        Pump();
+        check(
+            host.ReadLobbyInputs()[0] == default && host.ReadLobbyInputs()[1] == inputs[1],
+            "Lobby input escaped slot ownership"
+        );
+        host.SendSnapshot([1, 2, 3]);
+        Pump();
+        check(client.TakeSnapshot()!.SequenceEqual(new byte[] { 1, 2, 3 }), "Lobby snapshot was not delivered");
+        check(host.StartMatch("{\"seed\":9}"), "Host could not start ready roster");
+        Pump();
+        check(host.Ready && client.Ready, "Manual lobby start barrier failed");
+        check(!host.EditSlot(7, SlotType.Open, true) && !client.SetPlayers([]), "Frozen match accepted roster changes");
         check(
             host.PeerSlots.Length == 2
                 && host.PeerSlots[0].SequenceEqual(new[] { 0 })
                 && host.PeerSlots[1].SequenceEqual(new[] { 1, 2 }),
-            "Mixed local roster incorrect"
+            "Mixed local match roster incorrect"
         );
         check(
             host.PlayerTeams.SequenceEqual(new[] { 2, 1, 0 }) && client.PlayerTeams.SequenceEqual(host.PlayerTeams),
-            "Local team selections were not negotiated"
+            "Teams were not negotiated"
         );
         check(
-            client.MatchSettingsJson == "{}" && client.LocalPeer == 1,
-            "Host settings or assigned identity incorrect"
+            client.PlayerColors.SequenceEqual(host.PlayerColors) && client.MatchSettingsJson == "{\"seed\":9}",
+            "Match settings or colors differ"
         );
-        client.CreateTransport().Send(0, new byte[] { 1, 2, 3 });
-        Route(clientWire, hostWire, "client");
-        host.Poll();
+        client.Send(0, [1, 2, 3]);
+        Pump();
         check(
-            host.CreateTransport().TryReceive(out var data)
-                && data.Peer == 1
-                && data.Data.SequenceEqual(new byte[] { 1, 2, 3 }),
-            "Lobby transport routing failed"
+            host.TryReceive(out var received)
+                && received.Peer == 1
+                && received.Data.SequenceEqual(new byte[] { 1, 2, 3 }),
+            "Match transport routing failed"
         );
-        client.CreateTransport().Send(0, new byte[] { 4, 5 });
+        client.Send(0, [4, 5]);
         var stale = clientWire.Sent.Last().Data.ToArray();
         stale[5] ^= 0xff;
         clientWire.Sent.Clear();
         hostWire.Incoming.Enqueue(new("client", stale));
         host.Poll();
-        check(!host.CreateTransport().TryReceive(out _), "Old session nonce accepted");
-        Console.WriteLine("Lobby malformed JSON, roster/start barrier, mixed slots and stale-session checks passed");
+        check(!host.TryReceive(out _), "Old session nonce accepted");
+        using var lateWire = new ManualWire();
+        using var late = new RelayLobby(lateWire, "host", 8, [new(0)], "fingerprint", "");
+        late.Poll();
+        Route(lateWire, hostWire, "late");
+        host.Poll();
+        Route(hostWire, lateWire, "host");
+        late.Poll();
+        check(late.Error != null && !late.Connected, "Joining remained open after host started");
+        TestRoomEdits(check);
+        TestPlayerRemoval(check);
+        var rooms = new LobbyRoster();
+        rooms.Edit(4, SlotType.Cpu, true);
+        using var roomWire = new ManualWire();
+        using var roomHost = new RelayLobby(roomWire, null, 6, rooms.Players(0), "fingerprint", "{}", rooms.Slots);
+        check(
+            roomHost.Roster.Slots[4].Player?.Cpu == true && roomHost.Roster.Slots[0].Player == null,
+            "Opening online moved the existing local room assignments"
+        );
+        roomHost.EditSlot(0, SlotType.Cpu, true);
+        check(
+            roomHost.Roster.Players(0).Select(player => player.Id).Distinct().Count() == 2,
+            "Adding a CPU reused another room's device identity"
+        );
+        Console.WriteLine(
+            "Lobby joining, capacity broadcasts, room edits, input ownership and manual start checks passed"
+        );
+    }
+
+    private static void TestRoomEdits(Action<bool, string> check)
+    {
+        var roster = new LobbyRoster();
+        roster.SetCapacity(3);
+        roster.SetPlayers(0, [new(0, Color: 2)]);
+        roster.Edit(1, SlotType.Local, true);
+        check(
+            !roster.SetPlayers(1, [new(0), new(1)]) && roster.Count == 1,
+            "Partial party was admitted when only one remote slot was free"
+        );
+        check(roster.SetPlayers(1, [new(0)]), "Single remote player could not join open slot");
+        check(
+            roster.Slots[1].Player == null && roster.Slots[2].Player?.Peer == 1,
+            "Remote player occupied local-only slot"
+        );
+        check(!roster.SetCapacity(1) && roster.Capacity == 3, "Capacity removed an occupied slot");
+        check(
+            roster.Edit(1, SlotType.Cpu, true) && roster.Slots[1].Player is { Cpu: true, Spawned: true, Peer: 0 },
+            "CPU was not assigned to the selected room"
+        );
+        check(
+            roster.Edit(2, SlotType.Open, true, remove: true) && roster.SetPlayers(2, [new(0)]),
+            "Removed slot did not reopen"
+        );
+        check(
+            roster.Edit(1, SlotType.Cpu, false)
+                && roster.Capacity == 2
+                && roster.Slots[1] is { Type: SlotType.Cpu, Open: false, Player: null },
+            "Closing a CPU slot lost its type or capacity"
+        );
+        check(
+            roster.Edit(1, SlotType.Cpu, true) && roster.Slots[1].Player?.Cpu == true && roster.Capacity == 3,
+            "Opening a CPU slot did not restore the CPU and capacity"
+        );
+        check(
+            roster.Edit(1, SlotType.Local, true) && roster.Slots[1].Player == null,
+            "Changing CPU to local left a bot in the room"
+        );
+        check(!roster.SetPlayers(2, [new(0), new(0)]), "Duplicate input device claimed multiple slots");
+    }
+
+    private static void TestPlayerRemoval(Action<bool, string> check)
+    {
+        using var hostWire = new ManualWire();
+        using var clientWire = new ManualWire();
+        using var host = new RelayLobby(
+            hostWire,
+            null,
+            8,
+            [new(0, Spawned: true), new(1, Spawned: true)],
+            "hash",
+            "{}"
+        );
+        using var client = new RelayLobby(clientWire, "host", 8, [new(0), new(1)], "hash", "");
+        void Pump()
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                client.Poll();
+                Route(clientWire, hostWire, "client");
+                host.Poll();
+                Route(hostWire, clientWire, "host");
+            }
+        }
+        Pump();
+        check(host.EditSlot(2, SlotType.Open, true, remove: true), "Remote player removal failed");
+        Pump();
+        check(
+            client.Error == null && client.Roster.Players(client.LocalPeer) is [{ Id: 1 }],
+            "Removing one remote player removed their whole local party or restored the removed player"
+        );
+        check(host.EditSlot(3, SlotType.Open, false), "Closing the last remote slot failed");
+        Pump();
+        check(
+            client.Error != null && host.Roster.Count == 2 && host.StartMatch("{}"),
+            "A connection with no remaining players prevented match start after a kick"
+        );
     }
 
     private static byte[] Packet(string json)
     {
         var bytes = Encoding.UTF8.GetBytes(json);
         var packet = new byte[bytes.Length + 5];
-        BitConverter.TryWriteBytes(packet, 0x46534C31u);
+        BitConverter.TryWriteBytes(packet, 0x46534C32u);
         packet[4] = 1;
         bytes.CopyTo(packet, 5);
         return packet;
@@ -117,10 +261,7 @@ internal static class LobbyTests
     private static void Route(ManualWire from, ManualWire to, string source)
     {
         foreach (var packet in from.Sent)
-        {
             to.Incoming.Enqueue(new(source, packet.Data));
-        }
-
         from.Sent.Clear();
     }
 

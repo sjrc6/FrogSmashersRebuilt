@@ -1,296 +1,264 @@
-using FrogSmashers.Core;
 using FrogSmashers.Network;
 using Microsoft.Xna.Framework;
 
 namespace FrogSmashers.Client;
 
-internal sealed class MenuRenderer
+internal sealed class MenuRenderer(FrogGame game, MenuController menu)
 {
-    private static readonly Color Muted = new(173, 190, 200);
-    private static readonly Color Accent = new(255, 211, 86);
-    private static readonly Color PanelColor = new(14, 23, 29, 236);
-    private readonly FrogGame game;
-    private readonly MenuController menu;
-
-    public MenuRenderer(FrogGame game, MenuController menu)
-    {
-        this.game = game;
-        this.menu = menu;
-    }
+    private static readonly Color Selected = new(255, 236, 164);
+    private static readonly Color PanelColor = new(25, 36, 40, 178);
+    private readonly Dictionary<string, Rectangle> glyphSources = new();
+    private const float HintScale = .85f;
+    private const float HintGap = 4;
 
     public void Draw()
     {
-        switch (menu.Screen)
+        if (menu.Screen is GameScreen.Intro or GameScreen.Title)
+            return;
+        if (menu.ShowingLobby)
+            DrawLobby();
+        if (menu.Screen == GameScreen.Outro)
         {
-            case GameScreen.Intro:
-                break;
-            case GameScreen.Title:
-                break;
-            case GameScreen.Main:
-                game.Renderer.Panel(new Rectangle(0, 0, Renderer.Width, Renderer.Height), Color.Black * .15f);
-                game.Renderer.Image(
-                    "Textures/Sprites/logo_rebuilt",
-                    new Rectangle(50, 39, 160, 97),
-                    new Vector2(640, 22),
-                    480
-                );
-                game.Renderer.Panel(new Rectangle(440, 332, 400, 310), new Color(14, 23, 29, 210));
-                Menu(
-                    ["LOCAL", "ONLINE", "SETTINGS", "PLAY INTRO", "WATCH CPUS", "CREDITS", "QUIT"],
-                    menu.Selected,
-                    352,
-                    38
-                );
-                break;
-            case GameScreen.Seats:
-                DrawSeats();
-                break;
-            case GameScreen.Online:
-                Header("ONLINE MATCH");
-                game.Renderer.Panel(new Rectangle(220, 145, 840, 435), PanelColor);
-                game.Renderer.Text(
-                    $"{game.Setup.Seats.Count} LOCAL SEAT(S)   /   {menu.ExpectedPeers} NETWORK PEERS",
-                    640,
-                    177,
-                    Accent,
-                    1,
-                    true
-                );
-                Menu(
-                    [
-                        "HOST STEAM PRIVATE LOBBY",
-                        "JOIN STEAM: " + (menu.SteamCode.Length > 0 ? menu.SteamCode : "ENTER LOBBY ID"),
-                        "HOST LOCALHOST / UDP",
-                        "JOIN UDP: " + menu.JoinAddress,
-                        "BACK",
-                    ],
-                    menu.Selected,
-                    250,
-                    50,
-                    .95f
-                );
-                Footer(
-                    menu.EditingAddress
-                        ? "TYPE ADDRESS / ID, ENTER TO CONNECT, ESC TO CANCEL"
-                        : "LEFT/RIGHT: PEER COUNT   |   ENTER: SELECT   |   ESC: BACK"
-                );
-                break;
-            case GameScreen.Connecting:
-                Header("CONNECTING");
-                game.Renderer.Panel(new Rectangle(150, 210, 980, 255), PanelColor);
-                game.Renderer.Text(game.Online.Lobby?.Status ?? "", 640, 255, Color.White, 1.2f, true);
-                if (game.Online.Lobby is SteamLobby sl)
-                {
-                    game.Renderer.Text("LOBBY ID: " + sl.LobbyCode, 640, 315, Accent, 1, true);
-                    game.Renderer.Text("I: INVITE STEAM FRIENDS", 640, 370, Muted, 1, true);
-                }
-                else
-                {
-                    game.Renderer.Text(
-                        $"UDP PORT {game.Options.Port}  /  {menu.ExpectedPeers} PEERS",
-                        640,
-                        325,
-                        Muted,
-                        1,
-                        true
-                    );
-                }
-
-                Footer("MATCH STARTS WHEN ALL PEERS CONNECT   |   ESC: CANCEL");
-                break;
-            case GameScreen.Playing:
-                if (game.Match.Paused)
-                {
-                    game.Renderer.Panel(new Rectangle(290, 240, 700, 190), PanelColor);
-                    game.Renderer.Text(
-                        game.Match.Network == null ? "PAUSED" : "MENU - ONLINE MATCH CONTINUES",
-                        640,
-                        275,
-                        Accent,
-                        1.2f,
-                        true
-                    );
-                    game.Renderer.Text(
-                        "ESC: RESUME   TAB: SETTINGS   Q: LEAVE MATCH",
-                        640,
-                        345,
-                        Color.White,
-                        .9f,
-                        true
-                    );
-                }
-
-                if (game.Match.World?.Phase == MatchPhase.MatchFinished && !game.Match.Paused)
-                {
-                    game.Renderer.Text(
-                        game.Match.Network == null ? "ENTER: OUTRO   |   ESC: MENU" : "ESC THEN Q: LEAVE MATCH",
-                        640,
-                        440,
-                        Accent,
-                        1,
-                        true
-                    );
-                }
-
-                break;
-            case GameScreen.Settings:
-                DrawSettings();
-                break;
-            case GameScreen.Bindings:
-                DrawBindings();
-                break;
-            case GameScreen.Error:
-                Header("COULD NOT CONTINUE");
-                game.Renderer.Panel(new Rectangle(120, 190, 1040, 320), PanelColor);
-                DrawWrapped(menu.Status, 165, 235, 940, Color.White);
-                Footer("ENTER / ESC: RETURN TO MENU");
-                break;
-            case GameScreen.Outro:
-                Footer("ENTER / ESC: MAIN MENU");
-                break;
+            ActionHint(ButtonGlyph.Accept(menu.HintDevice), "RETURN TO LOBBY", 530, 692);
+            return;
         }
-    }
-
-    private void Header(string text)
-    {
-        game.Renderer.Panel(new Rectangle(0, 0, 1280, 107), PanelColor);
-        game.Renderer.Text(text, 640, 40, Color.White, 1.6f, true);
-    }
-
-    private void Footer(string text) => game.Renderer.Text(text, 640, 679, Muted, .8f, true);
-
-    private void Menu(string[] items, int chosen, float top, float spacing, float scale = 1)
-    {
-        for (int i = 0; i < items.Length; i++)
+        if (menu.Screen == GameScreen.Seats)
         {
-            game.Renderer.Text(
-                (i == chosen ? "> " : "  ") + items[i],
-                640,
-                top + i * spacing,
-                i == chosen ? Accent : Color.White,
-                scale,
-                true
+            DrawStatus();
+            return;
+        }
+        if (menu.Screen == GameScreen.Playing && !game.Match.Paused)
+            return;
+        var entries = menu.Entries();
+        bool editingSlots = menu.Screen is GameScreen.SlotEditor or GameScreen.SlotOptions;
+        if (editingSlots)
+            DrawSlotEditor();
+        else if (menu.Screen == GameScreen.Main)
+            game.Renderer.Image(
+                "Textures/Sprites/logo_rebuilt",
+                new Rectangle(50, 39, 160, 97),
+                new Vector2(640, 22),
+                480
             );
-        }
-    }
-
-    private void DrawSeats()
-    {
-        Header(menu.OnlineSeats ? "JOIN LOCAL SEATS FOR ONLINE" : "LOCAL MATCH");
-        for (int i = 0; i < 8; i++)
+        else
         {
-            int col = i % 4;
-            int row = i / 4;
-            int x = 85 + col * 285;
-            int y = 155 + row * 182;
-            game.Renderer.Panel(new Rectangle(x, y, 255, 154), PanelColor);
-            if (i < game.Setup.Seats.Count)
+            var first = Row(0, entries.Count);
+            var last = Row(Math.Max(0, entries.Count - 1), entries.Count);
+            game.Renderer.Panel(
+                new Rectangle(first.X - 12, first.Y - 47, first.Width + 24, last.Bottom - first.Y + 60),
+                PanelColor
+            );
+            game.Renderer.CenteredText(Title(), 640, first.Y - 22, Color.White, 1.1f, true);
+        }
+        if (menu.Screen == GameScreen.Connecting)
+            game.Renderer.Text(game.Online.Lobby?.Status ?? "", 640, 283, Color.White, 1, true);
+        if (menu.Screen == GameScreen.Error)
+        {
+            game.Renderer.Panel(new Rectangle(120, 190, 1040, 290), PanelColor);
+            DrawWrapped(menu.Status, 155, 218, 970, Color.White);
+        }
+        for (int i = 0; i < entries.Count; i++)
+        {
+            var rect = Row(i, entries.Count);
+            var entry = entries[i];
+            bool selected = i == menu.Selected;
+            game.Renderer.Panel(rect, selected ? new Color(99, 117, 120, 195) : new Color(22, 32, 38, 105));
+            float scale = Math.Min(
+                editingSlots ? .82f : .86f,
+                (rect.Width - 24) / Math.Max(1, game.Assets.Font.Measure(entry.Label, 1).X)
+            );
+            var color = entry.Color ?? (selected ? Selected : Color.White);
+            if (entry.Key is { } key)
             {
-                var s = game.Setup.Seats[i];
-                game.Renderer.Text(
-                    $"{(i == menu.Selected ? "> " : "")}PLAYER {i + 1}",
-                    x + 128,
-                    y + 18,
-                    game.Setup.Rules.TeamMode && s.Team >= 0 ? Renderer.TeamColor(s.Team) : Renderer.PlayerColors[i],
-                    1.2f,
-                    true
-                );
-                game.Renderer.Text(s.Label, x + 128, y + 68, Color.White, .9f, true);
-                game.Renderer.Text(
-                    game.Setup.Rules.TeamMode || menu.OnlineSeats
-                        ? s.Team < 0
-                            ? "TEAM: AUTO"
-                            : $"TEAM {s.Team + 1}"
-                        : "READY",
-                    x + 128,
-                    y + 109,
-                    Accent,
-                    .85f,
-                    true
-                );
+                game.Renderer.CenteredText(entry.Label, rect.X + 26, rect.Center.Y, color, scale);
+                var glyph = ButtonGlyph.Key(key);
+                Glyph(glyph, rect.Right - 26 - GlyphWidth(glyph), rect.Center.Y);
             }
             else
+                game.Renderer.CenteredText(entry.Label, rect.Center.X, rect.Center.Y, color, scale, true);
+        }
+        if (editingSlots)
+            return;
+        DrawStatus();
+        if (menu.WaitingForBinding)
+            game.Renderer.Text("PRESS A KEY TO BIND", 640, 645, Color.White, .8f, true);
+        if (menu.EditingAddress)
+            game.Renderer.Text("TYPE ADDRESS / LOBBY ID", 640, 645, Color.White, .8f, true);
+        ActionHint(ButtonGlyph.Accept(menu.HintDevice), menu.EditingAddress ? "DONE" : "SELECT", 490, 692);
+        ActionHint(
+            ButtonGlyph.Back(menu.HintDevice),
+            menu.WaitingForBinding || menu.EditingAddress ? "CANCEL" : "BACK",
+            680,
+            692
+        );
+    }
+
+    private Rectangle Row(int index, int count) => MenuLayout.Row(menu.Screen, index, count, menu.SelectedSeat);
+
+    private void DrawSlotEditor()
+    {
+        game.Renderer.DrawRoomOutline(menu.SelectedSeat);
+        var room = MenuLayout.RoomInterior(menu.SelectedSeat);
+        if (menu.Screen == GameScreen.SlotEditor)
+            CenteredHint(ButtonGlyph.Accept(menu.HintDevice), "EDIT SLOT", room.Center.X, room.Top + 25);
+        else
+        {
+            game.Renderer.CenteredText(
+                $"SLOT {menu.SelectedSeat + 1}",
+                room.Center.X,
+                room.Top + 24,
+                Color.White,
+                .95f,
+                true
+            );
+            ActionHint(ButtonGlyph.Accept(menu.HintDevice), "SELECT", room.Left + 14, room.Bottom - 19);
+        }
+        var back = ButtonGlyph.Back(menu.HintDevice);
+        ActionHint(back, "BACK", room.Right - HintWidth(back, "BACK") - 14, room.Bottom - 19);
+        if (menu.Status.Length > 0)
+            game.Renderer.CenteredText(menu.Status, room.Center.X, room.Center.Y, Selected, .6f, true);
+    }
+
+    private string Title() =>
+        menu.Screen switch
+        {
+            GameScreen.LobbyMenu => "LOBBY MENU",
+            GameScreen.Settings => "SETTINGS",
+            GameScreen.MatchSettings => "MATCH SETTINGS",
+            GameScreen.Bindings => $"KEYBOARD {menu.BindingDevice + 1} CONTROLS",
+            GameScreen.Online => "ONLINE OPTIONS",
+            GameScreen.HostSteam => "HOST STEAM LOBBY",
+            GameScreen.JoinSteam => "JOIN STEAM LOBBY",
+            GameScreen.Udp => "UDP / LAN",
+            GameScreen.HostUdp => "HOST UDP / LAN",
+            GameScreen.JoinUdp => "JOIN BY ADDRESS",
+            GameScreen.Extras => "EXTRAS",
+            GameScreen.Connecting => "CONNECTING",
+            GameScreen.Error => "COULD NOT CONTINUE",
+            GameScreen.Playing => game.Match.Network == null ? "PAUSED" : "MATCH CONTINUES",
+            _ => "",
+        };
+
+    private void DrawLobby()
+    {
+        if (menu.Screen is GameScreen.SlotEditor or GameScreen.SlotOptions)
+            return;
+        string heading =
+            game.Online.Lobby is SteamLobby steam ? $"STEAM LOBBY {steam.LobbyCode}"
+            : game.Online.Lobby != null ? $"UDP LOBBY PORT {game.Options.Port}"
+            : "LOCAL LOBBY";
+        game.Renderer.Text(heading, 640, 17, Color.White, .9f, true);
+        for (int room = 0; room < 8; room++)
+        {
+            var rect = MenuLayout.RoomInterior(room);
+            var slot = game.Lobby.Roster.Slots[room];
+            var player = slot.Player;
+            if (player == null)
             {
-                game.Renderer.Text("OPEN SLOT", x + 128, y + 62, Muted, 1, true);
+                if (slot.Open && game.Renderer.LobbyJoinPrompt && menu.Screen == GameScreen.Seats)
+                {
+                    var start = ButtonGlyph.Start(menu.HintDevice);
+                    float textWidth = game.Assets.Font.Measure("PRESS", HintScale).X;
+                    float left = rect.Center.X - (textWidth + HintGap + GlyphWidth(start)) / 2;
+                    game.Renderer.CenteredText("PRESS", left, rect.Top + 28, Color.Black, HintScale);
+                    Glyph(start, left + textWidth + HintGap, rect.Top + 28);
+                }
+                else
+                    game.Renderer.CenteredText(
+                        slot.Open ? "OPEN" : "CLOSED",
+                        rect.Center.X,
+                        rect.Top + 28,
+                        Color.Black,
+                        HintScale,
+                        true
+                    );
+                continue;
+            }
+            string label =
+                player.Cpu ? "CPU"
+                : player.Peer == game.Lobby.LocalPeer ? new LocalSeat(player.Id).Label
+                : $"PLAYER {room + 1}";
+            game.Renderer.CenteredText(label, rect.Center.X, rect.Top + 24, Color.Black, .8f, true);
+            if (!player.Spawned && menu.Screen == GameScreen.Seats && player.Peer == game.Lobby.LocalPeer)
+            {
+                var colorButton =
+                    player.Id >= 2
+                        ? ButtonGlyph.Pad("aButton")
+                        : ButtonGlyph.Key(game.Settings.Keyboard[player.Id].Tongue);
+                CenteredHint(
+                    colorButton,
+                    game.Lobby.TeamMode ? $"COLOR / TEAM {player.Team + 1}" : "COLOR",
+                    rect.Center.X,
+                    rect.Bottom - 60,
+                    Color.Black
+                );
+                CenteredHint(ButtonGlyph.Start(player.Id), "SPAWN", rect.Center.X, rect.Bottom - 24, Color.Black);
             }
         }
-
-        game.Renderer.Text(
-            "SPACE: KEYBOARD 1    RIGHT SHIFT: KEYBOARD 2    A / START: CONTROLLER",
-            640,
-            558,
-            Color.White,
-            .85f,
-            true
-        );
-        game.Renderer.Text(
-            "C: ADD CPU   BACKSPACE: REMOVE LAST   TAB: RULES   ENTER: START",
-            640,
-            601,
-            Accent,
-            .85f,
-            true
-        );
-        if (menu.Status.Length > 0)
-        {
-            game.Renderer.Text(menu.Status, 640, 640, Accent, .75f, true);
-        }
-
-        Footer(
-            game.Setup.Rules.TeamMode || menu.OnlineSeats
-                ? "UP/DOWN: SELECT SEAT   LEFT/RIGHT: TEAM   ESC: BACK"
-                : "WASD + T/U/Y   |   ARROWS + M/PERIOD/COMMA   |   PAD: A/X/B"
-        );
+        if (menu.Screen != GameScreen.Seats)
+            return;
+        ActionHint(ButtonGlyph.Start(0), "JOIN P1", 65, 694);
+        ActionHint(ButtonGlyph.Start(1), "JOIN P2", 270, 694);
+        ActionHint(ButtonGlyph.Pad("startButton"), "JOIN / MENU", 475, 694);
+        ActionHint(ButtonGlyph.Menu(0), "MENU", 1020, 694);
     }
 
-    private void DrawSettings()
+    private void DrawStatus()
     {
-        Header("SETTINGS");
-        game.Renderer.Panel(new Rectangle(245, 127, 790, 510), PanelColor);
-        string[] values =
-        [
-            "BORDERLESS FULLSCREEN: " + OnOff(game.Settings.Fullscreen),
-            "VSYNC: " + OnOff(game.Settings.VSync),
-            "FRAME LIMIT: " + game.Settings.FrameLimit,
-            "VOLUME: " + (int)MathF.Round(game.Settings.Volume * 100) + "%",
-            "SCREEN SHAKE: " + OnOff(game.Settings.ScreenShake),
-            "TEAMS (NEXT MATCH): " + OnOff(game.Setup.Rules.TeamMode),
-            "WIN SCORE: " + (game.Setup.Rules.WinScore == 0 ? "ORIGINAL DEFAULT" : game.Setup.Rules.WinScore),
-            "MATCH ROUNDS: " + game.Setup.Rules.MatchRounds,
-            "FIRST ARENA: " + game.Assets.Data.Maps[game.Setup.FirstMap].Name,
-            "MAP ORDER: " + (game.Setup.ShuffleMaps ? "SHUFFLED" : "SEQUENTIAL"),
-            "FONT SMOOTHING: " + new[] { "OFF", "NARROW", "NORMAL" }[game.Settings.FontSmoothing],
-            "KEYBOARD 1 BINDINGS",
-            "KEYBOARD 2 BINDINGS",
-            "SAVE AND BACK",
-        ];
-        Menu(values, menu.SettingRow, 147, 34, .85f);
-        Footer("UP/DOWN: SELECT   LEFT/RIGHT: CHANGE   ENTER: SELECT   ESC: SAVE/BACK");
+        string status = menu.Status.Length > 0 ? menu.Status : game.Online.Lobby?.Notice ?? "";
+        if (status.Length > 0 && menu.Screen != GameScreen.Error)
+            game.Renderer.Text(status, 640, 645, Selected, .65f, true);
     }
 
-    private static string OnOff(bool value) => value ? "ON" : "OFF";
-
-    private void DrawBindings()
+    private Rectangle GlyphSource(ButtonGlyph glyph)
     {
-        Header($"KEYBOARD {menu.BindingDevice + 1}");
-        game.Renderer.Panel(new Rectangle(280, 145, 720, 465), PanelColor);
-        var k = game.Settings.Keyboard[menu.BindingDevice];
-        Menu(
-            [
-                "LEFT: " + k.Left,
-                "RIGHT: " + k.Right,
-                "UP: " + k.Up,
-                "DOWN: " + k.Down,
-                "JUMP: " + k.Jump,
-                "BAT: " + k.Attack,
-                "TONGUE: " + k.Tongue,
-                "STRAFE: " + k.Strafe,
-            ],
-            menu.BindingRow,
-            180,
-            47
-        );
-        Footer(menu.WaitingForBinding ? "PRESS A KEY (ESC CANCELS)" : "UP/DOWN: SELECT   ENTER: REBIND   ESC: BACK");
+        if (glyphSources.TryGetValue(glyph.Path, out var source))
+            return source;
+        var texture = game.Assets.Texture(glyph.Path);
+        var pixels = new Color[texture.Width * texture.Height];
+        texture.GetData(pixels);
+        int left = texture.Width,
+            top = texture.Height,
+            right = 0,
+            bottom = 0;
+        for (int y = 0; y < texture.Height; y++)
+        for (int x = 0; x < texture.Width; x++)
+            if (pixels[y * texture.Width + x].A > 0)
+            {
+                left = Math.Min(left, x);
+                top = Math.Min(top, y);
+                right = Math.Max(right, x + 1);
+                bottom = Math.Max(bottom, y + 1);
+            }
+        source = new Rectangle(left, top, right - left, bottom - top);
+        glyphSources.Add(glyph.Path, source);
+        return source;
+    }
+
+    private float GlyphWidth(ButtonGlyph glyph)
+    {
+        var source = GlyphSource(glyph);
+        return game.Renderer.ImageSize(source, source.Width * 2).X;
+    }
+
+    private float HintWidth(ButtonGlyph glyph, string text) =>
+        GlyphWidth(glyph) + HintGap + game.Assets.Font.Measure(text, HintScale).X;
+
+    private void CenteredHint(ButtonGlyph glyph, string text, float x, float y, Color? color = null) =>
+        ActionHint(glyph, text, x - HintWidth(glyph, text) / 2, y, color);
+
+    private void ActionHint(ButtonGlyph glyph, string text, float x, float y, Color? color = null)
+    {
+        Glyph(glyph, x, y);
+        game.Renderer.CenteredText(text, x + GlyphWidth(glyph) + HintGap, y, color ?? Color.White, HintScale);
+    }
+
+    private void Glyph(ButtonGlyph glyph, float x, float y)
+    {
+        var source = GlyphSource(glyph);
+        float width = source.Width * 2;
+        var size = game.Renderer.ImageSize(source, width);
+        game.Renderer.Image(glyph.Path, source, new Vector2(x + size.X / 2, y + 1 - size.Y / 2), width);
     }
 
     private void DrawWrapped(string text, float x, float y, float width, Color color)
@@ -304,10 +272,8 @@ internal sealed class MenuRenderer
                 y += 32;
                 line = "";
             }
-
             line += word + " ";
         }
-
         game.Renderer.Text(line, x, y, color, .9f);
     }
 }

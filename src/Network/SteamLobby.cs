@@ -2,12 +2,12 @@ using Steamworks;
 
 namespace FrogSmashers.Network;
 
-public sealed class SteamLobby : IGameLobby
+public sealed class SteamLobby : GameLobby
 {
     private readonly bool hosting;
-    private readonly int peers;
-    private readonly int localPlayers;
-    private readonly int[]? localTeams;
+    private readonly int capacity;
+    private readonly LobbyPlayer[] players;
+    private readonly LobbySlot[]? initialRooms;
     private readonly string contentHash;
     private readonly string settings;
     private readonly List<IDisposable> callbacks = new();
@@ -19,61 +19,44 @@ public sealed class SteamLobby : IGameLobby
     private bool disposed;
     private string status = "Initializing Steam";
     private string? error;
+    private string advertisedCapacity = "";
     public ulong LobbyCode => lobbyId.m_SteamID;
     public ulong RequestedLobby { get; private set; }
-    public bool Ready => relay?.Ready ?? false;
-    public string Status => relay?.Status ?? status;
-    public string? Error => error ?? relay?.Error;
-    public int LocalPeer => relay?.LocalPeer ?? -1;
-    public int[][] PeerSlots => relay?.PeerSlots ?? [];
-    public int[] PlayerTeams => relay?.PlayerTeams ?? [];
-    public string MatchSettingsJson => relay?.MatchSettingsJson ?? settings;
+    protected override IGameLobby? Active => relay;
+    public override bool IsHost => hosting;
+    public override string Status => relay?.Status ?? status;
+    public override string? Error => error ?? relay?.Error;
 
     public static SteamLobby Host(
-        int peerCount,
-        int localPlayers,
+        int capacity,
+        LobbyPlayer[] players,
         string contentHash,
         string settingsJson,
         uint appId = 480,
-        int[]? localTeams = null
-    ) => new(true, 0, peerCount, localPlayers, contentHash, settingsJson, appId, localTeams);
+        IReadOnlyList<LobbySlot>? initialRooms = null
+    ) => new(true, 0, capacity, players, contentHash, settingsJson, appId, initialRooms);
 
-    public static SteamLobby Join(
-        ulong lobbyId,
-        int localPlayers,
-        string contentHash,
-        uint appId = 480,
-        int[]? localTeams = null
-    ) => new(false, lobbyId, 0, localPlayers, contentHash, "", appId, localTeams);
+    public static SteamLobby Join(ulong lobbyId, LobbyPlayer[] players, string contentHash, uint appId = 480) =>
+        new(false, lobbyId, 8, players, contentHash, "", appId);
 
     private SteamLobby(
         bool hosting,
         ulong joinId,
-        int peers,
-        int localPlayers,
+        int capacity,
+        LobbyPlayer[] players,
         string hash,
         string settings,
         uint appId,
-        int[]? localTeams
+        IReadOnlyList<LobbySlot>? initialRooms = null
     )
     {
-        if (localPlayers is < 1 or > 7 || hosting && (peers is < 2 or > 8 || localPlayers + peers - 1 > 8))
-        {
-            throw new ArgumentException("Invalid Steam lobby size");
-        }
-
-        this.localTeams = localTeams?.ToArray();
-        if (
-            this.localTeams != null
-            && (this.localTeams.Length != localPlayers || this.localTeams.Any(t => t is < -1 or > 7))
-        )
-        {
-            throw new ArgumentException("Invalid local team selections");
-        }
-
+        var validation = new LobbyRoster();
+        if (!validation.SetPlayers(0, players) || !validation.SetCapacity(capacity))
+            throw new ArgumentException("Invalid Steam lobby configuration");
         this.hosting = hosting;
-        this.peers = peers;
-        this.localPlayers = localPlayers;
+        this.capacity = capacity;
+        this.players = players.ToArray();
+        this.initialRooms = initialRooms?.ToArray();
         contentHash = hash;
         this.settings = settings;
         try
@@ -103,7 +86,7 @@ public sealed class SteamLobby : IGameLobby
                     }
                 );
                 callbacks.Add(created);
-                created.Set(SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypePrivate, peers));
+                created.Set(SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypePrivate, 8));
             }
             else
             {
@@ -155,7 +138,7 @@ public sealed class SteamLobby : IGameLobby
 
         lobbyId = new CSteamID(c.m_ulSteamIDLobby);
         SteamMatchmaking.SetLobbyData(lobbyId, "game", "FrogSmashersRebuilt");
-        SteamMatchmaking.SetLobbyData(lobbyId, "protocol", "2");
+        SteamMatchmaking.SetLobbyData(lobbyId, "protocol", "4");
         SteamMatchmaking.SetLobbyData(lobbyId, "content", contentHash);
         SteamMatchmaking.SetLobbyData(lobbyId, "state", "forming");
         StartRelay();
@@ -177,7 +160,7 @@ public sealed class SteamLobby : IGameLobby
         lobbyId = new CSteamID(c.m_ulSteamIDLobby);
         if (
             SteamMatchmaking.GetLobbyData(lobbyId, "game") != "FrogSmashersRebuilt"
-            || SteamMatchmaking.GetLobbyData(lobbyId, "protocol") != "2"
+            || SteamMatchmaking.GetLobbyData(lobbyId, "protocol") != "4"
             || SteamMatchmaking.GetLobbyData(lobbyId, "content") != contentHash
         )
         {
@@ -206,11 +189,11 @@ public sealed class SteamLobby : IGameLobby
         relay = new RelayLobby(
             wire,
             hosting ? null : owner.m_SteamID.ToString(),
-            peers,
-            localPlayers,
+            capacity,
+            players,
             contentHash,
             settings,
-            localTeams
+            initialRooms
         );
     }
 
@@ -233,13 +216,15 @@ public sealed class SteamLobby : IGameLobby
             | EChatMemberStateChange.k_EChatMemberStateChangeKicked
             | EChatMemberStateChange.k_EChatMemberStateChangeBanned
         );
-        if ((c.m_rgfChatMemberStateChange & leaving) != 0 && Ready)
+        if ((c.m_rgfChatMemberStateChange & leaving) != 0 && !Starting && hosting)
+            relay.RemovePeer(c.m_ulSteamIDUserChanged.ToString());
+        if ((c.m_rgfChatMemberStateChange & leaving) != 0 && Starting)
         {
             error = "A Steam peer left the match";
         }
     }
 
-    public void Poll()
+    public override void Poll()
     {
         if (disposed || !initialized || Error != null)
         {
@@ -253,7 +238,22 @@ public sealed class SteamLobby : IGameLobby
             error = "Steam lobby setup timed out";
         }
 
-        if (hosting && Ready && SteamMatchmaking.GetLobbyData(lobbyId, "state") != "started")
+        if (hosting && relay != null)
+        {
+            int capacity = Roster.Capacity;
+            int occupied = Roster.Count;
+            int open = Roster.Slots.Count(slot => slot.Open && slot.Type == SlotType.Open && slot.Player == null);
+            string advertisement = $"{capacity}:{occupied}:{open}";
+            if (advertisement != advertisedCapacity)
+            {
+                SteamMatchmaking.SetLobbyData(lobbyId, "capacity", capacity.ToString());
+                SteamMatchmaking.SetLobbyData(lobbyId, "players", occupied.ToString());
+                SteamMatchmaking.SetLobbyData(lobbyId, "open_slots", open.ToString());
+                advertisedCapacity = advertisement;
+            }
+        }
+
+        if (hosting && Starting && SteamMatchmaking.GetLobbyData(lobbyId, "state") != "started")
         {
             SteamMatchmaking.SetLobbyJoinable(lobbyId, false);
             SteamMatchmaking.SetLobbyData(lobbyId, "state", "started");
@@ -268,7 +268,7 @@ public sealed class SteamLobby : IGameLobby
         }
     }
 
-    public IPeerTransport CreateTransport() =>
+    public override IPeerTransport CreateTransport() =>
         Ready ? new SteamSessionTransport(this, relay!) : throw new InvalidOperationException("Lobby is not ready");
 
     private sealed class SteamSessionTransport(SteamLobby owner, RelayLobby relay) : IPeerTransport
@@ -284,7 +284,7 @@ public sealed class SteamLobby : IGameLobby
         public void Dispose() => owner.Dispose();
     }
 
-    public void Dispose()
+    public override void Dispose()
     {
         if (disposed)
         {

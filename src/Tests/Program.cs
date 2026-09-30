@@ -50,7 +50,7 @@ internal static class Program
                     return 0;
                 }
 
-                using (var lobby = SteamLobby.Host(2, 1, "probe", "{}"))
+                using (var lobby = SteamLobby.Host(2, [new(0, Spawned: true)], "probe", "{}"))
                 {
                     lobby.Poll();
                     Console.WriteLine(lobby.Error ?? $"Steam initialized: {lobby.Status}");
@@ -72,6 +72,7 @@ internal static class Program
             CombatTests.TongueAttacks();
             CombatTests.FlyClaims();
             CombatTests.StrafeInputs();
+            CombatTests.StrafingTongueAim();
             CombatTests.TongueCollisions();
             MatchTests.Scoring();
             MatchTests.RoundProgression();

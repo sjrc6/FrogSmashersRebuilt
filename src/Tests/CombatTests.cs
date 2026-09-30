@@ -63,6 +63,7 @@ internal static class CombatTests
         target.OnGround = false;
         target.HitstopTicks = 120;
         target.HitstopScale = 0;
+        var beforeBounce = bouncer.Capture();
         Step(bouncer);
         var collisionHit = bouncer.Events.Single(e => e.Kind == SimulationEventKind.Hit);
         Check(
@@ -72,6 +73,10 @@ internal static class CombatTests
                 && collisionHit.HitstopSeconds == 1,
             "bouncer effects use the original midpoint and retain a longer pre-existing hitstop duration"
         );
+        bouncer.Restore(beforeBounce);
+        bouncer.Players[0].HasReachedApex = true;
+        Step(bouncer);
+        Check(!bouncer.Events.Any(e => e.Kind == SimulationEventKind.Hit), "body bounces stop after the launch apex");
         var launch = CreateWorld();
         var launched = launch.Players[0];
         launched.Y = 10;
@@ -264,12 +269,6 @@ internal static class CombatTests
         Check(r.Facing == 1 && r.VX < 0, "strafe suppresses bounce velocity-driven turning");
         Step(rebound);
         Check(r.Facing == -1, "releasing strafe restores bounce velocity-driven turning");
-        var aim = CreateWorld();
-        Step(aim, new(-1, 0, InputButtons.Strafe | InputButtons.Tongue));
-        Check(
-            aim.Players[0].TongueX == -1 && aim.Players[0].Facing == -1,
-            "tongue follows explicit directional aim even while strafe is held"
-        );
         var simultaneous = CreateWorld();
         Step(
             simultaneous,
@@ -310,6 +309,72 @@ internal static class CombatTests
         Check(
             replayed.HashState() == recorded.HashState(),
             "strafe inputs replay deterministically from a canonical snapshot"
+        );
+    }
+
+    public static void StrafingTongueAim()
+    {
+        (sbyte X, sbyte Y, int AimX, int AimY)[] directions =
+        [
+            (-1, 0, 1, 0),
+            (0, 0, 1, 0),
+            (1, 0, 1, 0),
+            (-1, 1, 1, 1),
+            (0, 1, 0, 1),
+            (1, 1, 1, 1),
+            (-1, -1, 1, -1),
+            (0, -1, 0, -1),
+            (1, -1, 1, -1),
+        ];
+        foreach (int facing in new[] { -1, 1 })
+        foreach (
+            var (mode, grounded) in new[]
+            {
+                (CharacterMode.Normal, true),
+                (CharacterMode.Normal, false),
+                (CharacterMode.Bouncing, false),
+            }
+        )
+        foreach (var direction in directions)
+        {
+            var world = CreateWorld();
+            var player = world.Players[0];
+            player.Facing = facing;
+            player.Mode = mode;
+            player.OnGround = grounded;
+            player.Y = grounded ? 0 : 10;
+            player.VX = -facing * 5;
+            player.CanBounceTongue = true;
+            Step(world, new((sbyte)(direction.X * facing), direction.Y, InputButtons.Strafe | InputButtons.Tongue));
+            var expected =
+                grounded && direction.Y < 0
+                    ? new FixedVector(facing, 0)
+                    : new FixedVector(direction.AimX * facing, direction.AimY).Normalized;
+            Check(
+                player.Mode == CharacterMode.Tongue
+                    && player.Facing == facing
+                    && new FixedVector(player.TongueX, player.TongueY) == expected,
+                $"strafing tongue keeps facing {facing}: {mode}, grounded {grounded}, input {direction.X},{direction.Y}"
+            );
+        }
+
+        var aim = CreateWorld();
+        Step(aim, new(-1, 0, InputButtons.Strafe | InputButtons.Tongue));
+        Step(aim, new(-1, 1, InputButtons.Strafe), 8);
+        Check(
+            aim.Players[0].Facing == 1 && aim.Players[0].TongueX == 1 && aim.Players[0].TongueY == 0,
+            "changing direction after launch does not turn or redirect a strafing tongue"
+        );
+        for (int tick = 0; tick < 120 && aim.Players[0].Mode == CharacterMode.Tongue; tick++)
+            Step(aim, new(-1, 0, InputButtons.Strafe));
+        Check(aim.Players[0].Mode == CharacterMode.Normal, "strafing tongue retracts normally");
+        Step(aim, new(-1, 1, InputButtons.Tongue));
+        var diagonal = new FixedVector(-1, 1).Normalized;
+        Check(
+            aim.Players[0].Mode == CharacterMode.Tongue
+                && aim.Players[0].Facing == -1
+                && new FixedVector(aim.Players[0].TongueX, aim.Players[0].TongueY) == diagonal,
+            "releasing strafe restores directional tongue aim and turning on the next shot"
         );
     }
 

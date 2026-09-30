@@ -79,12 +79,19 @@ internal static class UdpProcessTests
     {
         using IGameLobby lobby =
             args[1] == "host"
-                ? UdpLobby.Host(int.Parse(args[2]), 2, 2, "test", "{}")
-                : UdpLobby.Join("127.0.0.1", int.Parse(args[2]), 2, "test");
+                ? UdpLobby.Host(int.Parse(args[2]), 4, [new(0, Spawned: true), new(1, Spawned: true)], "test", "{}")
+                : UdpLobby.Join(
+                    "127.0.0.1",
+                    int.Parse(args[2]),
+                    [new(0, Spawned: true), new(1, Spawned: true)],
+                    "test"
+                );
         var timer = Stopwatch.StartNew();
         while (!lobby.Ready && timer.Elapsed.TotalSeconds < 10)
         {
             lobby.Poll();
+            if (lobby.IsHost && !lobby.Starting && lobby.Roster.Count == 4)
+                lobby.StartMatch("{}");
             if (lobby.Error != null)
             {
                 throw new Exception(lobby.Error);

@@ -108,10 +108,6 @@ internal static class PhysicsTests
         );
         Step(embed, new(0, -1, InputButtons.Jump), 20);
         Check(embed.Players[0].Y < -FromDecimal(.5m), "holding down+jump passes fully through one-way platforms");
-        var safe = CreateWorld(new() { PreservePlatformEmbedding = false }, platform);
-        safe.Players[0].Y = FromDecimal(.49m);
-        Step(safe, count: 10);
-        Check(!safe.Players[0].OnGround, "platform embedding compatibility flag is effective");
         var walls = CreateWorld(
             map: new()
             {

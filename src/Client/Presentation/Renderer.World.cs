@@ -15,6 +15,8 @@ public sealed partial class Renderer
     private enum DrawKind
     {
         MapSprite,
+        LobbyBackground,
+        LobbyPreview,
         Parallax,
         Shimmer,
         Smoke,
@@ -59,7 +61,13 @@ public sealed partial class Renderer
         ) => drawCommands.Add(new(layer, order, QueueFor(material), z, drawCommands.Count, kind, item, player));
         foreach (var sprite in world.Map.Sprites.Where(s => s.Active && s.Visible))
         {
-            AddCommand(sprite.SortingLayer, sprite.Order, sprite.Material, sprite.Z, DrawKind.MapSprite, sprite);
+            if (world.Rules.Lobby)
+            {
+                if (sprite.SpriteId == "lobby-background")
+                    AddCommand(0, 0, "", sprite.Z, DrawKind.LobbyBackground);
+            }
+            else
+                AddCommand(sprite.SortingLayer, sprite.Order, sprite.Material, sprite.Z, DrawKind.MapSprite, sprite);
         }
 
         foreach (var piece in parallax)
@@ -103,10 +111,13 @@ public sealed partial class Renderer
         {
             int slot = i;
             var p = world.Players[i];
-            if (!p.Alive)
+            if (world.Rules.Lobby && lobbyPreviews[i] != null)
             {
+                AddCommand(0, 0, "SelectiveColorReplace", 0, DrawKind.LobbyPreview, player: i);
                 continue;
             }
+            if (!p.Alive)
+                continue;
 
             var pose = characters[i];
             var pos = characterPositions[i];
@@ -223,6 +234,12 @@ public sealed partial class Renderer
     {
         switch (command.Kind)
         {
+            case DrawKind.LobbyBackground:
+                DrawLobbyBackground(world.Map);
+                break;
+            case DrawKind.LobbyPreview:
+                DrawLobbyPreview(world, command.Player);
+                break;
             case DrawKind.MapSprite:
                 canvas.Begin(0);
                 DrawSceneSprite((SceneSpriteData)command.Item!);

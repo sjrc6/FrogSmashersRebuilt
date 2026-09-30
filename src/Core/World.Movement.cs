@@ -165,7 +165,7 @@ public sealed partial class World
                 && !player.HasBounceDodged
                 && player.HitsTaken >= 1
                 && !player.OnGround
-                && (!player.HasReachedApex || !Rules.OnlyBounceBeforeRecover)
+                && !player.HasReachedApex
                 && deltaTime > 0
             )
             {
@@ -188,15 +188,6 @@ public sealed partial class World
                     )
                     {
                         HitByBouncingPlayer(other, player);
-                        if (Rules.WeirdBounceTrajectories)
-                        {
-                            SetVelocity(
-                                player,
-                                (player.Position - other.Position).Normalized
-                                    * player.Velocity.Length
-                                    * FromDecimal(.75m)
-                            );
-                        }
                     }
                 }
             }

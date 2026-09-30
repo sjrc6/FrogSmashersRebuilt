@@ -17,6 +17,13 @@ public sealed class Controls
     private readonly InputButtons[] held = new InputButtons[KeyboardCount + ControllerCount];
     private readonly InputButtons[] edges = new InputButtons[KeyboardCount + ControllerCount];
     public Func<KeyboardState>? KeyboardSource { get; set; }
+    public Func<int, GamePadState>? GamePadSource { get; set; }
+    public Func<MouseState>? MouseSource { get; set; }
+    public MouseState MouseNow { get; private set; }
+    private MouseState mouseBefore;
+    public bool MouseMoved => MouseNow.Position != mouseBefore.Position;
+    public bool MousePressed =>
+        MouseNow.LeftButton == ButtonState.Pressed && mouseBefore.LeftButton == ButtonState.Released;
 
     public Controls(ClientSettings settings) => this.settings = settings;
 
@@ -26,10 +33,12 @@ public sealed class Controls
     {
         KeysBefore = KeysNow;
         KeysNow = KeyboardSource?.Invoke() ?? Keyboard.GetState();
+        mouseBefore = MouseNow;
+        MouseNow = MouseSource?.Invoke() ?? Mouse.GetState();
         for (int i = 0; i < ControllerCount; i++)
         {
             beforePads[i] = Pads[i];
-            Pads[i] = GamePad.GetState(i, GamePadDeadZone.None);
+            Pads[i] = GamePadSource?.Invoke(i) ?? GamePad.GetState(i, GamePadDeadZone.None);
         }
 
         for (int i = 0; i < KeyboardCount + ControllerCount; i++)
@@ -52,6 +61,55 @@ public sealed class Controls
                 return true;
         }
         return false;
+    }
+
+    public int Horizontal(int device, bool menu = false)
+    {
+        if (device < 2)
+        {
+            bool right = Press(device == 0 ? Keys.D : Keys.Right) || menu && Press(Keys.Right) || menu && Press(Keys.D);
+            bool left = Press(device == 0 ? Keys.A : Keys.Left) || menu && Press(Keys.Left) || menu && Press(Keys.A);
+            return (right ? 1 : 0) - (left ? 1 : 0);
+        }
+        int pad = device - 2;
+        bool rightPad =
+            PadPress(pad, Buttons.DPadRight)
+            || Pads[pad].ThumbSticks.Left.X > .5f && beforePads[pad].ThumbSticks.Left.X <= .5f;
+        bool leftPad =
+            PadPress(pad, Buttons.DPadLeft)
+            || Pads[pad].ThumbSticks.Left.X < -.5f && beforePads[pad].ThumbSticks.Left.X >= -.5f;
+        return (rightPad ? 1 : 0) - (leftPad ? 1 : 0);
+    }
+
+    public int Vertical(int device, bool menu = false)
+    {
+        if (device < 2)
+        {
+            bool down = Press(device == 0 ? Keys.S : Keys.Down) || menu && Press(Keys.Down) || menu && Press(Keys.S);
+            bool up = Press(device == 0 ? Keys.W : Keys.Up) || menu && Press(Keys.Up) || menu && Press(Keys.W);
+            return (down ? 1 : 0) - (up ? 1 : 0);
+        }
+        int pad = device - 2;
+        bool downPad =
+            PadPress(pad, Buttons.DPadDown)
+            || Pads[pad].ThumbSticks.Left.Y < -.5f && beforePads[pad].ThumbSticks.Left.Y >= -.5f;
+        bool upPad =
+            PadPress(pad, Buttons.DPadUp)
+            || Pads[pad].ThumbSticks.Left.Y > .5f && beforePads[pad].ThumbSticks.Left.Y <= .5f;
+        return (downPad ? 1 : 0) - (upPad ? 1 : 0);
+    }
+
+    public int? MenuDevice()
+    {
+        if (Press(Keys.Escape))
+            return 0;
+        for (int i = 0; i < ControllerCount; i++)
+        {
+            if (PadPress(i, Buttons.Start))
+                return i + KeyboardCount;
+        }
+
+        return null;
     }
 
     public InputFrame Read(int device, bool consume = true)

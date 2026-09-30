@@ -455,6 +455,7 @@
     "Textures/Sprites/BackGrounds/Skyline/smoke.xnb": "a7d984255a00e228750fc3bfb2c6ad31920704f58a477d0faa4bbeb22c2de079",
     "Textures/Sprites/BackGrounds/busstop_bg_temp_v1.xnb": "bbc6ea19752eca7d008b1fe1d26fec6f63193ebfa4f5285ccb9c1b2a566ce819",
     "Textures/Sprites/BackGrounds/join_screen_v1.xnb": "8d07b3559224544f137ca68e6423b60ca831ba758de6e333a84326ef2d4197a9",
+    "Textures/Sprites/BackGrounds/lobby_background_v1.xnb": "ed673f70b859ac39c83fdaf71026ce74b423df985ffa2109421686138c9ff5bb",
     "Textures/Sprites/Effects/Impact/Star.xnb": "6ceebd1847d29327cffedb3d607c7731c9d728a3f94e38003624ef27ef1f553c",
     "Textures/Sprites/Effects/Impact/fx_hit_v1_02.xnb": "cd926981c3432a6dab55778ec4892dc9a85ad02ad6f588a5268d7c53cdac8875",
     "Textures/Sprites/Effects/Impact/fx_hit_v1_03.xnb": "5324bc843bbcd47686875f905bb6d7d09674cb544d0bc849a9188f6e70dd2074",
@@ -737,6 +738,162 @@
     "Textures/Sprites/logo_rebuilt.xnb": "84376d3960909eb307ce89c63c31f7c0ff5ef8290d7b91476beda1412fd2d143",
     "Textures/Sprites/logo_v2.xnb": "ba7b404293ef3039d9899d302b16dc71866a6599c9592626fe6adf66c526f84a",
     "Textures/Sprites/white.xnb": "1d1def8c9ea3d55945ab366c426d85b15f1ba76525c84b8733f6f29ad5fd55f8",
+    "UI/Buttons/keyboard/baked/A.xnb": "b6ea2e86eb49c6d094798bc858fc72cd41f0e4d79c03817dc661bef6db2d3781",
+    "UI/Buttons/keyboard/baked/Add.xnb": "6e845289a79a980d485564b531b1103c3ec7309fbc8e0a0d0f52c38b16f9e579",
+    "UI/Buttons/keyboard/baked/Apps.xnb": "2b65aeb70522ae67d20231419736215f6f236c58269e74b6b3e265aee9ba577d",
+    "UI/Buttons/keyboard/baked/B.xnb": "9cb35065e1fa17b8067decf8d039d59bd2390ab66e50584364e72a5310d2871e",
+    "UI/Buttons/keyboard/baked/Back.xnb": "b424d233b3a3ceb9467b8c5677b6c611c86a7f9275bbcf89018c7daa82843d94",
+    "UI/Buttons/keyboard/baked/C.xnb": "d4c9439097edd6dba3b98eccf357d17f2b4a34246f87c6cec510a19fd70f707d",
+    "UI/Buttons/keyboard/baked/CapsLock.xnb": "38bf1e2ae07dbd4857e1cb18628ae1b75b7197cd7dfccd273b695dc9ec454e4b",
+    "UI/Buttons/keyboard/baked/D.xnb": "d4bc9b77afb71b3806f31ebe4f89f79b7c1adcf19f6985eeba2b63ed8e4102ce",
+    "UI/Buttons/keyboard/baked/D0.xnb": "293d4c541afe38fa6800a0bbda81fe1dcc4de649327b2352f8899a5cd3a02510",
+    "UI/Buttons/keyboard/baked/D1.xnb": "df7d225b6b4becc117bdb24049c92ec28f7b405d100e273a44bbb1c8ba0b3415",
+    "UI/Buttons/keyboard/baked/D2.xnb": "e84d026eec6bb36fb0537a58d092aab4562f4d157241e346826133fa52d082ad",
+    "UI/Buttons/keyboard/baked/D3.xnb": "aa2e0733f93f494dff7a694a0fc26290dadc002320e4df990bb1937c99fd0fbd",
+    "UI/Buttons/keyboard/baked/D4.xnb": "1e5ef58acb2414f6c7c37427dbf4ef37820308bb87658ed0d3771afe487a8fb0",
+    "UI/Buttons/keyboard/baked/D5.xnb": "41a0b58c4b8b522143082f06549d81d25930e81aed567720116e8dd5626fb04b",
+    "UI/Buttons/keyboard/baked/D6.xnb": "90b15a40b44c3a87a887ff241c43c3e00923d06fe429b1e3a6d58951cd21ab85",
+    "UI/Buttons/keyboard/baked/D7.xnb": "d06237cb5573d6f3e9ef290cc1d222f748091e139d0d80d793dce04b0c66c497",
+    "UI/Buttons/keyboard/baked/D8.xnb": "57e06e06eb23c5345ba085691af563c0c9ae4f69a9eb9aa3c5aac8d7bbef019a",
+    "UI/Buttons/keyboard/baked/D9.xnb": "0a221ee197edd0bd39db975baa9a95642b7f6697644d154c9e33685189a344f2",
+    "UI/Buttons/keyboard/baked/Decimal.xnb": "a003c3355bddd598ec2dbd08b98180da6bf1021da9553a31b80a160a8beccec9",
+    "UI/Buttons/keyboard/baked/Delete.xnb": "29dbdc4a92cb7dee6b7798d07993b0a12e2b8c1dd68a33f10a8d83a3e584aa06",
+    "UI/Buttons/keyboard/baked/Divide.xnb": "531f7a76ba4d70b0184a5749a3f8c72a08417c3cdf4157c7a4e52b010c8aa9ff",
+    "UI/Buttons/keyboard/baked/Down.xnb": "9c9c3652f5ba2a7156436b6e69801c8084babe8070b84048a93a8f615048ec2f",
+    "UI/Buttons/keyboard/baked/E.xnb": "5c670ca618f616980c1d6016807f79d0a3dc53aa3cae397b99d2760dab5893c8",
+    "UI/Buttons/keyboard/baked/End.xnb": "450c47e40754fde8aa555c58fe39b62d515a643034b18460f6eb6510496fedb2",
+    "UI/Buttons/keyboard/baked/Enter.xnb": "44340d02036087e84a11fee9f9fdc2c31c443b3c81e9725107d9c80a3ff880bd",
+    "UI/Buttons/keyboard/baked/Escape.xnb": "8a90a18970d1956aa8288de442f91b4167fcbb8e048d5f1fd1f921142b36ed02",
+    "UI/Buttons/keyboard/baked/F.xnb": "862e7b49136721f9131e36d629e3510f34b19949c68bd9f7b97236de4ba63266",
+    "UI/Buttons/keyboard/baked/F1.xnb": "9224b39ca3939cd25664ff3088a074275560c21ca0d6f48fe0f4f655e6c0241d",
+    "UI/Buttons/keyboard/baked/F10.xnb": "efaa0855d3922cd749349a80f8073126511f39d8f9e1a2bbf10ed2f923789407",
+    "UI/Buttons/keyboard/baked/F11.xnb": "8d4a388fafed8983e1eb3c615ede5770623542732e524734f343e015b042889c",
+    "UI/Buttons/keyboard/baked/F12.xnb": "e07ca9b8119366d30fda39b686423017b963d94a3f34fb07f0223a8e43e348bd",
+    "UI/Buttons/keyboard/baked/F2.xnb": "2312426a5566a4a526772a2789ff3cd95efb496d56bdd6d797027b03def4e791",
+    "UI/Buttons/keyboard/baked/F3.xnb": "a531ed2a5eb271da82e89ca29d3d02e794461e0d885a2f4f90b0ccd50429da96",
+    "UI/Buttons/keyboard/baked/F4.xnb": "9e65859d3e767cb62e3e6fed7b864237f8fcd10eb202a9754033b52e8feb7fab",
+    "UI/Buttons/keyboard/baked/F5.xnb": "d79bb2d48e44a7853189a6f79d06ebf2b6b471d7ad72410f3a491799b001f2cf",
+    "UI/Buttons/keyboard/baked/F6.xnb": "22b3e7f98dadb42f8aedf2f4d77bfaff8e1a84a4a225dfc9ca7d77eae964651e",
+    "UI/Buttons/keyboard/baked/F7.xnb": "36b1bd2adc7ae4b2d1fafbc4ce95ac1f63c2d5d46d8af4cf4f40dd2bdedf6d34",
+    "UI/Buttons/keyboard/baked/F8.xnb": "0d7a4b65f5dad0d4545262d3536ba4077ee5291c6b86011e063a5e4bacbdf580",
+    "UI/Buttons/keyboard/baked/F9.xnb": "914b21eed02e35f9c386462f75c14e6ca6f2acce6b6c705b2a390948f0d176f0",
+    "UI/Buttons/keyboard/baked/G.xnb": "b55dfad13404f0eadd5c846a3bbddd7422b401ec10b5c302efc9375e062a8b62",
+    "UI/Buttons/keyboard/baked/H.xnb": "b0eaaacfe3b51c89c46adba532a137d3e68a35ee109fed04f216cf49dc151d0b",
+    "UI/Buttons/keyboard/baked/Home.xnb": "2933b92a276a58f7387092a520fe7d7c160b35447d4c0e2eb65553f6db17f067",
+    "UI/Buttons/keyboard/baked/I.xnb": "1922139ace29d09b00cd64be81c34165ae8a5222f2b06fa6e2ee3f0a2cd45349",
+    "UI/Buttons/keyboard/baked/Insert.xnb": "b217a06d8e2b659bfd028701074d07a15a62956b53aa816a62edc0beaaccbb43",
+    "UI/Buttons/keyboard/baked/J.xnb": "0d3ca4d8ae4bf917b02de2ad11cc80f6775cad887d066300086eba4884b7c4f4",
+    "UI/Buttons/keyboard/baked/K.xnb": "16667b0f141ede0321a265c881ac78dd1c27ba13ad9902dbd5a0b935851a8549",
+    "UI/Buttons/keyboard/baked/L.xnb": "60fd7f7f2e4026ba2f369ec90699409b963afc9014094c451a012338a5b30855",
+    "UI/Buttons/keyboard/baked/Left.xnb": "bfc6015709e437534a7dafdad2133cd09460577c784662029ae77f527e87d005",
+    "UI/Buttons/keyboard/baked/LeftAlt.xnb": "88497eb5a6b5e8f3004feeb6b905d263fee4b81dcecf4f8fe3caa81f2bc595c4",
+    "UI/Buttons/keyboard/baked/LeftControl.xnb": "3424403ca1042332a729f5b8048cd04ddba6e2f30e2e79b13e2af875b501ad67",
+    "UI/Buttons/keyboard/baked/LeftShift.xnb": "22c2110e76ed1c1bcd0aed27f45ea51d1303c2023593886f3fb600e0d8053572",
+    "UI/Buttons/keyboard/baked/LeftWindows.xnb": "5c39fae2f08b86be86e0538553a777169ccce367c0af3a66d786071486f5e05e",
+    "UI/Buttons/keyboard/baked/M.xnb": "289a42f4590237ea44b6813759115dccdefc91a928d268b7dacfa23f47e8ec90",
+    "UI/Buttons/keyboard/baked/Multiply.xnb": "43c6a0e2c009efa4f9aef1a4b76cfe3732f37c941a35521f6a307c4dbfe2d023",
+    "UI/Buttons/keyboard/baked/N.xnb": "ae87d4b74459d26f31bab36e2f690091e7a870c50405f3c9807547c798d8f426",
+    "UI/Buttons/keyboard/baked/NumLock.xnb": "0495f35b690d352d794281681a5aec96ef749d68e65de6492df030ee1e81cc8e",
+    "UI/Buttons/keyboard/baked/NumPad0.xnb": "293d4c541afe38fa6800a0bbda81fe1dcc4de649327b2352f8899a5cd3a02510",
+    "UI/Buttons/keyboard/baked/NumPad1.xnb": "df7d225b6b4becc117bdb24049c92ec28f7b405d100e273a44bbb1c8ba0b3415",
+    "UI/Buttons/keyboard/baked/NumPad2.xnb": "e84d026eec6bb36fb0537a58d092aab4562f4d157241e346826133fa52d082ad",
+    "UI/Buttons/keyboard/baked/NumPad3.xnb": "aa2e0733f93f494dff7a694a0fc26290dadc002320e4df990bb1937c99fd0fbd",
+    "UI/Buttons/keyboard/baked/NumPad4.xnb": "1e5ef58acb2414f6c7c37427dbf4ef37820308bb87658ed0d3771afe487a8fb0",
+    "UI/Buttons/keyboard/baked/NumPad5.xnb": "41a0b58c4b8b522143082f06549d81d25930e81aed567720116e8dd5626fb04b",
+    "UI/Buttons/keyboard/baked/NumPad6.xnb": "90b15a40b44c3a87a887ff241c43c3e00923d06fe429b1e3a6d58951cd21ab85",
+    "UI/Buttons/keyboard/baked/NumPad7.xnb": "d06237cb5573d6f3e9ef290cc1d222f748091e139d0d80d793dce04b0c66c497",
+    "UI/Buttons/keyboard/baked/NumPad8.xnb": "57e06e06eb23c5345ba085691af563c0c9ae4f69a9eb9aa3c5aac8d7bbef019a",
+    "UI/Buttons/keyboard/baked/NumPad9.xnb": "0a221ee197edd0bd39db975baa9a95642b7f6697644d154c9e33685189a344f2",
+    "UI/Buttons/keyboard/baked/O.xnb": "293d4c541afe38fa6800a0bbda81fe1dcc4de649327b2352f8899a5cd3a02510",
+    "UI/Buttons/keyboard/baked/OemBackslash.xnb": "e6daf75725a077485383c08135b0bece3cb72946facf508e8fb4768feb210335",
+    "UI/Buttons/keyboard/baked/OemCloseBrackets.xnb": "f51db318df078e5853398c369667ba4d4234062733f56e4277e6863f7cccee61",
+    "UI/Buttons/keyboard/baked/OemComma.xnb": "70e34beb51b1edaa477054a954c2a5717486a3136e5cbb03e652706d4742db1e",
+    "UI/Buttons/keyboard/baked/OemMinus.xnb": "2e166ac9b84713a2ab6f14cec899b0cb329b4eec93a4547eff0cd9a8ae1a7234",
+    "UI/Buttons/keyboard/baked/OemOpenBrackets.xnb": "0429aabcfe9b5a7640e4de46ff3e0963e3fb71d755cd2f1473dc7eac641ca965",
+    "UI/Buttons/keyboard/baked/OemPeriod.xnb": "a003c3355bddd598ec2dbd08b98180da6bf1021da9553a31b80a160a8beccec9",
+    "UI/Buttons/keyboard/baked/OemPipe.xnb": "e6daf75725a077485383c08135b0bece3cb72946facf508e8fb4768feb210335",
+    "UI/Buttons/keyboard/baked/OemPlus.xnb": "9d9b7c05597def6508df8e49c84a1f6fe4fa99b906b5fea7d38a6a826b6f687b",
+    "UI/Buttons/keyboard/baked/OemQuestion.xnb": "531f7a76ba4d70b0184a5749a3f8c72a08417c3cdf4157c7a4e52b010c8aa9ff",
+    "UI/Buttons/keyboard/baked/OemQuotes.xnb": "fb8cd29e51424874343897c0308c286f93c036b4d9b2f0b99d33f5a4080d8465",
+    "UI/Buttons/keyboard/baked/OemSemicolon.xnb": "703272569e8148e6a6dc32e475e4a834cc50127c5f3f035149a54dbd7ba7ee1f",
+    "UI/Buttons/keyboard/baked/OemTilde.xnb": "3d15fe9cba63a6b30ac971093c3b406901ced918c11889fc5e5f2ae87b57c2a8",
+    "UI/Buttons/keyboard/baked/P.xnb": "7ac22e9b0402414106e66dfcc9011e005b33629f0bfaadbe8cc833c3c929f42a",
+    "UI/Buttons/keyboard/baked/PageDown.xnb": "4865844312e2b08017c928bcd3eb3a5691c72333892985708e38f49be95a2934",
+    "UI/Buttons/keyboard/baked/PageUp.xnb": "f44924a96b324b90655ee420051c84a1c1b95068ad4d115f66e331937a3c0dd9",
+    "UI/Buttons/keyboard/baked/Pause.xnb": "e2d9111b389df6a192c2c52de6cec236bc38500c0f8d9fde08b7334aada407b2",
+    "UI/Buttons/keyboard/baked/PrintScreen.xnb": "c5c5b4b67acd0971deff2576a15087588163d931e99be90fb1cfd88b5d3a9410",
+    "UI/Buttons/keyboard/baked/Q.xnb": "f228c86c2b66c2afd7bf12fc011bb10e476487773cbbfcbefc486fb0bb66d514",
+    "UI/Buttons/keyboard/baked/R.xnb": "9333b21ede560e71f21aa1423dff0f3a2afa407d97f6256b50cd71cf483dce30",
+    "UI/Buttons/keyboard/baked/Right.xnb": "e5bb1eb145557728455283389fda27585f416f413c7dce62493bb8f577317a5f",
+    "UI/Buttons/keyboard/baked/RightAlt.xnb": "88497eb5a6b5e8f3004feeb6b905d263fee4b81dcecf4f8fe3caa81f2bc595c4",
+    "UI/Buttons/keyboard/baked/RightControl.xnb": "3424403ca1042332a729f5b8048cd04ddba6e2f30e2e79b13e2af875b501ad67",
+    "UI/Buttons/keyboard/baked/RightShift.xnb": "22c2110e76ed1c1bcd0aed27f45ea51d1303c2023593886f3fb600e0d8053572",
+    "UI/Buttons/keyboard/baked/RightWindows.xnb": "5c39fae2f08b86be86e0538553a777169ccce367c0af3a66d786071486f5e05e",
+    "UI/Buttons/keyboard/baked/S.xnb": "3ca4715d0893fecf0f9441e8d9f09f77ce8aeaf05c20b306477722bdbe31d811",
+    "UI/Buttons/keyboard/baked/Scroll.xnb": "8c121588088c919c82d665dd7fea8856d8b3b534e61da2697f32831654c93797",
+    "UI/Buttons/keyboard/baked/Separator.xnb": "70e34beb51b1edaa477054a954c2a5717486a3136e5cbb03e652706d4742db1e",
+    "UI/Buttons/keyboard/baked/Space.xnb": "0ce574a1aa0a1cdd27dd7ff759c068613ae35923ef4e1229e9b8481cf7648973",
+    "UI/Buttons/keyboard/baked/Subtract.xnb": "2e166ac9b84713a2ab6f14cec899b0cb329b4eec93a4547eff0cd9a8ae1a7234",
+    "UI/Buttons/keyboard/baked/T.xnb": "0159fce87e1edd19c8a7618c16499e2de47bd527176aa791a92d66121ae8fd9a",
+    "UI/Buttons/keyboard/baked/Tab.xnb": "927cdc52a6114174129ed2c8ea3a9cf956b04f13f274442aa2590446752bd52a",
+    "UI/Buttons/keyboard/baked/U.xnb": "482cd00ea6788b1c8149cb65bb664c64136b3cdeeb3b2c7658ecbdf8484cb017",
+    "UI/Buttons/keyboard/baked/Up.xnb": "a7403d06b3882fd183a31a839eca4eef0941f07fbf0fcef8ff3c3f4829734b0a",
+    "UI/Buttons/keyboard/baked/V.xnb": "1c3d12b1ef7ba33c1360ea18dd02987bfb9e54977ffb6a3ce5761a2eb7a5c87c",
+    "UI/Buttons/keyboard/baked/W.xnb": "15a5174bbbf2209b5a305c71365f9b562f2da10421025e8fb2c541479009d420",
+    "UI/Buttons/keyboard/baked/X.xnb": "bcf14bd552e30edd9aafd42a8688f13ea9646ea9b3c791eb491d47edf27ed579",
+    "UI/Buttons/keyboard/baked/Y.xnb": "60a8c57145f40703d80f61e4ffa345c0ae8c036e8cea3ef8cc412dd11bbf7a16",
+    "UI/Buttons/keyboard/baked/Z.xnb": "1dfeed207735206bf3c4cb4837e52c2c4035f72da2f8fc86a8c03899972f864d",
+    "UI/Buttons/keyboard/key.xnb": "a88d1dbe7f41e37644547539665a95e5a039f2847143a9a7a3f33d3c8e60911c",
+    "UI/Buttons/ps4/circle.xnb": "3b627840bc511c7fbe437e5039fd8bb12b7720e9be8ad0cd0d682f0b4e5dcc94",
+    "UI/Buttons/ps4/dPad.xnb": "b356558df5b0febb6bc82bc56daf5f3a283456a398b1de355eb84cc8373d252e",
+    "UI/Buttons/ps4/dPadDown.xnb": "19011eb7f8781f8d3ffe99bc3ef0489d0769ac19c44c8bef3e2a12be84393268",
+    "UI/Buttons/ps4/dPadLeft.xnb": "e548915331bd4f08b45241dfcfe41a000c6679539400d659f84892aac5ef149b",
+    "UI/Buttons/ps4/dPadRight.xnb": "e00d4f49fcaae9170a0ee14825cf26ee110765f633e6b98549a21620c1670290",
+    "UI/Buttons/ps4/dPadUp.xnb": "270067065103270f9ad48a08a5b2de7335e6d53b6cd457dfe73523fec9f2420c",
+    "UI/Buttons/ps4/leftBumper.xnb": "6f20419404a7e21b43e5e16f2d0513f32c0d78c86e474503759f7847ec76fb34",
+    "UI/Buttons/ps4/leftStick.xnb": "37c874dd9b33ba13957bb36208365547058db35c30672d71ecaea5f1dceeb9e4",
+    "UI/Buttons/ps4/leftTrigger.xnb": "b7b883ef6e5e083b4a000aab755163cb14097fb1e7d39d86bc82a1ce568835d9",
+    "UI/Buttons/ps4/rightBumper.xnb": "454ffb5187bdb31d4cde5adcffffd8257131b8d089b777b1ecee9514aa44bc80",
+    "UI/Buttons/ps4/rightStick.xnb": "d52dffdfbded7ba658247a45474c821cea916d4b5bbc8fdc0e75f7ea05f85d5f",
+    "UI/Buttons/ps4/rightTrigger.xnb": "ec6e1f1e48204b42c91b31a3439ccbab655cf2f87b617ecd2aff99346ff47005",
+    "UI/Buttons/ps4/square.xnb": "16b5642614ab72c7347ae10d22b7265d655b9f226c08912d5ad22aaed71ff5e0",
+    "UI/Buttons/ps4/startButton.xnb": "b368d06530f753efce71e1c0688c7410ba7aadce18d2f6a2615588b00a691a62",
+    "UI/Buttons/ps4/triangle.xnb": "aac58e9998711d268ead25bbfb56202b179646d8245b6b7350c77d68dcc1fd0c",
+    "UI/Buttons/ps4/x.xnb": "cc63e99db905a52b98d71ff61047cba18ba342bbf66a4fbf4c754786ae7290a5",
+    "UI/Buttons/switch/pro/aButton.xnb": "bcb3c5cd1b293d26c7698ee6e1245afa88441643326477ec983a98c0cde7eb6e",
+    "UI/Buttons/switch/pro/dPad.xnb": "490d1c61672af696311ebdf4b6b028d50942e6a2db1722bb621fa813093f53cb",
+    "UI/Buttons/switch/pro/dPadDown.xnb": "905d0b008d8b8d7c9e8f7fecbb2a61a3de101451fc07e637e34e24f945cacca5",
+    "UI/Buttons/switch/pro/dPadLeft.xnb": "48b62aeeb16d7aee0936b35e2414a773c6d67f4d2b9333dc9c8b64c13774d956",
+    "UI/Buttons/switch/pro/dPadRight.xnb": "f1b5f4f5d3fb2edc0192ad4a96f88a4e0953afd160880865dffe9c13f4eee78c",
+    "UI/Buttons/switch/pro/dPadUp.xnb": "db1670ff4134936e35e13b4e3079e73c49978835e6defcd6cd1e6e7a50363bfe",
+    "UI/Buttons/switch/pro/leftBumper.xnb": "a2bb9edf087a42a4e38ebc3a4e2e18aeb129743e1abee9f8df9110f6ee0c8dab",
+    "UI/Buttons/switch/pro/leftStick.xnb": "3eb67aa78cc9e3a7463554936c94c1bc7645708cd5e4780e0744fb99e61702fe",
+    "UI/Buttons/switch/pro/leftTrigger.xnb": "88feaab9a6f6dbc690701c5a3c98c1fa2c61cb406c0d00c344e7f59a2cbb2a5c",
+    "UI/Buttons/switch/pro/oButton.xnb": "5e550cca3d63dbc4e5c2cb33e77bf6a81a1fede7322c6dcf2166629ac341394c",
+    "UI/Buttons/switch/pro/rightBumper.xnb": "66229b60ee2af77f0e409d49995019a8fa5c9c9c35f45f82d8003e66d3611df9",
+    "UI/Buttons/switch/pro/rightStick.xnb": "2090030d6c656f281efdc25be96e55bc6e92849c00c41bf7d49e89ef53cb9212",
+    "UI/Buttons/switch/pro/rightTrigger.xnb": "b2bb0b119a9b1b5dacfbfe544b6590d881c84bea693ae36352445b279ef99b87",
+    "UI/Buttons/switch/pro/selectButton.xnb": "e7ff3ae363a60c83d188ea565c56e45cf86da16eb93dfb6eb0a83350b4f07617",
+    "UI/Buttons/switch/pro/startButton.xnb": "7e2e81c4e738ba413b3c10dae8924fa1cb6014f0ec73724b9fc783dacb48072e",
+    "UI/Buttons/switch/pro/uButton.xnb": "54a5719cf1cb858397e6a9d9b301576b3514cf2498e9a57c7454f2a1260e1233",
+    "UI/Buttons/switch/pro/yButton.xnb": "7cc0748a51d156ff22298f13bfd7bc857d6057e3b4f2f09c5a7c8a236a1c269c",
+    "UI/Buttons/xbox/aButton.xnb": "ef87b8651b65dcef76a5ec408b80c72a19b4f26c7111d8a67a5a4dd8d982181f",
+    "UI/Buttons/xbox/dPad.xnb": "01c99be52346a89fc6b25be98f09a530aa73b1e09d72f046c459e5737a219eca",
+    "UI/Buttons/xbox/dPadDown.xnb": "7a7cbe19544117bafb36c3d0271f5c5600293cddd8dc8ac3342e34a06878388c",
+    "UI/Buttons/xbox/dPadLeft.xnb": "644f4426e25d25531636df7a2103605838c1db3bd473b89caa5733ae1d1a39ea",
+    "UI/Buttons/xbox/dPadRight.xnb": "4309a2d7732c976088123acb5cd32f9d7dd4520abebf47ed376ff7a49dbb0c4e",
+    "UI/Buttons/xbox/dPadUp.xnb": "dd3d163a53328fba35581819c25adc9cd0c1aab65cec5e553533d5eb0d6d3c99",
+    "UI/Buttons/xbox/leftBumper.xnb": "16ab566cbaedb4d3c59ec2290e1a78a9f361b1e8f2eb7b95a7f8c209e8bfc3bd",
+    "UI/Buttons/xbox/leftStick.xnb": "9b04e89024233c3c352f0985d0aab3e8f8dcc7bab0514ca2f456ae308c47f925",
+    "UI/Buttons/xbox/leftTrigger.xnb": "d99cd5de415453e3d82ef5a059f20bcb64a6d86734a81183417aac5cf193e771",
+    "UI/Buttons/xbox/oButton.xnb": "9797a7b8c7ea5410e868be736a5de4a0fa26da41d0822712b71467a4dd13e6cc",
+    "UI/Buttons/xbox/rightBumper.xnb": "26d3b97a4dbf6fab519c68842c13c00e974ffc9787c443772d5174ee10544863",
+    "UI/Buttons/xbox/rightStick.xnb": "b3ba7b3524195b6ae1dcfdb08684a2c1ac5f95f997cf08c50b687ff1af115b43",
+    "UI/Buttons/xbox/rightTrigger.xnb": "11fd9572c99cc17dbce19a7b58d782b9d7bf7713e369c4cc413d125846f90654",
+    "UI/Buttons/xbox/selectButton.xnb": "721fee387d926a77915dcbe472331057a5c4ad804912feb84a60ba3dd586e20b",
+    "UI/Buttons/xbox/startButton.xnb": "bad0691ed3b00ce2c355e83cddbb6d900cb28d297a0932b768b415877f516b01",
+    "UI/Buttons/xbox/uButton.xnb": "b9c90f1e2607a91d1f70208224470909e68b1a7b128423f6003ebacedf9b480b",
+    "UI/Buttons/xbox/yButton.xnb": "038236c4aa321195a70c10f12cafb0d488f1bb2788163434d28deb12ae6953fb",
     "UI/arcade-msdf.xnb": "4288c83a2f86682acd092f22db93334e521b90ead412673ed067e3f87e98383a",
     "UI/font.json": "62584c78a6d39929fae7a97268eb597445cbc809ba949c6c293fd67646e9fd5c",
     "UI/overhead-font.json": "dd11e74ca4d752f6432d462b05819df62b0121709f7cdea308b74fb20017b62c",
@@ -806,7 +963,7 @@
     "smokeRingDistance": 7.5,
     "trailDelay": 0.01
   },
-  "ContentHash": "e7f6990636ee7e3de6ad2f021acb8cab9326b74a98a4df82e0c1ebf74c833f71",
+  "ContentHash": "8207d1e0286af4c7eefaf187c7e7135d1371ee1bf9867c5115fc0fef30bab15f",
   "Effects": {
     "BackgroundEscapeShip": {
       "Animations": {
@@ -14735,6 +14892,577 @@
           "X": -36.04,
           "Y": -0.34,
           "Z": 0
+        }
+      ]
+    },
+    "Lobby": {
+      "Animators": [],
+      "Audio": [],
+      "BackgroundColor": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "CameraPanCurve": [],
+      "CameraX": 0,
+      "CameraY": 0,
+      "Collision": [
+        {
+          "Height": 0.5,
+          "Name": "Room 0,0 platform",
+          "OneWay": true,
+          "Width": 9.7,
+          "X": -28.95,
+          "Y": 14.75
+        },
+        {
+          "Height": 0.5,
+          "Name": "Room 0,1 platform",
+          "OneWay": true,
+          "Width": 9.7,
+          "X": 0.05,
+          "Y": 14.75
+        },
+        {
+          "Height": 0.5,
+          "Name": "Room 0,2 platform",
+          "OneWay": true,
+          "Width": 9.7,
+          "X": 29.05,
+          "Y": 14.75
+        },
+        {
+          "Height": 0.5,
+          "Name": "Room 1,0 platform",
+          "OneWay": true,
+          "Width": 9.7,
+          "X": -28.95,
+          "Y": -0.25
+        },
+        {
+          "Height": 0.5,
+          "Name": "Room 1,2 platform",
+          "OneWay": true,
+          "Width": 9.7,
+          "X": 29.05,
+          "Y": -0.25
+        },
+        {
+          "Height": 0.5,
+          "Name": "Room 2,0 platform",
+          "OneWay": true,
+          "Width": 9.7,
+          "X": -28.95,
+          "Y": -15.25
+        },
+        {
+          "Height": 0.5,
+          "Name": "Room 2,1 platform",
+          "OneWay": true,
+          "Width": 9.7,
+          "X": 0.05,
+          "Y": -15.25
+        },
+        {
+          "Height": 0.5,
+          "Name": "Room 2,2 platform",
+          "OneWay": true,
+          "Width": 9.7,
+          "X": 29.05,
+          "Y": -15.25
+        },
+        {
+          "Height": 1.2,
+          "Name": "Floor",
+          "OneWay": false,
+          "Width": 9.6,
+          "X": -38.7,
+          "Y": 6.9
+        },
+        {
+          "Height": 0.6,
+          "Name": "Floor opening platform",
+          "OneWay": true,
+          "Width": 9.7,
+          "X": -29.05,
+          "Y": 7.2
+        },
+        {
+          "Height": 1.2,
+          "Name": "Floor",
+          "OneWay": false,
+          "Width": 9.7,
+          "X": -19.35,
+          "Y": 6.9
+        },
+        {
+          "Height": 1.2,
+          "Name": "Floor",
+          "OneWay": false,
+          "Width": 9.6,
+          "X": -9.7,
+          "Y": 6.9
+        },
+        {
+          "Height": 0.6,
+          "Name": "Floor opening platform",
+          "OneWay": true,
+          "Width": 9.7,
+          "X": -0.05,
+          "Y": 7.2
+        },
+        {
+          "Height": 1.2,
+          "Name": "Floor",
+          "OneWay": false,
+          "Width": 9.7,
+          "X": 9.65,
+          "Y": 6.9
+        },
+        {
+          "Height": 1.2,
+          "Name": "Floor",
+          "OneWay": false,
+          "Width": 9.6,
+          "X": 19.3,
+          "Y": 6.9
+        },
+        {
+          "Height": 0.6,
+          "Name": "Floor opening platform",
+          "OneWay": true,
+          "Width": 9.7,
+          "X": 28.95,
+          "Y": 7.2
+        },
+        {
+          "Height": 1.2,
+          "Name": "Floor",
+          "OneWay": false,
+          "Width": 9.7,
+          "X": 38.65,
+          "Y": 6.9
+        },
+        {
+          "Height": 1.2,
+          "Name": "Floor",
+          "OneWay": false,
+          "Width": 9.6,
+          "X": -38.7,
+          "Y": -8.1
+        },
+        {
+          "Height": 0.6,
+          "Name": "Floor opening platform",
+          "OneWay": true,
+          "Width": 9.7,
+          "X": -29.05,
+          "Y": -7.8
+        },
+        {
+          "Height": 1.2,
+          "Name": "Floor",
+          "OneWay": false,
+          "Width": 9.7,
+          "X": -19.35,
+          "Y": -8.1
+        },
+        {
+          "Height": 1.2,
+          "Name": "Floor",
+          "OneWay": false,
+          "Width": 9.6,
+          "X": -9.7,
+          "Y": -8.1
+        },
+        {
+          "Height": 0.6,
+          "Name": "Floor opening platform",
+          "OneWay": true,
+          "Width": 9.7,
+          "X": -0.05,
+          "Y": -7.8
+        },
+        {
+          "Height": 1.2,
+          "Name": "Floor",
+          "OneWay": false,
+          "Width": 9.7,
+          "X": 9.65,
+          "Y": -8.1
+        },
+        {
+          "Height": 1.2,
+          "Name": "Floor",
+          "OneWay": false,
+          "Width": 9.6,
+          "X": 19.3,
+          "Y": -8.1
+        },
+        {
+          "Height": 0.6,
+          "Name": "Floor opening platform",
+          "OneWay": true,
+          "Width": 9.7,
+          "X": 28.95,
+          "Y": -7.8
+        },
+        {
+          "Height": 1.2,
+          "Name": "Floor",
+          "OneWay": false,
+          "Width": 9.7,
+          "X": 38.65,
+          "Y": -8.1
+        },
+        {
+          "Height": 10.0,
+          "Name": "Room wall",
+          "OneWay": false,
+          "Width": 1.2,
+          "X": -14.5,
+          "Y": 17.5
+        },
+        {
+          "Height": 10.0,
+          "Name": "Room wall",
+          "OneWay": false,
+          "Width": 1.2,
+          "X": -14.5,
+          "Y": 2.5
+        },
+        {
+          "Height": 10.0,
+          "Name": "Room wall",
+          "OneWay": false,
+          "Width": 1.2,
+          "X": -14.5,
+          "Y": -12.5
+        },
+        {
+          "Height": 10.0,
+          "Name": "Room wall",
+          "OneWay": false,
+          "Width": 1.2,
+          "X": 14.5,
+          "Y": 17.5
+        },
+        {
+          "Height": 10.0,
+          "Name": "Room wall",
+          "OneWay": false,
+          "Width": 1.2,
+          "X": 14.5,
+          "Y": 2.5
+        },
+        {
+          "Height": 10.0,
+          "Name": "Room wall",
+          "OneWay": false,
+          "Width": 1.2,
+          "X": 14.5,
+          "Y": -12.5
+        },
+        {
+          "Height": 54.0,
+          "Name": "Left boundary",
+          "OneWay": false,
+          "Width": 4.5,
+          "X": -45.75,
+          "Y": 0.0
+        },
+        {
+          "Height": 54.0,
+          "Name": "Right boundary",
+          "OneWay": false,
+          "Width": 4.5,
+          "X": 45.75,
+          "Y": 0.0
+        },
+        {
+          "Height": 4.5,
+          "Name": "Ceiling",
+          "OneWay": false,
+          "Width": 87.0,
+          "X": 0.0,
+          "Y": 24.75
+        },
+        {
+          "Height": 4.5,
+          "Name": "Bottom floor",
+          "OneWay": false,
+          "Width": 87.0,
+          "X": 0.0,
+          "Y": -24.75
+        }
+      ],
+      "Id": "Lobby",
+      "IntroParticleEffects": [],
+      "KillBounds": {
+        "Bottom": -29,
+        "Left": -50,
+        "Right": 50,
+        "Top": 36
+      },
+      "Name": "Lobby",
+      "Nodes": [],
+      "OrthoSize": 27,
+      "Parallax": [],
+      "ParallaxFrogEffects": [],
+      "ParticleEmitters": [],
+      "PresentationParameters": {},
+      "SceneEffects": [],
+      "ScreenTop": 27,
+      "Spawns": [
+        {
+          "X": -28.95,
+          "Y": 15.0
+        },
+        {
+          "X": 0.05,
+          "Y": 15.0
+        },
+        {
+          "X": 29.05,
+          "Y": 15.0
+        },
+        {
+          "X": -28.95,
+          "Y": 0.0
+        },
+        {
+          "X": 29.05,
+          "Y": 0.0
+        },
+        {
+          "X": -28.95,
+          "Y": -15.0
+        },
+        {
+          "X": 0.05,
+          "Y": -15.0
+        },
+        {
+          "X": 29.05,
+          "Y": -15.0
+        }
+      ],
+      "Sprites": [
+        {
+          "Name": "Lobby background",
+          "SpriteId": "lobby-background",
+          "Z": 10
+        },
+        {
+          "Color": [
+            0.21323532,
+            0.21323532,
+            0.21323532,
+            1
+          ],
+          "Name": "Room 0,0 platform",
+          "ScaleX": 9.7,
+          "ScaleY": 0.5,
+          "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
+          "X": -28.95,
+          "Y": 14.75,
+          "Z": 1
+        },
+        {
+          "Color": [
+            0.21323532,
+            0.21323532,
+            0.21323532,
+            1
+          ],
+          "Name": "Room 0,1 platform",
+          "ScaleX": 9.7,
+          "ScaleY": 0.5,
+          "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
+          "X": 0.05,
+          "Y": 14.75,
+          "Z": 1
+        },
+        {
+          "Color": [
+            0.21323532,
+            0.21323532,
+            0.21323532,
+            1
+          ],
+          "Name": "Room 0,2 platform",
+          "ScaleX": 9.7,
+          "ScaleY": 0.5,
+          "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
+          "X": 29.05,
+          "Y": 14.75,
+          "Z": 1
+        },
+        {
+          "Color": [
+            0.21323532,
+            0.21323532,
+            0.21323532,
+            1
+          ],
+          "Name": "Room 1,0 platform",
+          "ScaleX": 9.7,
+          "ScaleY": 0.5,
+          "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
+          "X": -28.95,
+          "Y": -0.25,
+          "Z": 1
+        },
+        {
+          "Color": [
+            0.21323532,
+            0.21323532,
+            0.21323532,
+            1
+          ],
+          "Name": "Room 1,2 platform",
+          "ScaleX": 9.7,
+          "ScaleY": 0.5,
+          "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
+          "X": 29.05,
+          "Y": -0.25,
+          "Z": 1
+        },
+        {
+          "Color": [
+            0.21323532,
+            0.21323532,
+            0.21323532,
+            1
+          ],
+          "Name": "Room 2,0 platform",
+          "ScaleX": 9.7,
+          "ScaleY": 0.5,
+          "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
+          "X": -28.95,
+          "Y": -15.25,
+          "Z": 1
+        },
+        {
+          "Color": [
+            0.21323532,
+            0.21323532,
+            0.21323532,
+            1
+          ],
+          "Name": "Room 2,1 platform",
+          "ScaleX": 9.7,
+          "ScaleY": 0.5,
+          "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
+          "X": 0.05,
+          "Y": -15.25,
+          "Z": 1
+        },
+        {
+          "Color": [
+            0.21323532,
+            0.21323532,
+            0.21323532,
+            1
+          ],
+          "Name": "Room 2,2 platform",
+          "ScaleX": 9.7,
+          "ScaleY": 0.5,
+          "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
+          "X": 29.05,
+          "Y": -15.25,
+          "Z": 1
+        },
+        {
+          "Color": [
+            0.21323532,
+            0.21323532,
+            0.21323532,
+            1
+          ],
+          "Name": "Floor opening platform",
+          "ScaleX": 9.7,
+          "ScaleY": 0.6,
+          "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
+          "X": -29.05,
+          "Y": 7.2,
+          "Z": 1
+        },
+        {
+          "Color": [
+            0.21323532,
+            0.21323532,
+            0.21323532,
+            1
+          ],
+          "Name": "Floor opening platform",
+          "ScaleX": 9.7,
+          "ScaleY": 0.6,
+          "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
+          "X": -0.05,
+          "Y": 7.2,
+          "Z": 1
+        },
+        {
+          "Color": [
+            0.21323532,
+            0.21323532,
+            0.21323532,
+            1
+          ],
+          "Name": "Floor opening platform",
+          "ScaleX": 9.7,
+          "ScaleY": 0.6,
+          "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
+          "X": 28.95,
+          "Y": 7.2,
+          "Z": 1
+        },
+        {
+          "Color": [
+            0.21323532,
+            0.21323532,
+            0.21323532,
+            1
+          ],
+          "Name": "Floor opening platform",
+          "ScaleX": 9.7,
+          "ScaleY": 0.6,
+          "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
+          "X": -29.05,
+          "Y": -7.8,
+          "Z": 1
+        },
+        {
+          "Color": [
+            0.21323532,
+            0.21323532,
+            0.21323532,
+            1
+          ],
+          "Name": "Floor opening platform",
+          "ScaleX": 9.7,
+          "ScaleY": 0.6,
+          "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
+          "X": -0.05,
+          "Y": -7.8,
+          "Z": 1
+        },
+        {
+          "Color": [
+            0.21323532,
+            0.21323532,
+            0.21323532,
+            1
+          ],
+          "Name": "Floor opening platform",
+          "ScaleX": 9.7,
+          "ScaleY": 0.6,
+          "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
+          "X": 28.95,
+          "Y": -7.8,
+          "Z": 1
         }
       ]
     },
@@ -105669,6 +106397,64 @@
         ]
       ],
       "Width": 128
+    },
+    "lobby-background": {
+      "Height": 540,
+      "Name": "lobby_background_v1",
+      "Path": "Textures/Sprites/BackGrounds/lobby_background_v1",
+      "PivotX": 0.5,
+      "PivotY": 0.5,
+      "PixelsPerUnit": 10,
+      "PointFilter": true,
+      "RectHeight": 540,
+      "RectWidth": 960,
+      "RectX": 0,
+      "RectY": 0,
+      "Triangles": [
+        3,
+        0,
+        1,
+        2,
+        1,
+        0
+      ],
+      "UV": [
+        [
+          0.0,
+          1.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "Vertices": [
+        [
+          -48,
+          27
+        ],
+        [
+          48,
+          -27
+        ],
+        [
+          48,
+          27
+        ],
+        [
+          -48,
+          -27
+        ]
+      ],
+      "Width": 960
     }
   },
   "Timelines": {

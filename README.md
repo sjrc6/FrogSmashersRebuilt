@@ -19,6 +19,7 @@ dotnet run --project src/Client -c Release --no-build
 ```sh
 ./scripts/test.sh
 ./scripts/publish.sh all
+./scripts/publish.sh win-x64
 ```
 
 ### Credits

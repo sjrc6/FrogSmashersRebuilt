@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Text.Json;
 using FrogSmashers.Core;
 using FrogSmashers.Network;
 using Microsoft.Xna.Framework;
@@ -7,455 +8,504 @@ using Microsoft.Xna.Framework.Input;
 
 namespace FrogSmashers.Client;
 
-internal sealed class MenuController
+internal sealed partial class MenuController
 {
-    private readonly FrogGame game;
     private static readonly int[] FrameRates = [60, 90, 120, 144, 165, 240, 360, 500];
-
-    private enum Setting
-    {
-        Fullscreen,
-        VSync,
-        FrameLimit,
-        Volume,
-        ScreenShake,
-        TeamMode,
-        WinScore,
-        MatchRounds,
-        FirstMap,
-        MapOrder,
-        FontSmoothing,
-        KeyboardOne,
-        KeyboardTwo,
-        Save,
-        Count,
-    }
-
+    private readonly FrogGame game;
+    private readonly Stack<(GameScreen Screen, int Selected)> history = new();
+    private GameScreen context = GameScreen.Main;
     public GameScreen Screen { get; set; } = GameScreen.Intro;
-    public GameScreen SettingsReturn { get; private set; } = GameScreen.Main;
     public int Selected { get; set; }
-    public int SettingRow { get; private set; }
+    public int SelectedSeat { get; private set; }
+    public int? Owner { get; private set; }
+    public int HintDevice { get; private set; }
     public int BindingDevice { get; private set; }
-    public int BindingRow { get; private set; }
-    public int ExpectedPeers { get; set; }
-    public bool OnlineSeats { get; set; }
+    public bool AllowLan { get; private set; }
+    public bool ShowingLobby => context == GameScreen.Seats && Screen != GameScreen.Error;
     public bool EditingAddress { get; set; }
     public bool WaitingForBinding { get; private set; }
     public string Status { get; set; } = "";
     public string JoinAddress { get; private set; } = "127.0.0.1";
     public string SteamCode { get; private set; } = "";
     public bool ShowingCinematic => Screen is GameScreen.Intro or GameScreen.Title or GameScreen.Outro;
-    public bool ShowingMenuBackground =>
-        Screen == GameScreen.Main
-        || SettingsReturn == GameScreen.Main && Screen is GameScreen.Settings or GameScreen.Bindings;
-    public bool ShowingMatch =>
-        Screen == GameScreen.Playing
-        || SettingsReturn == GameScreen.Playing && Screen is GameScreen.Settings or GameScreen.Bindings;
-    public bool LocalPresentationPaused =>
-        game.Match.Network == null
-        && game.Match.World != null
-        && (
-            Screen == GameScreen.Playing && game.Match.Paused
-            || SettingsReturn == GameScreen.Playing && Screen is GameScreen.Settings or GameScreen.Bindings
-        );
+    public bool ShowingMenuBackground => !ShowingCinematic && context == GameScreen.Main && Screen != GameScreen.Error;
+    public bool ShowingMatch => !ShowingCinematic && context == GameScreen.Playing && Screen != GameScreen.Error;
+    public bool LocalPresentationPaused => ShowingMatch && game.Match.Network == null && game.Match.Paused;
+    private bool KeyboardAllowed => Owner == null || Owner < 2;
+    private MatchPreferences Rules => game.Setup.Preferences;
 
     public MenuController(FrogGame game)
     {
         this.game = game;
-        ExpectedPeers = game.Options.Host != null ? game.Options.Peers : game.Settings.ExpectedPeers;
+        game.Setup.Lobby.Roster.SetCapacity(game.Options.Slots);
+        AllowLan = game.Options.Lan;
     }
 
     public void EnterText(char character)
     {
         if (!EditingAddress || char.IsControl(character))
-        {
             return;
-        }
-
-        if (Selected == 1 && char.IsDigit(character) && SteamCode.Length < 20)
-        {
+        if (Screen == GameScreen.JoinSteam && char.IsDigit(character) && SteamCode.Length < 20)
             SteamCode += character;
-        }
         else if (
-            Selected == 3
+            Screen == GameScreen.JoinUdp
             && (char.IsLetterOrDigit(character) || ".:-".Contains(character))
             && JoinAddress.Length < 128
         )
-        {
             JoinAddress += character;
-        }
     }
 
     public void Update(double elapsedSeconds)
     {
-        var input = MenuInput.Read(game.Controls);
+        var input = MenuInput.Read(game.Controls, Owner);
+        if (Owner.HasValue)
+            HintDevice = Owner.Value;
+        else if (game.Controls.KeysNow.GetPressedKeys().Any(game.Controls.Press))
+            HintDevice = 0;
+        else
+            for (int device = 2; device < 10; device++)
+                if (MenuInput.Read(game.Controls, device) != default)
+                    HintDevice = device;
         switch (Screen)
         {
             case GameScreen.Intro:
-                UpdateIntro(input);
+                if (input.Accept || input.Back || game.Controls.Press(Keys.Space) || game.Cinematics.TitleReady)
+                {
+                    game.Cinematics.SkipIntro();
+                    Screen = GameScreen.Title;
+                }
                 break;
             case GameScreen.Title:
-                UpdateTitle(input);
-                break;
-            case GameScreen.Main:
-                UpdateMain(input);
+                if (input.Accept || game.Controls.Press(Keys.Space))
+                    game.MainMenu();
                 break;
             case GameScreen.Seats:
-                UpdateSeats(input);
+                UpdateSeats();
                 break;
-            case GameScreen.Online:
-                UpdateOnline(input);
+            case GameScreen.Playing:
+                if (!game.Match.Paused)
+                {
+                    if (game.Controls.MenuDevice() is int device)
+                    {
+                        Owner = device;
+                        game.Match.Paused = true;
+                        Selected = 0;
+                        game.Controls.ClearPendingEdges();
+                    }
+                }
+                else
+                    UpdateRows(input);
                 break;
             case GameScreen.Connecting:
                 UpdateConnecting(input);
                 break;
-            case GameScreen.Playing:
-                UpdatePlaying(input, elapsedSeconds);
-                break;
-            case GameScreen.Settings:
-                UpdateSettings(input, elapsedSeconds);
-                break;
-            case GameScreen.Bindings:
-                UpdateBindings(input, elapsedSeconds);
+            case GameScreen.SlotEditor:
+                UpdateRoomSelection(input);
                 break;
             case GameScreen.Error:
-                UpdateError(input);
+                UpdateRows(input);
                 break;
             case GameScreen.Outro:
-                UpdateOutro(input);
+                game.Match.Network?.Poll();
+                if (game.Match.Network?.Error != null && !game.Match.Network.IsTransportFailure)
+                    game.Fail(game.Match.Network.Error);
+                else if (input.Back || input.Accept || game.Cinematics.Finished)
+                    game.ReturnToLobby();
+                break;
+            case GameScreen.Bindings when WaitingForBinding:
+                CaptureBinding(input);
+                break;
+            case GameScreen.JoinSteam or GameScreen.JoinUdp when EditingAddress:
+                UpdateAddress(input);
+                break;
+            default:
+                UpdateRows(input);
                 break;
         }
-    }
 
-    private void UpdateIntro(MenuInput input)
-    {
-        if (input.Accept || input.Back || game.Controls.Press(Keys.Space) || game.Cinematics.TitleReady)
+        if (ShowingLobby)
         {
-            game.Cinematics.SkipIntro();
-            Screen = GameScreen.Title;
+            if (Screen is not (GameScreen.Seats or GameScreen.Connecting))
+                UpdateLobbyPlayers(true);
+            game.Lobby.Update(elapsedSeconds);
         }
-    }
 
-    private void UpdateTitle(MenuInput input)
-    {
-        if (input.Accept || game.Controls.Press(Keys.Space))
+        if (ShowingMatch)
         {
-            game.MainMenu();
-        }
-    }
-
-    private void UpdateMain(MenuInput input)
-    {
-        Selected = Wrap(Selected + input.Vertical, 7);
-        if (input.Accept)
-        {
-            switch (Selected)
+            game.AdvanceMatch(elapsedSeconds);
+            if (
+                Screen == GameScreen.Playing
+                && !game.Match.Paused
+                && game.Match.World?.Phase == MatchPhase.MatchFinished
+                && !game.Options.Demo
+                && !game.Match.ReplayPlayback
+                && game.TerminalConfirmed()
+            )
             {
-                case 0:
-                    OnlineSeats = false;
-                    game.Setup.Seats.Clear();
-                    Screen = GameScreen.Seats;
-                    Selected = 0;
-                    return;
-                case 1:
-                    OnlineSeats = true;
-                    game.Setup.Seats.Clear();
-                    Screen = GameScreen.Seats;
-                    Selected = 0;
-                    game.Online.PrepareSteam();
-                    return;
-                case 2:
-                    OpenSettings(GameScreen.Main);
-                    return;
-                case 3:
-                    game.Cinematics.StartIntro();
-                    Screen = GameScreen.Intro;
-                    return;
-                case 4:
-                    game.Setup.Seats.Clear();
-                    for (int i = 0; i < 4; i++)
-                    {
-                        game.Setup.Seats.Add(new(-1, i % 2));
-                    }
-
-                    game.StartLocal();
-                    return;
-                case 5:
-                    OpenCredits();
-                    return;
-                case 6:
-                    game.Exit();
-                    return;
+                game.Match.SaveReplay();
+                game.Cinematics.StartOutro(
+                    game.Match.World.Winner >= 0
+                        ? game.Renderer.ColorFor(game.Match.World, game.Match.World.Winner)
+                        : Color.White
+                );
+                Screen = GameScreen.Outro;
+                game.Audio.Reset();
             }
         }
     }
 
-    private void UpdateSeats(MenuInput input)
+    private void UpdateRows(MenuInput input)
     {
         if (input.Back)
         {
-            game.MainMenu();
+            Back();
             return;
         }
+        var entries = Entries();
+        if (entries.Count == 0)
+            return;
+        Selected = Wrap(Selected + input.Vertical, entries.Count);
+        if (ClickRow(entries))
+            return;
+        if (input.Horizontal != 0)
+            entries[Selected].Change?.Invoke(input.Horizontal);
+        else if (input.Accept)
+            entries[Selected].Select();
+    }
 
-        bool controllerStart = Enumerable
-            .Range(0, 8)
-            .Any(p => game.Controls.PadPress(p, Buttons.Start) && game.Setup.Seats.Any(s => s.Device == p + 2));
-        if (game.Controls.Press(Keys.Space))
+    private bool ClickRow(IReadOnlyList<MenuEntry> entries)
+    {
+        if (
+            !KeyboardAllowed
+            || !(game.Controls.MousePressed || game.Controls.MouseMoved)
+            || Pointer() is not Point point
+        )
+            return false;
+        for (int i = 0; i < entries.Count; i++)
         {
-            JoinDevice(0);
+            if (!MenuLayout.Row(Screen, i, entries.Count, SelectedSeat).Contains(point))
+                continue;
+            Selected = i;
+            if (game.Controls.MousePressed)
+                entries[i].Select();
+            return game.Controls.MousePressed;
         }
+        return false;
+    }
 
-        if (game.Controls.Press(Keys.RightShift))
+    private Point? Pointer() =>
+        MenuLayout.Pointer(
+            game.Controls.MouseNow.Position,
+            game.Window.ClientBounds.Width,
+            game.Window.ClientBounds.Height
+        );
+
+    private void UpdateSeats()
+    {
+        if (game.Controls.Press(Keys.Escape))
         {
-            JoinDevice(1);
+            OpenOwned(GameScreen.LobbyMenu, 0);
+            return;
         }
+        UpdateLobbyPlayers(false);
+    }
 
-        for (int p = 0; p < 8; p++)
+    private void UpdateLobbyPlayers(bool menuOpen)
+    {
+        for (int device = 0; device < 10; device++)
         {
-            if (game.Controls.PadPress(p, Buttons.Start) || game.Controls.PadPress(p, Buttons.A))
+            if (menuOpen && Owner is int owner && (owner == device || owner < 2 && device < 2))
+                continue;
+            bool start =
+                device < 2
+                    ? game.Controls.Press(device == 0 ? Keys.Space : Keys.RightShift)
+                    : game.Controls.PadPress(device - 2, Buttons.Start);
+            var player = game.Lobby.LocalPlayers.FirstOrDefault(player => player.Id == device);
+            if (start)
             {
-                JoinDevice(p + 2);
-            }
-        }
-
-        if (game.Controls.Press(Keys.C) && game.Setup.Seats.Count < 8)
-        {
-            game.Setup.Seats.Add(new(-1, OnlineSeats ? -1 : game.Setup.Seats.Count % 2));
-        }
-
-        if (game.Controls.Press(Keys.Back) && game.Setup.Seats.Count > 0)
-        {
-            game.Setup.Seats.RemoveAt(game.Setup.Seats.Count - 1);
-        }
-
-        if (game.Setup.Seats.Count > 0)
-        {
-            Selected = Wrap(Selected + input.Vertical, game.Setup.Seats.Count);
-            if (input.Horizontal != 0)
-            {
-                game.Setup.Seats[Selected] = game.Setup.Seats[Selected] with
+                if (player?.Spawned == true && device >= 2)
                 {
-                    Team = OnlineSeats
-                        ? Wrap(game.Setup.Seats[Selected].Team + 1 + input.Horizontal, 9) - 1
-                        : Wrap(game.Setup.Seats[Selected].Team + input.Horizontal, 8),
-                };
+                    if (menuOpen)
+                        continue;
+                    OpenOwned(GameScreen.LobbyMenu, device);
+                    return;
+                }
+                game.Lobby.JoinOrSpawn(device);
             }
-        }
-
-        if (game.Controls.Press(Keys.Tab))
-        {
-            OpenSettings(GameScreen.Seats);
-            return;
-        }
-
-        bool start = game.Controls.Press(Keys.Enter) || controllerStart;
-        if (start && game.Setup.Seats.Count >= (OnlineSeats ? 1 : 2))
-        {
-            if (OnlineSeats)
-            {
-                Screen = GameScreen.Online;
-                Selected = 0;
-            }
-            else
-            {
-                game.StartLocal();
-            }
+            if (player?.Spawned == false)
+                game.Lobby.Choose(
+                    device,
+                    (
+                        device < 2
+                            ? game.Controls.Press(game.Settings.Keyboard[device].Tongue)
+                            : game.Controls.PadPress(device - 2, Buttons.B)
+                    )
+                        ? 1
+                        : 0,
+                    game.Lobby.TeamMode ? game.Controls.Vertical(device) : 0
+                );
         }
     }
 
-    private void UpdateOnline(MenuInput input)
+    private void StartFromSeats()
     {
-        if (input.Back)
+        var players = game.Lobby.Roster.Slots.Where(slot => slot.Player != null).Select(slot => slot.Player!).ToArray();
+        if (players.Length < 2 || players.Any(player => !player.Spawned))
         {
-            if (EditingAddress)
-            {
-                EditingAddress = false;
-            }
-            else
-            {
-                Screen = GameScreen.Seats;
-            }
-
+            Status = "SPAWN AT LEAST TWO PLAYERS; ALL JOINED PLAYERS MUST BE READY";
             return;
         }
-
-        if (!EditingAddress)
+        if (Rules.TeamMode && players.Select(player => player.Team).Distinct().Count() < 2)
         {
-            Selected = Wrap(Selected + input.Vertical, 5);
+            Status = "CHOOSE AT LEAST TWO DIFFERENT TEAMS";
+            return;
         }
-
-        if (input.Horizontal != 0 && !EditingAddress)
+        if (game.Online.Lobby is { } online)
         {
-            ExpectedPeers = Math.Clamp(ExpectedPeers + input.Horizontal, 2, 8);
+            if (!online.StartMatch(JsonSerializer.Serialize(game.Setup.CreateOptions(game.Options.MapOrder))))
+                Status = online.Notice ?? "THE HOST STARTS THE MATCH";
         }
+        else
+            game.StartLocal();
+    }
 
-        if (EditingAddress && game.Controls.Press(Keys.Back))
-        {
-            if (Selected == 1 && SteamCode.Length > 0)
-            {
-                SteamCode = SteamCode[..^1];
-            }
-
-            if (Selected == 3 && JoinAddress.Length > 0)
-            {
-                JoinAddress = JoinAddress[..^1];
-            }
-        }
-
-        if (input.Accept)
-        {
-            if (Selected == 0)
-            {
-                game.BeginLobby("steam", true);
-            }
-
-            if (Selected == 2)
-            {
-                game.BeginLobby("udp", true);
-            }
-
-            if (Selected is 1 or 3)
-            {
-                if (!EditingAddress)
-                {
-                    EditingAddress = true;
-                }
-                else
-                {
-                    EditingAddress = false;
-                    game.BeginLobby(Selected == 1 ? "steam:" + SteamCode : "udp:" + JoinAddress, false);
-                }
-            }
-
-            if (Selected == 4)
-            {
-                Screen = GameScreen.Seats;
-            }
-        }
+    private void OpenOnline()
+    {
+        game.Online.PrepareSteam();
+        Open(GameScreen.Online);
     }
 
     private void UpdateConnecting(MenuInput input)
     {
+        UpdateRows(input);
+        if (Screen != GameScreen.Connecting)
+            return;
+        if (game.Online.Lobby?.Connected == true)
+            ShowSeats();
+    }
+
+    private void UpdateRoomSelection(MenuInput input)
+    {
         if (input.Back)
         {
-            game.MainMenu();
+            Back();
             return;
         }
-
-        game.Online.Lobby!.Poll();
-        if (game.Online.Lobby is SteamLobby sl && game.Controls.Press(Keys.I))
+        int cell = MenuLayout.RoomCell(SelectedSeat);
+        int x = cell % 3,
+            y = cell / 3;
+        if (input.Horizontal != 0)
         {
-            sl.InviteFriends();
-        }
-
-        if (game.Online.Lobby.Error != null)
-        {
-            game.Fail(game.Online.Lobby.Error);
-            return;
-        }
-
-        if (game.Online.Lobby.Ready)
-        {
-            game.StartNetwork();
-        }
-    }
-
-    private void UpdatePlaying(MenuInput input, double elapsedSeconds)
-    {
-        if (game.Match.Paused && game.Controls.Press(Keys.Q))
-        {
-            game.MainMenu();
-            return;
-        }
-
-        if (game.Match.Paused && game.Controls.Press(Keys.Tab))
-        {
-            OpenSettings(GameScreen.Playing);
-            return;
-        }
-
-        game.AdvanceMatch(elapsedSeconds);
-        if (
-            Screen == GameScreen.Playing
-            && game.Match.World?.Phase == MatchPhase.MatchFinished
-            && !game.Options.Demo
-            && !game.Match.ReplayPlayback
-            && game.TerminalConfirmed()
-        )
-        {
-            game.Match.SaveReplay();
-            game.Cinematics.StartOutro(
-                game.Match.World.Winner >= 0
-                    ? game.Renderer.ColorFor(game.Match.World, game.Match.World.Winner)
-                    : Color.White
-            );
-            Screen = GameScreen.Outro;
-            game.Audio.Reset();
-        }
-    }
-
-    private void UpdateSettings(MenuInput input, double elapsedSeconds)
-    {
-        SettingRow = Wrap(SettingRow + input.Vertical, (int)Setting.Count);
-        if (input.Back || input.Accept && SettingRow == (int)Setting.Save)
-        {
-            game.SaveSettings();
-            Screen = SettingsReturn;
-            return;
-        }
-
-        if (input.Accept && (Setting)SettingRow is Setting.KeyboardOne or Setting.KeyboardTwo)
-        {
-            BindingDevice = SettingRow - (int)Setting.KeyboardOne;
-            BindingRow = 0;
-            WaitingForBinding = false;
-            Screen = GameScreen.Bindings;
-            return;
-        }
-
-        if (input.Horizontal != 0 || input.Accept)
-        {
-            ChangeSetting(input.Horizontal == 0 ? 1 : input.Horizontal);
-        }
-
-        if (SettingsReturn == GameScreen.Playing && game.Match.Network != null)
-        {
-            game.AdvanceMatch(elapsedSeconds);
-        }
-    }
-
-    private void UpdateBindings(MenuInput input, double elapsedSeconds)
-    {
-        if (WaitingForBinding)
-        {
-            var keys = game.Controls.KeysNow.GetPressedKeys().Where(k => game.Controls.KeysBefore.IsKeyUp(k)).ToArray();
-            if (keys.Length > 0)
+            do
             {
-                if (keys[0] != Keys.Escape)
+                x = Math.Clamp(x + input.Horizontal, 0, 2);
+            } while (y == 1 && x == 1);
+        }
+        if (input.Vertical != 0)
+        {
+            do
+            {
+                y = Math.Clamp(y + input.Vertical, 0, 2);
+            } while (y == 1 && x == 1);
+        }
+        int target = y * 3 + x;
+        SelectedSeat = target > 4 ? target - 1 : target;
+        if (KeyboardAllowed && (game.Controls.MouseMoved || game.Controls.MousePressed) && Pointer() is Point point)
+        {
+            for (int room = 0; room < 8; room++)
+                if (MenuLayout.Room(room).Contains(point))
                 {
-                    SetBinding(keys[0]);
+                    SelectedSeat = room;
+                    if (game.Controls.MousePressed)
+                        Open(GameScreen.SlotOptions);
+                    return;
                 }
+        }
+        if (input.Accept)
+            Open(GameScreen.SlotOptions);
+    }
 
-                WaitingForBinding = false;
-            }
-        }
-        else if (input.Back)
-        {
-            Screen = GameScreen.Settings;
-        }
-        else
-        {
-            BindingRow = Wrap(BindingRow + input.Vertical, 8);
-            if (input.Accept)
-            {
-                WaitingForBinding = true;
-            }
-        }
+    private void EditRoom(SlotType type, bool open, bool remove = false)
+    {
+        if (!game.Lobby.Edit(SelectedSeat, type, open, remove))
+            Status = "COULD NOT EDIT SLOT";
+    }
 
-        if (SettingsReturn == GameScreen.Playing && game.Match.Network != null)
+    private void ReturnFromLobbyMenu()
+    {
+        Reset(GameScreen.Seats);
+    }
+
+    private void UpdateAddress(MenuInput input)
+    {
+        if (ClickRow(Entries()))
+            return;
+        if (input.Back)
         {
-            game.AdvanceMatch(elapsedSeconds);
+            EditingAddress = false;
+            return;
+        }
+        if (game.Controls.Press(Keys.Back))
+        {
+            if (Screen == GameScreen.JoinSteam && SteamCode.Length > 0)
+                SteamCode = SteamCode[..^1];
+            if (Screen == GameScreen.JoinUdp && JoinAddress.Length > 0)
+                JoinAddress = JoinAddress[..^1];
+        }
+        if (input.Accept)
+        {
+            EditingAddress = false;
+            Selected = 1;
+        }
+    }
+
+    private void OpenBindings(int device)
+    {
+        BindingDevice = device;
+        WaitingForBinding = false;
+        Open(GameScreen.Bindings);
+    }
+
+    public Keys[] BindingKeys()
+    {
+        var keys = game.Settings.Keyboard[BindingDevice];
+        return [keys.Left, keys.Right, keys.Up, keys.Down, keys.Jump, keys.Attack, keys.Tongue, keys.Strafe];
+    }
+
+    private void CaptureBinding(MenuInput input)
+    {
+        if (input.Back)
+        {
+            WaitingForBinding = false;
+            return;
+        }
+        if (!KeyboardAllowed)
+            return;
+        var pressed = game.Controls.KeysNow.GetPressedKeys().Where(game.Controls.Press).ToArray();
+        if (pressed.Length == 0)
+            return;
+        var key = pressed[0];
+        if (key == Keys.Escape)
+        {
+            WaitingForBinding = false;
+            return;
+        }
+        var keys = game.Settings.Keyboard[BindingDevice];
+        switch (Selected)
+        {
+            case 0:
+                keys.Left = key;
+                break;
+            case 1:
+                keys.Right = key;
+                break;
+            case 2:
+                keys.Up = key;
+                break;
+            case 3:
+                keys.Down = key;
+                break;
+            case 4:
+                keys.Jump = key;
+                break;
+            case 5:
+                keys.Attack = key;
+                break;
+            case 6:
+                keys.Tongue = key;
+                break;
+            case 7:
+                keys.Strafe = key;
+                break;
+        }
+        WaitingForBinding = false;
+        game.Controls.ClearPendingEdges();
+    }
+
+    private void Open(GameScreen screen)
+    {
+        history.Push((Screen, Selected));
+        Screen = screen;
+        Selected = 0;
+        Status = "";
+    }
+
+    private void OpenOwned(GameScreen screen, int device)
+    {
+        Owner = device;
+        game.Controls.ClearPendingEdges();
+        Open(screen);
+    }
+
+    private void Back()
+    {
+        EditingAddress = WaitingForBinding = false;
+        if (Screen is GameScreen.Settings or GameScreen.MatchSettings or GameScreen.Bindings)
+            game.SaveSettings();
+        if (Screen == GameScreen.Playing)
+        {
+            Resume();
+            return;
+        }
+        if (Screen == GameScreen.Connecting)
+        {
+            game.ReturnToLobby();
+            return;
+        }
+        if (Screen == GameScreen.Error)
+        {
+            game.MainMenu();
+            return;
+        }
+        if (!history.TryPop(out var previous))
+            return;
+        Screen = previous.Screen;
+        Selected = previous.Selected;
+        Status = "";
+        if (Screen == GameScreen.Seats)
+            Owner = null;
+        game.Controls.ClearPendingEdges();
+    }
+
+    private void Resume()
+    {
+        game.Match.Paused = false;
+        Owner = null;
+        game.Controls.ClearPendingEdges();
+    }
+
+    private void Reset(GameScreen screen)
+    {
+        context = Screen = screen;
+        history.Clear();
+        Selected = 0;
+        Owner = null;
+        EditingAddress = WaitingForBinding = false;
+        Status = "";
+        game.Controls.ClearPendingEdges();
+    }
+
+    public void ShowMain() => Reset(GameScreen.Main);
+
+    public void ShowPlaying() => Reset(GameScreen.Playing);
+
+    public void ShowConnecting()
+    {
+        var owner = Owner;
+        Reset(GameScreen.Seats);
+        Screen = GameScreen.Connecting;
+        Owner = owner;
+    }
+
+    public void ShowSeats(bool online = false)
+    {
+        Reset(GameScreen.Seats);
+        if (game.Lobby.World == null)
+            game.Lobby.Open();
+        if (online)
+        {
+            Owner = 0;
+            OpenOnline();
         }
     }
 
@@ -465,10 +515,7 @@ internal sealed class MenuController
         try
         {
             if (!File.Exists(path))
-            {
                 throw new FileNotFoundException("CREDITS.txt is missing from the game folder.");
-            }
-
             using var process = Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
         }
         catch (Exception exception)
@@ -476,132 +523,6 @@ internal sealed class MenuController
             )
         {
             game.Fail($"Could not open CREDITS.txt. You can open it from the game folder.\n{exception.Message}");
-        }
-    }
-
-    private void UpdateError(MenuInput input)
-    {
-        if (input.Back || input.Accept)
-        {
-            game.MainMenu();
-        }
-    }
-
-    private void UpdateOutro(MenuInput input)
-    {
-        game.Match.Network?.Poll();
-        if (game.Match.Network?.Error != null && !game.Match.Network.IsTransportFailure)
-        {
-            game.Fail(game.Match.Network.Error);
-            return;
-        }
-
-        if (input.Back || input.Accept || game.Cinematics.Finished)
-        {
-            game.MainMenu();
-        }
-    }
-
-    public void ShowMain()
-    {
-        Screen = GameScreen.Main;
-        Selected = 0;
-        EditingAddress = false;
-        Status = "";
-    }
-
-    private void JoinDevice(int device)
-    {
-        var seats = game.Setup.Seats;
-        if (seats.Count < 8 && !seats.Any(seat => seat.Device == device))
-        {
-            seats.Add(new LocalSeat(device, OnlineSeats ? -1 : seats.Count % 2));
-        }
-    }
-
-    private void OpenSettings(GameScreen returnScreen)
-    {
-        SettingsReturn = returnScreen;
-        Screen = GameScreen.Settings;
-        SettingRow = 0;
-    }
-
-    private void ChangeSetting(int amount)
-    {
-        switch ((Setting)SettingRow)
-        {
-            case Setting.Fullscreen:
-                game.Settings.Fullscreen = !game.Settings.Fullscreen;
-                game.ApplyDisplay();
-                break;
-            case Setting.VSync:
-                game.Settings.VSync = !game.Settings.VSync;
-                game.ApplyDisplay();
-                break;
-            case Setting.FrameLimit:
-                game.Settings.FrameLimit = FrameRates[
-                    Wrap(Array.IndexOf(FrameRates, game.Settings.FrameLimit) + amount, FrameRates.Length)
-                ];
-                break;
-            case Setting.Volume:
-                game.Settings.Volume = Math.Clamp((int)MathF.Round(game.Settings.Volume * 20) + amount, 0, 20) / 20f;
-                game.Audio.Volume = game.Settings.Volume;
-                break;
-            case Setting.ScreenShake:
-                game.Settings.ScreenShake = !game.Settings.ScreenShake;
-                game.Renderer.ShakeEnabled = game.Cinematics.ShakeEnabled = game.Settings.ScreenShake;
-                break;
-            case Setting.TeamMode:
-                game.Setup.Options.Rules.TeamMode = !game.Setup.Options.Rules.TeamMode;
-                break;
-            case Setting.WinScore:
-                game.Setup.Options.Rules.WinScore = Wrap(game.Setup.Options.Rules.WinScore + amount, 31);
-                break;
-            case Setting.MatchRounds:
-                game.Setup.Options.Rules.MatchRounds = Math.Clamp(game.Setup.Options.Rules.MatchRounds + amount, 1, 20);
-                break;
-            case Setting.FirstMap:
-                game.Setup.FirstMap = Wrap(game.Setup.FirstMap + amount, 7);
-                break;
-            case Setting.MapOrder:
-                game.Setup.ShuffleMaps = !game.Setup.ShuffleMaps;
-                break;
-            case Setting.FontSmoothing:
-                game.Settings.FontSmoothing = Wrap(game.Settings.FontSmoothing + amount, 3);
-                game.Renderer.TextEdgeWidth = game.FontEdgeWidth;
-                break;
-        }
-    }
-
-    private void SetBinding(Keys key)
-    {
-        var k = game.Settings.Keyboard[BindingDevice];
-        switch (BindingRow)
-        {
-            case 0:
-                k.Left = key;
-                break;
-            case 1:
-                k.Right = key;
-                break;
-            case 2:
-                k.Up = key;
-                break;
-            case 3:
-                k.Down = key;
-                break;
-            case 4:
-                k.Jump = key;
-                break;
-            case 5:
-                k.Attack = key;
-                break;
-            case 6:
-                k.Tongue = key;
-                break;
-            case 7:
-                k.Strafe = key;
-                break;
         }
     }
 

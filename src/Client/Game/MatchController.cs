@@ -100,7 +100,11 @@ internal sealed class MatchController : IDisposable
             );
         }
 
-        seats = localSeats.ToArray();
+        options.Rules.Colors = lobby.PlayerColors.Concat(Enumerable.Repeat(0, 8 - lobby.PlayerColors.Length)).ToArray();
+        seats = lobby
+            .Roster.Players(lobby.LocalPeer)
+            .Select(player => new LocalSeat(player.Cpu ? -1 : player.Id, player.Team, player.Color, player.Id))
+            .ToArray();
         CreateWorld(options);
         Network = new NetworkSession(
             World!,

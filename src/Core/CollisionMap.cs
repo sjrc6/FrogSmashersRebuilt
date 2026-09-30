@@ -17,14 +17,7 @@ internal sealed class CollisionMap
             .ToArray();
     }
 
-    public bool Raycast(
-        FixedVector origin,
-        bool horizontal,
-        Fixed distance,
-        bool includeOneWay,
-        bool preservePlatformEmbedding,
-        out Fixed allowed
-    )
+    public bool Raycast(FixedVector origin, bool horizontal, Fixed distance, bool includeOneWay, out Fixed allowed)
     {
         allowed = distance;
         bool hit = false;
@@ -81,11 +74,6 @@ internal sealed class CollisionMap
                 {
                     continue;
                 }
-            }
-
-            if (box.OneWay && !preservePlatformEmbedding && value < high)
-            {
-                continue;
             }
 
             allowed = candidate;

@@ -6,7 +6,7 @@ namespace FrogSmashers.Core;
 public sealed partial class World
 {
     private const int SnapshotMagic = 0x46535253;
-    private const int SnapshotVersion = 1;
+    private const int SnapshotVersion = 3;
 
     public byte[] Capture()
     {
@@ -42,13 +42,19 @@ public sealed partial class World
 
         using var stream = new MemoryStream(snapshot, false);
         using var reader = new BinaryReader(stream, Encoding.UTF8);
-        if (
-            reader.ReadInt32() != SnapshotMagic
-            || reader.ReadInt32() != SnapshotVersion
-            || reader.ReadUInt64() != ConfigurationHash
-        )
+        if (reader.ReadInt32() != SnapshotMagic)
         {
-            throw new InvalidDataException("Snapshot configuration or version mismatch");
+            throw new InvalidDataException("Invalid snapshot format");
+        }
+        if (reader.ReadInt32() != SnapshotVersion)
+        {
+            throw new InvalidDataException(
+                "This replay or snapshot uses an unsupported version. Record a new replay with this build."
+            );
+        }
+        if (reader.ReadUInt64() != ConfigurationHash)
+        {
+            throw new InvalidDataException("Snapshot configuration mismatch");
         }
 
         var tick = reader.ReadInt64();
@@ -79,7 +85,8 @@ public sealed partial class World
         {
             players[i] = ReadPlayer(reader);
             if (
-                players[i].Slot != i
+                players[i].ColorIndex is < 0 or > 7
+                || players[i].Slot != i
                 || players[i].Team != Rules.Teams[i]
                 || players[i].Facing is not (-1 or 1)
                 || !Enum.IsDefined(players[i].Mode)
@@ -136,6 +143,9 @@ public sealed partial class World
         writer.Write(SnapshotVersion);
         writer.Write(TickRate);
         writer.Write(Rules.PlayerCount);
+        writer.Write(Rules.Lobby);
+        foreach (int color in Rules.Colors)
+            writer.Write(color);
         writer.Write(Rules.TeamMode);
         foreach (var player in Players)
         {
@@ -145,9 +155,6 @@ public sealed partial class World
         writer.Write(Rules.WinScore);
         writer.Write(Rules.MatchRounds);
         writer.Write(Rules.CharactersBounceEachOther);
-        writer.Write(Rules.WeirdBounceTrajectories);
-        writer.Write(Rules.OnlyBounceBeforeRecover);
-        writer.Write(Rules.PreservePlatformEmbedding);
         writer.Write(Rules.Showdown);
         writer.Write(Rules.RoundFinishTicks);
         writer.Write(Rules.ScoreScreenTicks);
@@ -195,6 +202,7 @@ public sealed partial class World
     {
         writer.Write(player.Slot);
         writer.Write(player.Team);
+        writer.Write(player.ColorIndex);
         writer.Write(player.Facing);
         writer.Write(player.LastHitBy);
         writer.Write(player.HitsTaken);
@@ -250,6 +258,7 @@ public sealed partial class World
         {
             Slot = reader.ReadInt32(),
             Team = reader.ReadInt32(),
+            ColorIndex = reader.ReadInt32(),
             Facing = reader.ReadInt32(),
             LastHitBy = reader.ReadInt32(),
             HitsTaken = reader.ReadInt32(),

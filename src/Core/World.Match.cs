@@ -17,6 +17,7 @@ public sealed partial class World
             {
                 Slot = i,
                 Team = prior.Team,
+                ColorIndex = prior.ColorIndex,
                 RoundWins = prior.RoundWins,
                 Eliminated = prior.Eliminated,
                 SpawnTicks = 60 + 24 * i,
@@ -78,6 +79,11 @@ public sealed partial class World
             }
         }
 
+        if (Rules.Lobby)
+        {
+            point = Map.Spawns[player.Slot];
+        }
+
         int slot = player.Slot;
         int team = player.Team;
         int score = player.Score;
@@ -86,6 +92,7 @@ public sealed partial class World
         {
             Slot = slot,
             Team = team,
+            ColorIndex = player.ColorIndex,
             Score = score,
             RoundWins = wins,
             Alive = true,
@@ -97,6 +104,30 @@ public sealed partial class World
         };
         Players[slot] = fresh;
         Emit(SimulationEventKind.Spawn, fresh);
+    }
+
+    public void SetLobbySlot(int slot, bool active, int color)
+    {
+        if (!Rules.Lobby || slot < 0 || slot >= Players.Length || color is < 0 or > 7)
+        {
+            throw new ArgumentException("Invalid lobby player");
+        }
+
+        var player = Players[slot];
+        player.ColorIndex = color;
+        if (player.Eliminated == !active)
+        {
+            return;
+        }
+
+        Players[slot] = new PlayerState
+        {
+            Slot = slot,
+            Team = Rules.Teams[slot],
+            ColorIndex = color,
+            Eliminated = !active,
+            SpawnTicks = 0,
+        };
     }
 
     private bool IsWinner(PlayerState player) =>
@@ -124,12 +155,13 @@ public sealed partial class World
             player,
             player.LastHitBy,
             player.HitsTaken,
-            awardedScore: Phase == MatchPhase.Playing
+            awardedScore: !Rules.Lobby
+                && Phase == MatchPhase.Playing
                 && !IsShowdown
                 && player.LastHitBy >= 0
                 && player.LastHitBy < Players.Length
         );
-        if (Phase != MatchPhase.Playing)
+        if (Rules.Lobby || Phase != MatchPhase.Playing)
         {
             return;
         }

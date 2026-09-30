@@ -40,6 +40,11 @@ internal sealed class GameCamera
 
     public void Update(World world, float dt, float elapsed)
     {
+        if (world.Rules.Lobby)
+        {
+            Reset(world.Map);
+            return;
+        }
         float finishAge =
             world.Phase == MatchPhase.RoundFinished
                 ? (world.Rules.RoundFinishTicks - world.PhaseTicks) / (float)World.TickRate

@@ -11,7 +11,7 @@ public sealed class LaunchOptions
     public int Height { get; private set; }
     public int Players { get; private set; } = 4;
     public int Port { get; private set; } = 24804;
-    public int Peers { get; private set; } = 2;
+    public int Slots { get; private set; } = 8;
     public int LocalPlayers { get; private set; } = 1;
     public uint Seed { get; private set; } = 1;
     public string? Map { get; private set; }
@@ -77,8 +77,8 @@ public sealed class LaunchOptions
                 case "--port":
                     options.Port = int.Parse(Value());
                     break;
-                case "--peers":
-                    options.Peers = int.Parse(Value());
+                case "--slots":
+                    options.Slots = int.Parse(Value());
                     break;
                 case "--local-players":
                     options.LocalPlayers = int.Parse(Value());
@@ -110,7 +110,7 @@ public sealed class LaunchOptions
         if (
             options.Players is < 2 or > 8
             || options.LocalPlayers is < 1 or > 8
-            || options.Peers is < 2 or > 8
+            || options.Slots is < 2 or > 8
             || options.Port is < 1024 or > 65535
         )
         {
@@ -135,7 +135,7 @@ public sealed class LaunchOptions
           --map 1BusStop              First arena (ID or zero-based index)
           --map-order 0,1,2,3,4,5     Custom arena sequence
           --seed 1                   Match random seed
-          --host udp|steam --peers 2  Host a private match
+          --host udp|steam --slots 8  Open a lobby with up to eight player slots
           --join udp:127.0.0.1        Join UDP host (--port 24804)
           --join steam:LOBBY_ID       Join a private Steam lobby
           --local-players 1..8        Local players for a network match

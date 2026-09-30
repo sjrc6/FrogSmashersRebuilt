@@ -1,0 +1,317 @@
+{
+  "A": {
+    "Label": "A"
+  },
+  "Add": {
+    "Label": "+"
+  },
+  "Apps": {
+    "Label": "MENU"
+  },
+  "B": {
+    "Label": "B"
+  },
+  "Back": {
+    "Sprite": "back"
+  },
+  "C": {
+    "Label": "C"
+  },
+  "CapsLock": {
+    "Label": "CAPS"
+  },
+  "D": {
+    "Label": "D"
+  },
+  "D0": {
+    "Label": "0"
+  },
+  "D1": {
+    "Label": "1"
+  },
+  "D2": {
+    "Label": "2"
+  },
+  "D3": {
+    "Label": "3"
+  },
+  "D4": {
+    "Label": "4"
+  },
+  "D5": {
+    "Label": "5"
+  },
+  "D6": {
+    "Label": "6"
+  },
+  "D7": {
+    "Label": "7"
+  },
+  "D8": {
+    "Label": "8"
+  },
+  "D9": {
+    "Label": "9"
+  },
+  "Decimal": {
+    "Label": "."
+  },
+  "Delete": {
+    "Sprite": "delete"
+  },
+  "Divide": {
+    "Label": "/"
+  },
+  "Down": {
+    "Sprite": "downKey"
+  },
+  "E": {
+    "Label": "E"
+  },
+  "End": {
+    "Sprite": "end"
+  },
+  "Enter": {
+    "Sprite": "enter"
+  },
+  "Escape": {
+    "Sprite": "escape"
+  },
+  "F": {
+    "Label": "F"
+  },
+  "F1": {
+    "Sprite": "f1"
+  },
+  "F10": {
+    "Sprite": "f10"
+  },
+  "F11": {
+    "Sprite": "f11"
+  },
+  "F12": {
+    "Sprite": "f12"
+  },
+  "F2": {
+    "Sprite": "f2"
+  },
+  "F3": {
+    "Sprite": "f3"
+  },
+  "F4": {
+    "Sprite": "f4"
+  },
+  "F5": {
+    "Sprite": "f5"
+  },
+  "F6": {
+    "Sprite": "f6"
+  },
+  "F7": {
+    "Sprite": "f7"
+  },
+  "F8": {
+    "Sprite": "f8"
+  },
+  "F9": {
+    "Sprite": "f9"
+  },
+  "G": {
+    "Label": "G"
+  },
+  "H": {
+    "Label": "H"
+  },
+  "Home": {
+    "Sprite": "home"
+  },
+  "I": {
+    "Label": "I"
+  },
+  "Insert": {
+    "Sprite": "insert"
+  },
+  "J": {
+    "Label": "J"
+  },
+  "K": {
+    "Label": "K"
+  },
+  "L": {
+    "Label": "L"
+  },
+  "Left": {
+    "Sprite": "leftKey"
+  },
+  "LeftAlt": {
+    "Sprite": "alt"
+  },
+  "LeftControl": {
+    "Sprite": "control"
+  },
+  "LeftShift": {
+    "Sprite": "shift"
+  },
+  "LeftWindows": {
+    "Label": "WIN"
+  },
+  "M": {
+    "Label": "M"
+  },
+  "Multiply": {
+    "Label": "*"
+  },
+  "N": {
+    "Label": "N"
+  },
+  "NumLock": {
+    "Label": "NUM"
+  },
+  "NumPad0": {
+    "Label": "0"
+  },
+  "NumPad1": {
+    "Label": "1"
+  },
+  "NumPad2": {
+    "Label": "2"
+  },
+  "NumPad3": {
+    "Label": "3"
+  },
+  "NumPad4": {
+    "Label": "4"
+  },
+  "NumPad5": {
+    "Label": "5"
+  },
+  "NumPad6": {
+    "Label": "6"
+  },
+  "NumPad7": {
+    "Label": "7"
+  },
+  "NumPad8": {
+    "Label": "8"
+  },
+  "NumPad9": {
+    "Label": "9"
+  },
+  "O": {
+    "Label": "O"
+  },
+  "OemBackslash": {
+    "Label": "\\"
+  },
+  "OemCloseBrackets": {
+    "Label": "]"
+  },
+  "OemComma": {
+    "Label": ","
+  },
+  "OemMinus": {
+    "Label": "-"
+  },
+  "OemOpenBrackets": {
+    "Label": "["
+  },
+  "OemPeriod": {
+    "Label": "."
+  },
+  "OemPipe": {
+    "Label": "\\"
+  },
+  "OemPlus": {
+    "Label": "="
+  },
+  "OemQuestion": {
+    "Label": "/"
+  },
+  "OemQuotes": {
+    "Label": "'"
+  },
+  "OemSemicolon": {
+    "Label": ";"
+  },
+  "OemTilde": {
+    "Sprite": "tilde"
+  },
+  "P": {
+    "Label": "P"
+  },
+  "PageDown": {
+    "Sprite": "pgdown"
+  },
+  "PageUp": {
+    "Sprite": "pgup"
+  },
+  "Pause": {
+    "Label": "PAUSE"
+  },
+  "PrintScreen": {
+    "Label": "PRT SC"
+  },
+  "Q": {
+    "Label": "Q"
+  },
+  "R": {
+    "Label": "R"
+  },
+  "Right": {
+    "Sprite": "rightKey"
+  },
+  "RightAlt": {
+    "Sprite": "alt"
+  },
+  "RightControl": {
+    "Sprite": "control"
+  },
+  "RightShift": {
+    "Sprite": "shift"
+  },
+  "RightWindows": {
+    "Label": "WIN"
+  },
+  "S": {
+    "Label": "S"
+  },
+  "Scroll": {
+    "Label": "SCR"
+  },
+  "Separator": {
+    "Label": ","
+  },
+  "Space": {
+    "Sprite": "space"
+  },
+  "Subtract": {
+    "Label": "-"
+  },
+  "T": {
+    "Label": "T"
+  },
+  "Tab": {
+    "Sprite": "tab"
+  },
+  "U": {
+    "Label": "U"
+  },
+  "Up": {
+    "Sprite": "upKey"
+  },
+  "V": {
+    "Label": "V"
+  },
+  "W": {
+    "Label": "W"
+  },
+  "X": {
+    "Label": "X"
+  },
+  "Y": {
+    "Label": "Y"
+  },
+  "Z": {
+    "Label": "Z"
+  }
+}

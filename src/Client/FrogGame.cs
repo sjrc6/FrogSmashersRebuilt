@@ -21,6 +21,7 @@ public class FrogGame : Game
     internal Audio Audio { get; private set; } = null!;
     internal CinematicPlayer Cinematics { get; private set; } = null!;
     internal MatchSetup Setup { get; }
+    internal LobbyController Lobby { get; private set; } = null!;
     internal MatchController Match { get; private set; } = null!;
     internal OnlineController Online { get; private set; } = null!;
     internal MenuController Menus { get; private set; } = null!;
@@ -85,6 +86,7 @@ public class FrogGame : Game
         Cinematics = new CinematicPlayer(GraphicsDevice, Assets, Audio) { ShakeEnabled = Settings.ScreenShake };
         Match = new MatchController(Assets.Data, Renderer, Audio, Controls, Options.Record);
         Online = new OnlineController(Options, Assets.Data.ContentHash);
+        Lobby = new LobbyController(this);
         Menus = new MenuController(this);
         menuRenderer = new MenuRenderer(this, Menus);
         ConfigureLaunch();
@@ -93,11 +95,6 @@ public class FrogGame : Game
 
     private void ConfigureLaunch()
     {
-        if (Options.MapOrder != null)
-        {
-            Setup.Rules.MapOrder = Options.MapOrder;
-        }
-
         if (Options.Map != null)
         {
             Setup.FirstMap = int.TryParse(Options.Map, out int index)
@@ -113,21 +110,21 @@ public class FrogGame : Game
         {
             for (int index = 0; index < Options.LocalPlayers; index++)
             {
-                Setup.Seats.Add(new LocalSeat(Options.Demo ? -1 : index, -1));
+                Setup.Lobby.Join(Options.Demo ? -1 : index);
             }
 
             BeginLobby(Options.Host ?? Options.Join!, Options.Host != null);
         }
         else if (Options.Replay != null)
         {
-            Setup.Options = Match.StartReplay(Options.Replay);
+            Match.StartReplay(Options.Replay);
             ShowMatch();
         }
         else if (Options.Demo)
         {
             for (int index = 0; index < Options.Players; index++)
             {
-                Setup.Seats.Add(new LocalSeat(-1, index % 2));
+                Setup.Lobby.Join(-1, index % 2);
             }
 
             StartLocal();
@@ -176,6 +173,9 @@ public class FrogGame : Game
 
     private void HandleGlobalInput()
     {
+        if (Menus.WaitingForBinding)
+            return;
+
         if (Controls.Press(Keys.F11))
         {
             Settings.Fullscreen = !Settings.Fullscreen;
@@ -192,14 +192,6 @@ public class FrogGame : Game
         {
             Renderer.ShowColliders = !Renderer.ShowColliders;
         }
-
-        bool togglePause =
-            Controls.Press(Keys.Escape) || Controls.AnyPad(Buttons.Back) || Controls.AnyPad(Buttons.Start);
-        if (Menus.Screen == GameScreen.Playing && togglePause)
-        {
-            Match.Paused = !Match.Paused;
-            Controls.ClearPendingEdges();
-        }
     }
 
     private void CheckInvitations()
@@ -214,7 +206,7 @@ public class FrogGame : Game
         Online.CloseLobby();
         if (Setup.Seats.Count == 0)
         {
-            Setup.Seats.Add(new LocalSeat(0, -1));
+            Setup.Lobby.Join(0);
         }
 
         BeginLobby("steam:" + invitation, false);
@@ -233,15 +225,15 @@ public class FrogGame : Game
 
     internal void StartLocal()
     {
-        Setup.ConfigureRules(Options.MapOrder);
-        if (Setup.Rules.TeamMode && Setup.Seats.Select(seat => seat.Team).Distinct().Count() < 2)
+        var options = Setup.CreateOptions(Options.MapOrder);
+        if (options.Rules.TeamMode && options.Rules.Teams.Take(Setup.Seats.Count).Distinct().Count() < 2)
         {
+            Menus.ShowSeats();
             Menus.Status = "CHOOSE AT LEAST TWO DIFFERENT TEAMS";
-            Menus.Screen = GameScreen.Seats;
             return;
         }
 
-        Match.StartLocal(Setup.Options, Setup.Seats);
+        Match.StartLocal(options, Setup.Seats);
         ShowMatch();
     }
 
@@ -249,10 +241,18 @@ public class FrogGame : Game
     {
         try
         {
-            Setup.ConfigureRules(Options.MapOrder);
-            Online.Connect(target, host, Menus.ExpectedPeers, Setup);
-            Menus.Screen = GameScreen.Connecting;
-            Menus.EditingAddress = false;
+            if (Online.Lobby?.Connected == true)
+                Lobby.RememberParty();
+            Online.Connect(
+                target,
+                host,
+                Setup.Lobby.Roster.Capacity,
+                Setup.Lobby.Roster,
+                Setup.CreateOptions(Options.MapOrder),
+                Menus.AllowLan
+            );
+            Lobby.Open();
+            Menus.ShowConnecting();
         }
         catch (Exception exception)
         {
@@ -264,7 +264,7 @@ public class FrogGame : Game
     {
         try
         {
-            Setup.Options = Match.StartNetwork(Online.Lobby!, Setup.Seats);
+            Match.StartNetwork(Online.Lobby!, Setup.Seats);
             Console.WriteLine(
                 $"Connected peer {Online.Lobby!.LocalPeer}; players {Match.World!.Players.Length}; initial hash {Match.World.HashState():x16}"
             );
@@ -279,11 +279,33 @@ public class FrogGame : Game
     private void ShowMatch()
     {
         Cinematics.Stop();
-        Menus.Screen = GameScreen.Playing;
+        Menus.ShowPlaying();
+    }
+
+    internal void ReturnToLobby()
+    {
+        if (Online.Lobby?.Connected == true)
+            Lobby.RememberParty();
+        Match.Close();
+        Online.CloseLobby();
+        Cinematics.Stop();
+        Lobby.Open();
+        Menus.ShowSeats();
+    }
+
+    internal void WatchCpus()
+    {
+        var options = Setup.CreateOptions(Options.MapOrder);
+        options.Rules.PlayerCount = 4;
+        options.Rules.Teams = [0, 1, 0, 1, 0, 1, 0, 1];
+        Match.StartLocal(options, Enumerable.Range(0, 4).Select(i => new LocalSeat(-1, i % 2)).ToArray());
+        ShowMatch();
     }
 
     internal void MainMenu()
     {
+        if (Online.Lobby?.Connected == true)
+            Lobby.RememberParty();
         Cinematics.Stop();
         Online.CloseLobby();
         Match.StartMenuBackground(Options.Seed);
@@ -308,10 +330,10 @@ public class FrogGame : Game
 
     internal void SaveSettings()
     {
-        Settings.Rules = Setup.Rules;
-        Settings.FirstMap = Setup.FirstMap;
-        Settings.ShuffleMaps = Setup.ShuffleMaps;
-        Settings.ExpectedPeers = Menus.ExpectedPeers;
+        Settings.MatchDefaults = Setup.Preferences with { };
+        Online.Lobby?.SetMatchSettings(
+            System.Text.Json.JsonSerializer.Serialize(Setup.CreateOptions(Options.MapOrder))
+        );
         display.RememberWindowSize();
         try
         {
@@ -348,6 +370,11 @@ public class FrogGame : Game
         {
             Renderer.DrawPresentation(Cinematics.Draw());
         }
+        else if (Menus.ShowingLobby && Lobby.World != null)
+        {
+            Renderer.DrawWorld(Lobby.World, Lobby.PreviousWorld, Lobby.Interpolation, showGameplayUi: false);
+            Audio.ListenerPosition = Renderer.ListenerPosition;
+        }
         else if (Match.World != null && (Menus.ShowingMatch || Menus.ShowingMenuBackground))
         {
             var world = Match.World;
@@ -372,7 +399,7 @@ public class FrogGame : Game
         }
         else
         {
-            Renderer.DrawBackdrop(Assets.Data.Maps[Setup.FirstMap]);
+            Renderer.DrawBackdrop(Assets.Data.Maps[Setup.FirstMap], .12f);
         }
     }
 
