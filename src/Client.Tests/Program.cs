@@ -44,6 +44,7 @@ internal static class Program
             AudioTests.Run(backend, Check);
             InputTests.Run(Check);
             MenuSetupTests.Run(root!, Check);
+            LobbyTests.Run(root!, Check);
             if (!args.Contains("--skip-compatibility"))
             {
                 AudioCompatibility.Run(root!, Check);

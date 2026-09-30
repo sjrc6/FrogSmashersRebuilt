@@ -14,6 +14,7 @@ public sealed class Controls
     public GamePadState[] Pads { get; } = new GamePadState[ControllerCount];
 
     private readonly GamePadState[] beforePads = new GamePadState[ControllerCount];
+    private readonly HorizontalInput[] horizontal = new HorizontalInput[KeyboardCount + ControllerCount];
     private readonly InputButtons[] held = new InputButtons[KeyboardCount + ControllerCount];
     private readonly InputButtons[] edges = new InputButtons[KeyboardCount + ControllerCount];
     public Func<KeyboardState>? KeyboardSource { get; set; }
@@ -21,13 +22,26 @@ public sealed class Controls
     public Func<MouseState>? MouseSource { get; set; }
     public MouseState MouseNow { get; private set; }
     private MouseState mouseBefore;
-    public bool MouseMoved => MouseNow.Position != mouseBefore.Position;
+    private bool mouseHoverSuspended;
+    public bool MouseMoved => !mouseHoverSuspended && MouseNow.Position != mouseBefore.Position;
     public bool MousePressed =>
         MouseNow.LeftButton == ButtonState.Pressed && mouseBefore.LeftButton == ButtonState.Released;
 
     public Controls(ClientSettings settings) => this.settings = settings;
 
-    public void ClearPendingEdges() => Array.Clear(edges);
+    public void SuspendMouseHover() => mouseHoverSuspended = true;
+
+    public void ClearPendingEdges()
+    {
+        for (int device = 0; device < edges.Length; device++)
+            ClearPendingEdges(device);
+    }
+
+    public void ClearPendingEdges(int device)
+    {
+        edges[device] = 0;
+        horizontal[device].AdvanceTick();
+    }
 
     public void Poll()
     {
@@ -35,6 +49,8 @@ public sealed class Controls
         KeysNow = KeyboardSource?.Invoke() ?? Keyboard.GetState();
         mouseBefore = MouseNow;
         MouseNow = MouseSource?.Invoke() ?? Mouse.GetState();
+        if (MouseNow.Position == mouseBefore.Position)
+            mouseHoverSuspended = false;
         for (int i = 0; i < ControllerCount; i++)
         {
             beforePads[i] = Pads[i];
@@ -43,6 +59,8 @@ public sealed class Controls
 
         for (int i = 0; i < KeyboardCount + ControllerCount; i++)
         {
+            var (left, right) = HorizontalHeld(i);
+            horizontal[i].Update(left, right);
             var b = ReadRaw(i).Buttons;
             edges[i] |= b & ~held[i] & ~InputButtons.Strafe;
             held[i] = b;
@@ -123,7 +141,7 @@ public sealed class Controls
         var result = raw with { Buttons = raw.Buttons | edges[device] };
         if (consume)
         {
-            edges[device] = 0;
+            ClearPendingEdges(device);
         }
 
         return result;
@@ -131,8 +149,6 @@ public sealed class Controls
 
     private InputFrame ReadRaw(int device)
     {
-        bool left;
-        bool right;
         bool up;
         bool down;
         bool jump;
@@ -142,8 +158,6 @@ public sealed class Controls
         if (device < KeyboardCount)
         {
             var k = settings.Keyboard[device];
-            left = KeysNow.IsKeyDown(k.Left);
-            right = KeysNow.IsKeyDown(k.Right);
             up = KeysNow.IsKeyDown(k.Up);
             down = KeysNow.IsKeyDown(k.Down);
             jump = KeysNow.IsKeyDown(k.Jump);
@@ -154,8 +168,6 @@ public sealed class Controls
         else
         {
             var p = Pads[device - KeyboardCount];
-            left = p.DPad.Left == ButtonState.Pressed || p.ThumbSticks.Left.X < -StickDeadZone;
-            right = p.DPad.Right == ButtonState.Pressed || p.ThumbSticks.Left.X > StickDeadZone;
             up = p.DPad.Up == ButtonState.Pressed || p.ThumbSticks.Left.Y > StickDeadZone;
             down = p.DPad.Down == ButtonState.Pressed || p.ThumbSticks.Left.Y < -StickDeadZone;
             jump = p.IsButtonDown(Buttons.A);
@@ -165,12 +177,51 @@ public sealed class Controls
         }
 
         return new(
-            (sbyte)((right ? 1 : 0) - (left ? 1 : 0)),
+            horizontal[device].Value,
             (sbyte)((up ? 1 : 0) - (down ? 1 : 0)),
             (jump ? InputButtons.Jump : 0)
                 | (attack ? InputButtons.Attack : 0)
                 | (tongue ? InputButtons.Tongue : 0)
                 | (strafe ? InputButtons.Strafe : 0)
         );
+    }
+
+    private (bool Left, bool Right) HorizontalHeld(int device)
+    {
+        if (device < KeyboardCount)
+        {
+            var bindings = settings.Keyboard[device];
+            return (KeysNow.IsKeyDown(bindings.Left), KeysNow.IsKeyDown(bindings.Right));
+        }
+        var pad = Pads[device - KeyboardCount];
+        return (
+            pad.DPad.Left == ButtonState.Pressed || pad.ThumbSticks.Left.X < -StickDeadZone,
+            pad.DPad.Right == ButtonState.Pressed || pad.ThumbSticks.Left.X > StickDeadZone
+        );
+    }
+
+    private struct HorizontalInput
+    {
+        private bool leftHeld;
+        private bool rightHeld;
+        private long tick;
+        private long leftPressedTick;
+        private long rightPressedTick;
+        public sbyte Value =>
+            leftHeld && rightHeld
+                ? (sbyte)rightPressedTick.CompareTo(leftPressedTick)
+                : (sbyte)((rightHeld ? 1 : 0) - (leftHeld ? 1 : 0));
+
+        public void AdvanceTick() => tick++;
+
+        public void Update(bool left, bool right)
+        {
+            if (left && !leftHeld)
+                leftPressedTick = tick;
+            if (right && !rightHeld)
+                rightPressedTick = tick;
+            leftHeld = left;
+            rightHeld = right;
+        }
     }
 }

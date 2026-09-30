@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate protocol identity and create reproducible release archives."""
+"""Validate protocol identity and create release archives."""
 
 import gzip
 import hashlib
@@ -7,6 +7,7 @@ import json
 import os
 import sys
 import tarfile
+import time
 import zipfile
 from pathlib import Path
 
@@ -33,10 +34,29 @@ def validate_packages(targets):
     builds = {}
     for target in targets:
         folder = RELEASES / f"FrogSmashersRebuilt-{target}"
+        executable = "FrogSmashersRebuilt.exe" if target.startswith("win") else "FrogSmashersRebuilt"
+        if not (folder / executable).is_file():
+            raise SystemExit(f"{target}: game executable is missing")
+        for path in folder.iterdir():
+            if path.suffix in (".dll", ".so", ".pdb") or path.name.endswith((".deps.json", ".runtimeconfig.json")):
+                raise SystemExit(f"{target}: unbundled runtime file beside executable: {path.name}")
+        native = (
+            {"SDL2.dll", "steam_api64.dll"}
+            if target.startswith("win")
+            else {"libSDL2-2.0.so.0", "libsteam_api.so"}
+        )
+        native_folder = folder / "runtimes" / target / "native"
+        if not native_folder.is_dir() or {path.name for path in native_folder.iterdir()} != native:
+            raise SystemExit(f"{target}: missing or unexpected SDL or Steam libraries in {native_folder}")
+        if {path.name for path in (folder / "runtimes").iterdir()} != {target}:
+            raise SystemExit(f"{target}: package contains another platform's native libraries")
         for pattern in DEVELOPMENT_EXECUTABLES:
             if any(folder.rglob(pattern)):
                 raise SystemExit(f"{target}: development executable found in game package: {pattern}")
         builds[target] = json.loads((folder / "BuildInfo.json").read_text(encoding="utf-8"))
+        manifest_hash = hashlib.sha256((folder / "Content/content.json").read_bytes()).hexdigest().upper()
+        if manifest_hash != builds[target]["ContentManifestSha256"]:
+            raise SystemExit(f"{target}: published content does not match the build identity")
 
     reference = next(iter(builds.values()))
     for target, build in builds.items():
@@ -56,12 +76,14 @@ def write_file_hashes(folder):
     (folder / "FILES.sha256").write_text("".join(hashes), encoding="utf-8", newline="\n")
 
 
-def create_zip(folder, files):
+def create_zip(folder, files, epoch):
     archive = RELEASES / f"{folder.name}.zip"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as output:
         for path in files:
             name = f"{folder.name}/{path.relative_to(folder).as_posix()}"
-            entry = zipfile.ZipInfo(name, (2000, 1, 1, 0, 0, 0))
+            entry = zipfile.ZipInfo.from_file(path, name)
+            if epoch is not None:
+                entry.date_time = time.gmtime(max(epoch, 315532800))[:6]
             entry.external_attr = 0o100644 << 16
             entry.compress_type = zipfile.ZIP_DEFLATED
             output.writestr(entry, path.read_bytes())
@@ -77,7 +99,8 @@ def create_tar(folder, files, epoch):
             for path in files:
                 name = f"{folder.name}/{path.relative_to(folder).as_posix()}"
                 entry = output.gettarinfo(str(path), name)
-                entry.mtime = epoch
+                if epoch is not None:
+                    entry.mtime = epoch
                 entry.uid = entry.gid = 0
                 entry.uname = entry.gname = ""
                 entry.mode = 0o755 if os.access(path, os.X_OK) else 0o644
@@ -90,7 +113,7 @@ def package(target, epoch):
     folder = RELEASES / f"FrogSmashersRebuilt-{target}"
     write_file_hashes(folder)
     files = sorted(path for path in folder.rglob("*") if path.is_file())
-    archive = create_zip(folder, files) if target.startswith("win") else create_tar(folder, files, epoch)
+    archive = create_zip(folder, files, epoch) if target.startswith("win") else create_tar(folder, files, epoch)
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     archive.with_name(archive.name + ".sha256").write_text(
         f"{digest}  {archive.name}\n", encoding="utf-8", newline="\n"
@@ -105,7 +128,7 @@ def main():
         if target not in TARGETS:
             raise SystemExit(f"Unsupported target: {target}")
     validate_packages(targets)
-    epoch = int(os.environ.get("SOURCE_DATE_EPOCH", "946684800"))
+    epoch = int(os.environ["SOURCE_DATE_EPOCH"]) if "SOURCE_DATE_EPOCH" in os.environ else None
     for target in targets:
         package(target, epoch)
 

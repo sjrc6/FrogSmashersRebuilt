@@ -31,7 +31,7 @@ public sealed partial class Renderer
             );
             float scale = 2 * cameraController.PixelsPerUnit / 20 * e.TextScale;
             canvas.BeginFont();
-            assets.SideScoreFont.DrawCenteredVertical(Batch, e.Text, location, e.TextColor, scale, true);
+            assets.ScoreFont.DrawCenteredVertical(Batch, e.Text, location, e.TextColor, scale, true);
             Batch.End();
         }
     }

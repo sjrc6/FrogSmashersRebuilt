@@ -33,7 +33,15 @@ internal static class SteamRuntime
                 }
 
                 string file = OperatingSystem.IsWindows() ? "steam_api64.dll" : "libsteam_api.so";
-                return NativeLibrary.Load(Path.Combine(AppContext.BaseDirectory, file));
+                return NativeLibrary.Load(
+                    Path.Combine(
+                        AppContext.BaseDirectory,
+                        "runtimes",
+                        RuntimeInformation.RuntimeIdentifier,
+                        "native",
+                        file
+                    )
+                );
             }
         );
     }

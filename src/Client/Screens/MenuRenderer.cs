@@ -8,7 +8,6 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
     private static readonly Color Selected = new(255, 236, 164);
     private static readonly Color PanelColor = new(25, 36, 40, 178);
     private readonly Dictionary<string, Rectangle> glyphSources = new();
-    private const float HintScale = .85f;
     private const float HintGap = 4;
 
     public void Draw()
@@ -48,7 +47,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
                 new Rectangle(first.X - 12, first.Y - 47, first.Width + 24, last.Bottom - first.Y + 60),
                 PanelColor
             );
-            game.Renderer.CenteredText(Title(), 640, first.Y - 22, Color.White, 1.1f, true);
+            game.Renderer.CenteredText(Title(), 640, first.Y - 22, Color.White, center: true);
         }
         if (menu.Screen == GameScreen.Connecting)
             game.Renderer.Text(game.Online.Lobby?.Status ?? "", 640, 283, Color.White, 1, true);
@@ -63,27 +62,24 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             var entry = entries[i];
             bool selected = i == menu.Selected;
             game.Renderer.Panel(rect, selected ? new Color(99, 117, 120, 195) : new Color(22, 32, 38, 105));
-            float scale = Math.Min(
-                editingSlots ? .82f : .86f,
-                (rect.Width - 24) / Math.Max(1, game.Assets.Font.Measure(entry.Label, 1).X)
-            );
+            string label = game.Assets.Font.Wrap(entry.Label, rect.Width - 48, editingSlots ? 1 : 2);
             var color = entry.Color ?? (selected ? Selected : Color.White);
             if (entry.Key is { } key)
             {
-                game.Renderer.CenteredText(entry.Label, rect.X + 26, rect.Center.Y, color, scale);
+                game.Renderer.CenteredText(label, rect.X + 26, rect.Center.Y, color);
                 var glyph = ButtonGlyph.Key(key);
                 Glyph(glyph, rect.Right - 26 - GlyphWidth(glyph), rect.Center.Y);
             }
             else
-                game.Renderer.CenteredText(entry.Label, rect.Center.X, rect.Center.Y, color, scale, true);
+                game.Renderer.CenteredText(label, rect.Center.X, rect.Center.Y, color, center: true);
         }
         if (editingSlots)
             return;
         DrawStatus();
         if (menu.WaitingForBinding)
-            game.Renderer.Text("PRESS A KEY TO BIND", 640, 645, Color.White, .8f, true);
+            game.Renderer.Text("PRESS A KEY TO BIND", 640, 645, Color.White, center: true);
         if (menu.EditingAddress)
-            game.Renderer.Text("TYPE ADDRESS / LOBBY ID", 640, 645, Color.White, .8f, true);
+            game.Renderer.Text("TYPE ADDRESS / LOBBY ID", 640, 645, Color.White, center: true);
         ActionHint(ButtonGlyph.Accept(menu.HintDevice), menu.EditingAddress ? "DONE" : "SELECT", 490, 692);
         ActionHint(
             ButtonGlyph.Back(menu.HintDevice),
@@ -108,7 +104,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
                 room.Center.X,
                 room.Top + 24,
                 Color.White,
-                .95f,
+                1,
                 true
             );
             ActionHint(ButtonGlyph.Accept(menu.HintDevice), "SELECT", room.Left + 14, room.Bottom - 19);
@@ -116,7 +112,13 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
         var back = ButtonGlyph.Back(menu.HintDevice);
         ActionHint(back, "BACK", room.Right - HintWidth(back, "BACK") - 14, room.Bottom - 19);
         if (menu.Status.Length > 0)
-            game.Renderer.CenteredText(menu.Status, room.Center.X, room.Center.Y, Selected, .6f, true);
+            game.Renderer.CenteredText(
+                game.Assets.Font.Wrap(menu.Status, room.Width - 28, 2),
+                room.Center.X,
+                room.Center.Y,
+                Selected,
+                center: true
+            );
     }
 
     private string Title() =>
@@ -147,7 +149,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             game.Online.Lobby is SteamLobby steam ? $"STEAM LOBBY {steam.LobbyCode}"
             : game.Online.Lobby != null ? $"UDP LOBBY PORT {game.Options.Port}"
             : "LOCAL LOBBY";
-        game.Renderer.Text(heading, 640, 17, Color.White, .9f, true);
+        game.Renderer.Text(heading, 640, 17, Color.White, center: true);
         for (int room = 0; room < 8; room++)
         {
             var rect = MenuLayout.RoomInterior(room);
@@ -158,9 +160,9 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
                 if (slot.Open && game.Renderer.LobbyJoinPrompt && menu.Screen == GameScreen.Seats)
                 {
                     var start = ButtonGlyph.Start(menu.HintDevice);
-                    float textWidth = game.Assets.Font.Measure("PRESS", HintScale).X;
+                    float textWidth = game.Assets.Font.Measure("PRESS").X;
                     float left = rect.Center.X - (textWidth + HintGap + GlyphWidth(start)) / 2;
-                    game.Renderer.CenteredText("PRESS", left, rect.Top + 28, Color.Black, HintScale);
+                    game.Renderer.CenteredText("PRESS", left, rect.Top + 28, Color.Black);
                     Glyph(start, left + textWidth + HintGap, rect.Top + 28);
                 }
                 else
@@ -169,7 +171,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
                         rect.Center.X,
                         rect.Top + 28,
                         Color.Black,
-                        HintScale,
+                        1,
                         true
                     );
                 continue;
@@ -178,8 +180,10 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
                 player.Cpu ? "CPU"
                 : player.Peer == game.Lobby.LocalPeer ? new LocalSeat(player.Id).Label
                 : $"PLAYER {room + 1}";
-            game.Renderer.CenteredText(label, rect.Center.X, rect.Top + 24, Color.Black, .8f, true);
-            if (!player.Spawned && menu.Screen == GameScreen.Seats && player.Peer == game.Lobby.LocalPeer)
+            game.Renderer.CenteredText(label, rect.Center.X, rect.Top + 24, Color.Black, center: true);
+            if (player.Cpu || menu.Screen != GameScreen.Seats || player.Peer != game.Lobby.LocalPeer)
+                continue;
+            if (!player.Spawned)
             {
                 var colorButton =
                     player.Id >= 2
@@ -189,11 +193,24 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
                     colorButton,
                     game.Lobby.TeamMode ? $"COLOR / TEAM {player.Team + 1}" : "COLOR",
                     rect.Center.X,
-                    rect.Bottom - 60,
+                    rect.Bottom - 72,
                     Color.Black
                 );
-                CenteredHint(ButtonGlyph.Start(player.Id), "SPAWN", rect.Center.X, rect.Bottom - 24, Color.Black);
+                CenteredHint(ButtonGlyph.Start(player.Id), "SPAWN", rect.Center.X, rect.Bottom - 46, Color.Black);
+                var backButton =
+                    player.Id >= 2
+                        ? ButtonGlyph.Pad("uButton")
+                        : ButtonGlyph.Key(game.Settings.Keyboard[player.Id].Attack);
+                CenteredHint(backButton, "BACK OUT", rect.Center.X, rect.Bottom - 20, Color.Black);
             }
+            else if (game.Lobby.CanChooseAgain(room))
+                CenteredHint(
+                    ButtonGlyph.Start(player.Id),
+                    "CHANGE COLOR",
+                    rect.Center.X,
+                    rect.Bottom - 46,
+                    Color.Black
+                );
         }
         if (menu.Screen != GameScreen.Seats)
             return;
@@ -207,7 +224,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
     {
         string status = menu.Status.Length > 0 ? menu.Status : game.Online.Lobby?.Notice ?? "";
         if (status.Length > 0 && menu.Screen != GameScreen.Error)
-            game.Renderer.Text(status, 640, 645, Selected, .65f, true);
+            game.Renderer.CenteredText(game.Assets.Font.Wrap(status, 1000, 2), 640, 637, Selected, center: true);
     }
 
     private Rectangle GlyphSource(ButtonGlyph glyph)
@@ -242,7 +259,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
     }
 
     private float HintWidth(ButtonGlyph glyph, string text) =>
-        GlyphWidth(glyph) + HintGap + game.Assets.Font.Measure(text, HintScale).X;
+        GlyphWidth(glyph) + HintGap + game.Assets.Font.Measure(text).X;
 
     private void CenteredHint(ButtonGlyph glyph, string text, float x, float y, Color? color = null) =>
         ActionHint(glyph, text, x - HintWidth(glyph, text) / 2, y, color);
@@ -250,7 +267,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
     private void ActionHint(ButtonGlyph glyph, string text, float x, float y, Color? color = null)
     {
         Glyph(glyph, x, y);
-        game.Renderer.CenteredText(text, x + GlyphWidth(glyph) + HintGap, y, color ?? Color.White, HintScale);
+        game.Renderer.CenteredText(text, x + GlyphWidth(glyph) + HintGap, y, color ?? Color.White);
     }
 
     private void Glyph(ButtonGlyph glyph, float x, float y)
@@ -258,22 +275,11 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
         var source = GlyphSource(glyph);
         float width = source.Width * 2;
         var size = game.Renderer.ImageSize(source, width);
-        game.Renderer.Image(glyph.Path, source, new Vector2(x + size.X / 2, y + 1 - size.Y / 2), width);
+        game.Renderer.Image(glyph.Path, source, new Vector2(x + size.X / 2, y - size.Y / 2), width);
     }
 
     private void DrawWrapped(string text, float x, float y, float width, Color color)
     {
-        string line = "";
-        foreach (var word in text.Split(' '))
-        {
-            if (game.Assets.Font.Measure(line + word, .9f).X > width)
-            {
-                game.Renderer.Text(line, x, y, color, .9f);
-                y += 32;
-                line = "";
-            }
-            line += word + " ";
-        }
-        game.Renderer.Text(line, x, y, color, .9f);
+        game.Renderer.Text(game.Assets.Font.Wrap(text, width), x, y, color);
     }
 }

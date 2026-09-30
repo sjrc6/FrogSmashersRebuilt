@@ -155,7 +155,7 @@ internal sealed class ScoreDisplay
             for (int i = 0; i < players.Length; i++)
             {
                 var position = new Vector2(
-                    players.Length > 4 ? (i / rows == 0 ? -6 : 6) : 0,
+                    players.Length > 4 ? (i / rows == 0 ? 2 : -2) : 0,
                     (roundWins ? 4.5f : 18) - i % rows * 2
                 );
                 int slot = players[i].Slot;

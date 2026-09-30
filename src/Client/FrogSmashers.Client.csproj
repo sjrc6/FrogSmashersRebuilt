@@ -27,4 +27,15 @@
       CopyToOutputDirectory="PreserveNewest"
     />
   </ItemGroup>
+  <Target Name="PublishSdlLibrary" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish
+        Update="@(ResolvedFileToPublish)"
+        Condition="'%(ResolvedFileToPublish.NuGetPackageId)' == 'MonoGame.Library.SDL'"
+      >
+        <RelativePath>runtimes/$(RuntimeIdentifier)/native/%(Filename)%(Extension)</RelativePath>
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
 </Project>

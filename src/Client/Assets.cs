@@ -15,12 +15,9 @@ public sealed class Assets : IDisposable
     public GameContent Data { get; }
     public Effect SpriteEffect { get; }
     public Effect DistortionEffect { get; }
-    public Effect UiEffect { get; }
     public Texture2D White { get; }
-    public DistanceFieldFont Font { get; }
-    public DistanceFieldFont ScoreFont { get; }
-    public DistanceFieldFont OverheadFont { get; }
-    public DistanceFieldFont SideScoreFont { get; }
+    public BitmapFont Font { get; }
+    public BitmapFont ScoreFont { get; }
 
     public Assets(ContentManager content, string root)
     {
@@ -31,11 +28,8 @@ public sealed class Assets : IDisposable
         White = Texture("UI/white");
         SpriteEffect = content.Load<Effect>("Effects/Sprite");
         DistortionEffect = content.Load<Effect>("Effects/Distortion");
-        UiEffect = content.Load<Effect>("Effects/Ui");
-        Font = LoadFont("font");
-        ScoreFont = LoadFont("score-font");
-        OverheadFont = LoadFont("overhead-font");
-        SideScoreFont = LoadFont("side-score-font");
+        Font = LoadFont("retroville", 14, pixelAligned: true);
+        ScoreFont = LoadFont("arcade", 10, pixelAligned: false);
     }
 
     public Texture2D Texture(string assetName) => content.Load<Texture2D>(assetName);
@@ -74,10 +68,10 @@ public sealed class Assets : IDisposable
         return data;
     }
 
-    private DistanceFieldFont LoadFont(string name)
+    private BitmapFont LoadFont(string name, int displayHeight, bool pixelAligned)
     {
         var definition = FontDefinition.Load(Path.Combine(Root, "UI", name + ".json"));
-        return new DistanceFieldFont(Texture(definition.Texture), definition);
+        return new BitmapFont(Texture(definition.Texture), definition, displayHeight, pixelAligned);
     }
 
     public void Dispose()

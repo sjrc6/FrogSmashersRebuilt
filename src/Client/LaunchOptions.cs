@@ -7,8 +7,6 @@ public sealed class LaunchOptions
     public bool NoAudio { get; private set; }
     public bool NoIntro { get; private set; }
     public bool Lan { get; private set; }
-    public int Width { get; private set; }
-    public int Height { get; private set; }
     public int Players { get; private set; } = 4;
     public int Port { get; private set; } = 24804;
     public int Slots { get; private set; } = 8;
@@ -52,12 +50,6 @@ public sealed class LaunchOptions
                     break;
                 case "--no-intro":
                     options.NoIntro = true;
-                    break;
-                case "--width":
-                    options.Width = int.Parse(Value());
-                    break;
-                case "--height":
-                    options.Height = int.Parse(Value());
                     break;
                 case "--lan":
                     options.Lan = true;
@@ -117,14 +109,6 @@ public sealed class LaunchOptions
             throw new ArgumentException("Invalid launch option range.");
         }
 
-        if (
-            options.Width != 0 && options.Width is < 320 or > 8192
-            || options.Height != 0 && options.Height is < 180 or > 8192
-        )
-        {
-            throw new ArgumentException("Invalid window size.");
-        }
-
         return options;
     }
 
@@ -142,12 +126,12 @@ public sealed class LaunchOptions
           --lan                      Bind UDP host to LAN (default localhost)
           --record match.fsr         Record a local match
           --replay match.fsr         Play and verify recorded inputs
-          --width 1920 --height 1080  Set initial window dimensions
           --no-audio                 Disable audio
           --no-intro                 Open menu directly
         Keyboard 1: WASD, T jump, U bat, Y tongue, R strafe.
         Keyboard 2: arrows, M jump, period bat, comma tongue, N strafe.
         Controller: stick/D-pad, A jump, X bat, B tongue, left shoulder strafe.
         F3 diagnostics; F4 collision overlay; F11 fullscreen; Escape pause/menu.
+        Windowed mode uses a fixed 1280x720 resolution.
         """;
 }

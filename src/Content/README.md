@@ -4,7 +4,7 @@ The initial port used this commit `5ae12e413851bd2910853a217a6fdcd89115737f`
 
 - `Textures` - source images and four imported DDS textures with their compression and mipmaps
 - `Fonts`- font sources and generation settings
-- `UI` - generated distance-field atlases and glyph layout data
+- `UI` - generated bitmap font atlases, integer glyph metrics and button icons
 - `Game` - maps, presentation scenes, sprite geometry, animations, materials, sounds, and character settings
 - `Content.mgcb`- MonoGame project content 
 
@@ -15,7 +15,7 @@ OGG/WAV are in `src/ContentBuild/Audio`
 `src/ContentBuild`- mostly built assets
 
 - `Textures`, `Effects`, and font atlases are standard MonoGame DesktopGL XNB assets loaded through `ContentManager`.
-- `UI/*.json` contains generic distance-field font metrics.
+- `UI/*.json` contains bitmap font metrics in source pixels.
 - `content.json` combines the authored game data and shipping asset hashes.
 - `Audio` contains OGG/WAV source clips that ship directly
 

@@ -377,8 +377,7 @@
     "Audio/Sound/intro/Intro_PullOutBat.ogg": "5cab59628088ab7291ecb7438784a83ae476911ed606e862f65b93e5b6fdb5c9",
     "Audio/Sound/intro/Intro_surprise7.ogg": "b7e64a96a336baa9dea9ce367e288853e6b8903f6ef197cadb00f911ddcb9d5e",
     "Effects/Distortion.xnb": "84f916fa5bc957fa5303cffd86a83b6fce9d95aa68f472bcfc0a16286917fff7",
-    "Effects/Sprite.xnb": "51ea0f1af6988aa7a2292156e2f3174901a72f3610ec3bfd14d564aa086b4946",
-    "Effects/Ui.xnb": "d35a43a3fe128fc8d7406333ed35ff251a32936493eb9076b060de9f458a857a",
+    "Effects/Sprite.xnb": "27d882779eb1fb60485f01de3ad9caab268e3b2863ebca2318a1c8acade1e64e",
     "Textures/Materials/RadialGradient.xnb": "3c14e52a4b195d833bf797e93002ecbe25df2b1c98d3c0b7712ac4037eb23f0b",
     "Textures/Materials/water/1160-normal.xnb": "f8e18d63b669446721f43039030ca7f6b6ddd90302ea8c8a5ea8550a7e3b6af8",
     "Textures/Materials/water/6055-normal.xnb": "46c77c204fac51f57622fe5f4d1276de8abd18572a44f1b0f717d147a7c10683",
@@ -894,12 +893,10 @@
     "UI/Buttons/xbox/startButton.xnb": "bad0691ed3b00ce2c355e83cddbb6d900cb28d297a0932b768b415877f516b01",
     "UI/Buttons/xbox/uButton.xnb": "b9c90f1e2607a91d1f70208224470909e68b1a7b128423f6003ebacedf9b480b",
     "UI/Buttons/xbox/yButton.xnb": "038236c4aa321195a70c10f12cafb0d488f1bb2788163434d28deb12ae6953fb",
-    "UI/arcade-msdf.xnb": "4288c83a2f86682acd092f22db93334e521b90ead412673ed067e3f87e98383a",
-    "UI/font.json": "62584c78a6d39929fae7a97268eb597445cbc809ba949c6c293fd67646e9fd5c",
-    "UI/overhead-font.json": "dd11e74ca4d752f6432d462b05819df62b0121709f7cdea308b74fb20017b62c",
-    "UI/retroville-msdf.xnb": "cb0dbde253067b1bfd5b526208e822c2e700eff8a3445008f8be93ca5e85977a",
-    "UI/score-font.json": "60e685bdbfe9519b08a2ed7a725cc0ca84fd638d71c946997a63c584e2f6960d",
-    "UI/side-score-font.json": "96a371bcd129c9858580afbd0ea1f4964d62d91f78467f6d20d4d3ab5589e1ef",
+    "UI/arcade.json": "373368b331beb6b12a1ce76cb26ba2da079e0570469d9f3687571ebb62b8e58d",
+    "UI/arcade.xnb": "0baa7e7a2d7e4335f14ad1d222535c4b3cbdc61f10a1d16bd11103feee28d26e",
+    "UI/retroville.json": "acfcca94d7465514196d7e7c8832f51010a0aef1f0ee4273f6e6d1d3fd30c4a3",
+    "UI/retroville.xnb": "adfe51ea6cb97b29722244a4a4e1572036908f6be02daf009dc0ab148ed4cb6c",
     "UI/white.xnb": "1d1def8c9ea3d55945ab366c426d85b15f1ba76525c84b8733f6f29ad5fd55f8"
   },
   "CharacterOffsetX": 0,
@@ -963,7 +960,7 @@
     "smokeRingDistance": 7.5,
     "trailDelay": 0.01
   },
-  "ContentHash": "8207d1e0286af4c7eefaf187c7e7135d1371ee1bf9867c5115fc0fef30bab15f",
+  "ContentHash": "74f8c67bbf607a934447cd127dacbd6b49bbfc27d27a1fa18f1a60236d3a18e5",
   "Effects": {
     "BackgroundEscapeShip": {
       "Animations": {

@@ -2,8 +2,18 @@
   <ItemGroup>
     <ProjectReference Include="../Core/FrogSmashers.Core.csproj" />
     <PackageReference Include="Steamworks.NET" Version="2024.8.0" />
-    <None Include="Native/linux-x64/libsteam_api.so" Link="libsteam_api.so" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="Native/win-x64/steam_api64.dll" Link="steam_api64.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None
+      Include="Native/linux-x64/libsteam_api.so"
+      Link="runtimes/linux-x64/native/libsteam_api.so"
+      CopyToOutputDirectory="PreserveNewest"
+      ExcludeFromSingleFile="true"
+    />
+    <None
+      Include="Native/win-x64/steam_api64.dll"
+      Link="runtimes/win-x64/native/steam_api64.dll"
+      CopyToOutputDirectory="PreserveNewest"
+      ExcludeFromSingleFile="true"
+    />
     <None
       Include="Native/Steamworks.NET-LICENSE.txt"
       Link="licenses/Steamworks.NET.txt"

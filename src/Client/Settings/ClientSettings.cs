@@ -10,9 +10,6 @@ public sealed class ClientSettings
     public int FrameLimit { get; set; } = 240;
     public float Volume { get; set; } = .65f;
     public bool ScreenShake { get; set; } = true;
-    public int FontSmoothing { get; set; }
-    public int Width { get; set; } = 1280;
-    public int Height { get; set; } = 720;
     public MatchPreferences MatchDefaults { get; set; } = new();
     public KeyBindings[] Keyboard { get; set; } =
     [
@@ -68,11 +65,8 @@ public sealed class ClientSettings
     internal static ClientSettings Parse(string json)
     {
         var value = JsonSerializer.Deserialize<ClientSettings>(json) ?? new();
-        value.Width = Math.Clamp(value.Width, 640, 7680);
-        value.Height = Math.Clamp(value.Height, 360, 4320);
         value.FrameLimit = Math.Clamp(value.FrameLimit, 30, 1000);
         value.Volume = Math.Clamp(value.Volume, 0, 1);
-        value.FontSmoothing = Math.Clamp(value.FontSmoothing, 0, 2);
         if (value.Keyboard == null || value.Keyboard.Length != 2 || value.Keyboard.Any(k => k == null))
         {
             value.Keyboard = new ClientSettings().Keyboard;

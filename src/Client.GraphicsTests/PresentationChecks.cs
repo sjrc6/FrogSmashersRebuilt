@@ -10,11 +10,6 @@ internal sealed partial class PresentationChecks(Renderer renderer)
     private GraphicsDevice device => renderer.Canvas.Device;
     private Assets assets => renderer.Assets;
     private SpriteBatch batch => renderer.Batch;
-    private float TextEdgeWidth
-    {
-        get => renderer.TextEdgeWidth;
-        set => renderer.TextEdgeWidth = value;
-    }
     private static Color[] PlayerColors => Renderer.PlayerColors;
 
     private void Begin(float mode) => renderer.Canvas.Begin(mode);

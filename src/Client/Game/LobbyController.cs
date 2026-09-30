@@ -51,6 +51,19 @@ internal sealed class LobbyController(FrogGame game)
         roster.SetPlayers(0, local);
     }
 
+    public void Close()
+    {
+        game.Setup.Lobby.Roster.Replace(Enumerable.Range(0, 8).Select(_ => new LobbySlot()).ToArray());
+        game.Setup.Lobby.Roster.SetCapacity(game.Options.Slots);
+        World = PreviousWorld = null;
+        Array.Clear(occupants);
+        Array.Clear(previewPlayers);
+        accumulator = sendClock = 0;
+        receivedSettings = "";
+        onlineTeams = false;
+        game.Renderer.SetLobbyPreviews(game.Setup.Lobby.Roster);
+    }
+
     private bool SetPlayers(LobbyPlayer[] players) =>
         Online is { Connected: true } ? Online.SetPlayers(players) : game.Setup.Lobby.Roster.SetPlayers(0, players);
 
@@ -98,10 +111,24 @@ internal sealed class LobbyController(FrogGame game)
 
     public void BackOut(int device) => SetPlayers(LocalPlayers.Where(player => player.Id != device).ToArray());
 
-    public void ChooseAgain(int device) =>
-        SetPlayers(
-            LocalPlayers.Select(player => player.Id == device ? player with { Spawned = false } : player).ToArray()
-        );
+    public bool CanChooseAgain(int room) =>
+        World != null
+        && Roster.Slots[room].Player is { Spawned: true, Cpu: false } player
+        && player.Peer == LocalPeer
+        && LobbyLayout.OnStartingPlatform(World, room);
+
+    public bool TryChooseAgain(int device)
+    {
+        for (int room = 0; room < 8; room++)
+        {
+            if (Roster.Slots[room].Player?.Id != device || !CanChooseAgain(room))
+                continue;
+            return SetPlayers(
+                LocalPlayers.Select(player => player.Id == device ? player with { Spawned = false } : player).ToArray()
+            );
+        }
+        return false;
+    }
 
     public bool Edit(int room, SlotType type, bool open, bool remove = false) =>
         Online != null ? Online.EditSlot(room, type, open, remove) : Roster.Edit(room, type, open, remove);

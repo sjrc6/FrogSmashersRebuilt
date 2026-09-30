@@ -172,41 +172,6 @@ def verify_menu_background():
     assert value["Page"] == "Main" and value["MenuBackground"] and value["Map"] == "2DownSmash", value
 
 
-def verify_font_settings():
-    for mode, edge in [(0, 0), (1, 0.5), (2, 1)]:
-        settings_file = Path(env["XDG_DATA_HOME"]) / "FrogSmashersRebuilt/settings.json"
-        settings = json.loads(settings_file.read_text()) if settings_file.exists() else {}
-        settings["FontSmoothing"] = (mode - 1) % 3
-        settings_file.parent.mkdir(parents=True, exist_ok=True)
-        settings_file.write_text(json.dumps(settings))
-        keys = [
-            (1, ["Down"]),
-            (3, ["Down"]),
-            (5, ["Enter"]),
-            (7, ["Up"]),
-            (9, ["Up"]),
-            (11, ["Up"]),
-            (13, ["Up"]),
-            (15, ["Right"]),
-            (17, ["Down"]),
-            (19, ["Enter"]),
-        ]
-        font_script = out / "font-settings-input.json"
-        font_script.write_text(json.dumps([dict(From=a, To=a + 1, Keys=k) for a, k in keys]))
-        value = run(f"font-mode-{mode}", ["--no-intro", "--input-script", str(font_script), "--frames", "24"])
-        assert (
-            value["Page"] == "Bindings" and value["FontSmoothing"] == mode and value["TextEdgeWidth"] == edge
-        ), value
-        keys += [(25, ["Escape"]), (27, ["Down"]), (29, ["Enter"]), (31, ["Escape"]), (33, ["Escape"])]
-        font_script.write_text(json.dumps([dict(From=a, To=a + 1, Keys=k) for a, k in keys]))
-        value = run(f"font-save-{mode}", ["--no-intro", "--input-script", str(font_script), "--frames", "36"])
-        assert (
-            value["Page"] == "Main" and json.loads(settings_file.read_text())["FontSmoothing"] == mode
-        ), value
-        value = run(f"font-reopen-{mode}", ["--no-intro", "--frames", "2"])
-        assert value["FontSmoothing"] == mode and value["TextEdgeWidth"] == edge, value
-
-
 def verify_local_replay():
     rows = [
         (1, 2, ["Enter"]), (3, 4, ["Space"]), (5, 6, ["Space"]),
@@ -259,7 +224,7 @@ def verify_replay_exit(record):
 def verify_lobby_menus():
     settings_file = Path(env["XDG_DATA_HOME"]) / "FrogSmashersRebuilt/settings.json"
     def reset():
-        settings_file.write_text(json.dumps(dict(Width=1280, Height=720, VSync=False, Volume=0.63)))
+        settings_file.write_text(json.dumps(dict(VSync=False, Volume=0.63)))
     def key(frame, *keys):
         return dict(From=frame, To=frame + 1, Keys=list(keys))
     def pad(frame, index, *buttons):
@@ -282,13 +247,33 @@ def verify_lobby_menus():
     assert walking["LobbyPlayers"][0]["X"] > spawned["LobbyPlayers"][0]["X"] + 1, walking
     assert walking["LobbyTick"] == spawned["LobbyTick"], walking
 
+    platform = [key(1, "Enter"), key(3, "Space"), key(5, "Space"), key(30, "T")]
+    jumping = capture("lobby-platform-jump", platform, 33)
+    assert not jumping["LobbyPlayers"][0]["CanChooseAgain"], jumping
+    landed = capture("lobby-platform-land", platform, 120)
+    assert landed["LobbyPlayers"][0]["CanChooseAgain"], landed
+    choosing_again = platform + [key(122, "Space")]
+    changed_color = capture("lobby-choose-again", choosing_again, 124)
+    assert changed_color["Page"] == "Seats" and not changed_color["LobbySlots"][0]["Player"]["Spawned"], changed_color
+    assert not changed_color["LobbyPlayers"][0]["Alive"], changed_color
+    backed_out = capture("lobby-color-backout", choosing_again + [key(126, "U")], 128)
+    assert backed_out["LobbySlots"][0]["Player"] is None and backed_out["LocalDevices"] == [], backed_out
+    rejoined = capture("lobby-rejoin", choosing_again + [key(126, "U"), key(130, "Space"), key(132, "Space")], 136)
+    assert rejoined["LocalDevices"] == [0] and rejoined["LobbyPlayers"][0]["Alive"], rejoined
+    # Start offers color selection on the pad owner's platform and pauses elsewhere.
+    controller = [key(1, "Enter"), pad(3, 0, "Start"), pad(5, 0, "Start"), pad(30, 0, "Start")]
+    pad_choosing = capture("lobby-pad-choose-again", controller, 32)
+    assert pad_choosing["Page"] == "Seats" and not pad_choosing["LobbySlots"][0]["Player"]["Spawned"], pad_choosing
+    pad_backed_out = capture("lobby-pad-backout", controller + [pad(34, 0, "X")], 36)
+    assert pad_backed_out["LobbySlots"][0]["Player"] is None, pad_backed_out
+
     settings = joining + [key(15, "Escape")] + [key(frame, "S") for frame in (17, 19, 21, 23)] + [key(25, "Enter")]
     settings += [key(frame, "S") for frame in (27, 29, 31)] + [key(33, "D")]
     personal = capture("personal-settings", settings, 35)
     assert personal["Page"] == "Settings" and abs(personal["Volume"] - .70) < .001, personal
     assert not any("TEAMS" in row or "WIN SCORE" in row or "MACHINES" in row for row in personal["MenuItems"]), personal
     # Mouse actions still work, and returning from personal settings preserves the party.
-    returned = capture("return-to-lobby", settings + [click(37, 640, 565), key(39, "Escape")], 50)
+    returned = capture("return-to-lobby", settings + [click(37, 640, 518), key(39, "Escape")], 50)
     assert returned["Page"] == "Seats" and returned["LocalDevices"] == [0, 1], returned
 
     cpu = [key(1, "Enter"), key(3, "Space"), key(5, "Space"), key(7, "Escape")]
@@ -302,6 +287,13 @@ def verify_lobby_menus():
     cpu += [key(33, "Down"), key(35, "Enter")]
     closed = capture("slot-closed", cpu, 37)
     assert closed["Page"] == "SlotOptions" and not closed["LobbySlots"][1]["Open"] and closed["LocalDevices"] == [0], closed
+    quit_lobby = cpu + [key(frame, "Escape") for frame in (39, 41, 43, 45)] + [key(47, "Up"), key(49, "Enter")]
+    left = capture("quit-lobby", quit_lobby, 51)
+    assert left["Page"] == "Main" and left["LocalDevices"] == [], left
+    fresh = capture("fresh-lobby", quit_lobby + [key(53, "Enter")], 56)
+    assert fresh["Page"] == "Seats" and fresh["LobbyTick"] < 10 and fresh["LocalDevices"] == [], fresh
+    assert all(slot["Open"] and slot["Type"] == 0 and slot["Player"] is None for slot in fresh["LobbySlots"]), fresh
+    assert not any(player["Alive"] for player in fresh["LobbyPlayers"]) and fresh["LobbySpawnPuffs"] == 0, fresh
     cpu += [key(39, "Enter"), key(41, "Escape"), key(43, "Escape"), key(45, "Up"), key(47, "Up"), key(49, "Enter")]
     started = capture("cpu-start-slot", cpu, 54)
     assert started["Page"] == "Playing" and started["LocalDevices"] == [0, -1] and started["Players"] == 2, started
@@ -321,15 +313,16 @@ def verify_lobby_menus():
     across = capture("slot-skip-center", room_edges, 31)
     assert across["SelectedSeat"] == 3, across
 
-    preview = [key(1, "Enter"), pad(3, 0, "Start"), pad(5, 1, "Start"), pad(7, 0, "Start"), pad(9, 0, "Start"), pad(11, 1, "B")]
+    preview = [key(1, "Enter"), pad(3, 0, "Start"), pad(5, 1, "Start"), pad(7, 0, "Start"), pad(8, 0, "A"), pad(9, 0, "Start"), pad(11, 1, "B")]
     paused_preview = capture("lobby-pending-paused", preview, 13)
     assert paused_preview["Page"] == "LobbyMenu" and paused_preview["Owner"] == 2, paused_preview
     assert not paused_preview["LobbySlots"][1]["Player"]["Spawned"] and paused_preview["LobbySpawnPuffs"] >= 3, paused_preview
 
-    rows = [key(1, "Enter"), pad(3, 0, "Start"), pad(5, 0, "Start"), pad(7, 1, "Start"), pad(9, 1, "Start"), pad(11, 0, "Start"),
+    rows = [key(1, "Enter"), pad(3, 0, "Start"), pad(5, 0, "Start"), pad(7, 1, "Start"), pad(9, 1, "Start"), pad(10, 0, "A"), pad(11, 0, "Start"),
             key(13, "Down", "Enter"), pad(15, 1, "DPadDown", "A"), click(17, 640, 165)]
     owned = capture("lobby-menu-owner", rows, 19)
     assert owned["Page"] == "LobbyMenu" and owned["Owner"] == 2 and owned["Selected"] == 0 and owned["LocalDevices"] == [2, 3], owned
+    assert not any("COLOR / TEAM" in row for row in owned["MenuItems"]), owned
     rows += [pad(21, 0, "DPadDown"), pad(23, 0, "A"), pad(31, 1, "Start"), key(33, "Escape"), pad(33, 0, "B"), pad(35, 1, "DPadDown"), pad(37, 1, "A")]
     playing = capture("controller-start", rows, 29)
     assert playing["Page"] == "Playing" and playing["Players"] == 2 and not playing["Paused"], playing
@@ -446,14 +439,13 @@ def main():
     settings_file = Path(env["XDG_DATA_HOME"]) / "FrogSmashersRebuilt/settings.json"
     settings_file.parent.mkdir(parents=True, exist_ok=True)
     settings_file.write_text(
-        json.dumps(dict(Width=1280, Height=720, Fullscreen=False, VSync=False, MatchDefaults=dict(FirstMap=0), FontSmoothing=0))
+        json.dumps(dict(Fullscreen=False, VSync=False, MatchDefaults=dict(FirstMap=0)))
     )
     verify_render_cadence()
     pause_script = verify_pause()
     verify_smoke_pause(pause_script)
     verify_title_menu()
     verify_menu_background()
-    verify_font_settings()
     record = verify_local_replay()
     verify_replay_exit(record)
     verify_lobby_menus()

@@ -40,11 +40,6 @@ public sealed partial class Renderer : IDisposable
     }
     public bool ShowColliders { get; set; }
 
-    public float TextEdgeWidth
-    {
-        get => canvas.TextEdgeWidth;
-        set => canvas.TextEdgeWidth = value;
-    }
     public SpriteBatch Batch => canvas.Batch;
     public Assets Assets => assets;
 
@@ -58,7 +53,6 @@ public sealed partial class Renderer : IDisposable
         compositor = new FrameCompositor(device, assets);
         var projection = Matrix.CreateOrthographicOffCenter(0, Width, Height, 0, 0, 1);
         assets.SpriteEffect.Parameters["MatrixTransform"].SetValue(projection);
-        assets.UiEffect.Parameters["MatrixTransform"].SetValue(projection);
         var palette = assets.Data.Materials["SelectiveColorReplace"].Colors;
         assets
             .SpriteEffect.Parameters["PaletteReplace"]
@@ -636,17 +630,11 @@ public sealed partial class Renderer : IDisposable
 
     public void EndUi() => Batch.End();
 
-    public void Text(string text, float x, float y, Color? color = null, float scale = 1, bool center = false) =>
+    public void Text(string text, float x, float y, Color? color = null, int scale = 1, bool center = false) =>
         assets.Font.Draw(Batch, text, new(x, y), color ?? Color.White, scale, center);
 
-    public void CenteredText(
-        string text,
-        float x,
-        float y,
-        Color? color = null,
-        float scale = 1,
-        bool center = false
-    ) => assets.Font.DrawCenteredVertical(Batch, text, new(x, y), color ?? Color.White, scale, center);
+    public void CenteredText(string text, float x, float y, Color? color = null, int scale = 1, bool center = false) =>
+        assets.Font.DrawCenteredVertical(Batch, text, new(x, y), color ?? Color.White, scale, center);
 
     public void Panel(Rectangle rect, Color color) => Batch.Draw(assets.White, rect, color);
 
@@ -709,17 +697,10 @@ public sealed partial class Renderer : IDisposable
             title,
             header,
             tie && elapsed >= 1 && time % .2f >= .1f ? Color.Black : Color.White,
-            cameraController.PixelsPerUnit / 16,
+            1,
             true
         );
-        assets.Font.Draw(
-            Batch,
-            "raithza.itch.io/frogsmashers",
-            Screen(new Vector2(0, -16.75f)),
-            Color.White,
-            cameraController.PixelsPerUnit / 16,
-            true
-        );
+        assets.Font.Draw(Batch, "raithza.itch.io/frogsmashers", Screen(new Vector2(0, -16.75f)), Color.White, 1, true);
         EndUi();
     }
 

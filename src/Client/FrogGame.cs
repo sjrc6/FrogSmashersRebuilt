@@ -25,13 +25,6 @@ public class FrogGame : Game
     internal MatchController Match { get; private set; } = null!;
     internal OnlineController Online { get; private set; } = null!;
     internal MenuController Menus { get; private set; } = null!;
-    internal float FontEdgeWidth =>
-        Settings.FontSmoothing switch
-        {
-            0 => 0,
-            1 => 0.5f,
-            _ => 1,
-        };
     internal int RenderedFrames { get; private set; }
     internal bool Fullscreen => graphics.IsFullScreen;
     internal bool HardwareModeSwitch => graphics.HardwareModeSwitch;
@@ -44,20 +37,10 @@ public class FrogGame : Game
         Options = options;
         Controls = new Controls(Settings);
         Setup = new MatchSetup(Settings, options.Seed);
-        if (options.Width > 0)
-        {
-            Settings.Width = options.Width;
-        }
-
-        if (options.Height > 0)
-        {
-            Settings.Height = options.Height;
-        }
-
         graphics = new GraphicsDeviceManager(this)
         {
-            PreferredBackBufferWidth = Settings.Width,
-            PreferredBackBufferHeight = Settings.Height,
+            PreferredBackBufferWidth = Renderer.Width,
+            PreferredBackBufferHeight = Renderer.Height,
             SynchronizeWithVerticalRetrace = !options.Offscreen && Settings.VSync,
             IsFullScreen = !options.Offscreen && Settings.Fullscreen,
             HardwareModeSwitch = false,
@@ -68,20 +51,17 @@ public class FrogGame : Game
         IsFixedTimeStep = false;
         InactiveSleepTime = TimeSpan.Zero;
         IsMouseVisible = true;
-        Window.AllowUserResizing = true;
+        Window.AllowUserResizing = false;
         Window.Title = "Frog Smashers Rebuilt";
         Window.TextInput += (_, input) => Menus?.EnterText(input.Character);
+        Window.ClientSizeChanged += (_, _) => Controls.SuspendMouseHover();
     }
 
     protected override void LoadContent()
     {
         display.MatchDesktopBackBuffer();
         Assets = new Assets(Content, Content.RootDirectory);
-        Renderer = new Renderer(GraphicsDevice, Assets)
-        {
-            ShakeEnabled = Settings.ScreenShake,
-            TextEdgeWidth = FontEdgeWidth,
-        };
+        Renderer = new Renderer(GraphicsDevice, Assets) { ShakeEnabled = Settings.ScreenShake };
         Audio = new Audio(Assets, !Options.NoAudio) { Volume = Settings.Volume };
         Cinematics = new CinematicPlayer(GraphicsDevice, Assets, Audio) { ShakeEnabled = Settings.ScreenShake };
         Match = new MatchController(Assets.Data, Renderer, Audio, Controls, Options.Record);
@@ -304,10 +284,9 @@ public class FrogGame : Game
 
     internal void MainMenu()
     {
-        if (Online.Lobby?.Connected == true)
-            Lobby.RememberParty();
         Cinematics.Stop();
         Online.CloseLobby();
+        Lobby.Close();
         Match.StartMenuBackground(Options.Seed);
         Menus.ShowMain();
     }
@@ -326,7 +305,11 @@ public class FrogGame : Game
         }
     }
 
-    internal void ApplyDisplay() => display.Apply();
+    internal void ApplyDisplay()
+    {
+        Controls.SuspendMouseHover();
+        display.Apply();
+    }
 
     internal void SaveSettings()
     {
@@ -334,7 +317,6 @@ public class FrogGame : Game
         Online.Lobby?.SetMatchSettings(
             System.Text.Json.JsonSerializer.Serialize(Setup.CreateOptions(Options.MapOrder))
         );
-        display.RememberWindowSize();
         try
         {
             Settings.Save();
@@ -412,9 +394,9 @@ public class FrogGame : Game
             30,
             62,
             new Color(255, 211, 86),
-            0.85f
+            1
         );
-        Renderer.Text($"HASH {world.HashState():x16}", 30, 89, Color.White, 0.85f);
+        Renderer.Text($"HASH {world.HashState():x16}", 30, 89, Color.White);
         if (Match.Network != null)
         {
             var network = Match.Network;
@@ -423,7 +405,7 @@ public class FrogGame : Game
                 30,
                 116,
                 new Color(173, 190, 200),
-                0.8f
+                1
             );
         }
     }

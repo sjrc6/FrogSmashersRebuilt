@@ -113,8 +113,9 @@ public sealed partial class Renderer
             var p = world.Players[i];
             if (world.Rules.Lobby && lobbyPreviews[i] != null)
             {
-                AddCommand(0, 0, "SelectiveColorReplace", 0, DrawKind.LobbyPreview, player: i);
-                continue;
+                AddCommand(0, 0, "SelectiveColorReplace", .1f, DrawKind.LobbyPreview, player: i);
+                if (!lobbyPreviews[i]!.Spawned)
+                    continue;
             }
             if (!p.Alive)
                 continue;
@@ -319,7 +320,7 @@ public sealed partial class Renderer
         var location = Screen(characterPositions[player] + new Vector2(0, 3));
         var color = EffectAnimation.ScoreFlash(time, ColorFor(world, player));
         canvas.BeginFont();
-        assets.OverheadFont.DrawCenteredVertical(Batch, message.Overhead ?? message.Text, location, color, scale, true);
+        assets.ScoreFont.DrawCenteredVertical(Batch, message.Overhead ?? message.Text, location, color, scale, true);
         canvas.End();
     }
 

@@ -62,7 +62,7 @@ float4 PixelMain(VertexOutput input) : COLOR0
         {
             color.rgb = input.Color.rgb * .5;
         }
-        return float4(color.rgb, 1);
+        return float4(color.rgb * input.Color.a, input.Color.a);
     }
     color *= input.Color;
     color.rgb *= color.a;

@@ -56,16 +56,6 @@ internal sealed partial class MenuController
                     string label = new LocalSeat(device).Label;
                     lobbyRows.Add(
                         new(
-                            label + ": COLOR / TEAM",
-                            () =>
-                            {
-                                game.Lobby.ChooseAgain(device);
-                                ReturnFromLobbyMenu();
-                            }
-                        )
-                    );
-                    lobbyRows.Add(
-                        new(
                             label + ": BACK OUT",
                             () =>
                             {
@@ -148,14 +138,6 @@ internal sealed partial class MenuController
                         {
                             game.Settings.ScreenShake = !game.Settings.ScreenShake;
                             game.Renderer.ShakeEnabled = game.Cinematics.ShakeEnabled = game.Settings.ScreenShake;
-                        }
-                    ),
-                    new(
-                        "FONT SMOOTHING: " + new[] { "OFF", "NARROW", "NORMAL" }[game.Settings.FontSmoothing],
-                        Change: amount =>
-                        {
-                            game.Settings.FontSmoothing = Wrap(game.Settings.FontSmoothing + amount, 3);
-                            game.Renderer.TextEdgeWidth = game.FontEdgeWidth;
                         }
                     ),
                 };

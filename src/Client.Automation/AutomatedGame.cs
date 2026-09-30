@@ -104,13 +104,18 @@ internal sealed class AutomatedGame : FrogGame
             LobbySlots = Menus.ShowingLobby ? Lobby.Roster.Slots : null,
             LobbyPlayers = Menus.ShowingLobby
                 ? Lobby
-                    .World?.Players.Select(player => new
-                    {
-                        player.Alive,
-                        player.ColorIndex,
-                        X = player.X.ToFloat(),
-                        Y = player.Y.ToFloat(),
-                    })
+                    .World?.Players.Select(
+                        (player, room) =>
+                            new
+                            {
+                                player.Alive,
+                                player.ColorIndex,
+                                player.OnGround,
+                                CanChooseAgain = Lobby.CanChooseAgain(room),
+                                X = player.X.ToFloat(),
+                                Y = player.Y.ToFloat(),
+                            }
+                    )
                     .ToArray()
                 : null,
             LobbySpawnPuffs = Menus.ShowingLobby
@@ -123,8 +128,7 @@ internal sealed class AutomatedGame : FrogGame
             Paused = Menus.LocalPresentationPaused,
             Fullscreen,
             HardwareModeSwitch,
-            Settings.FontSmoothing,
-            Renderer.TextEdgeWidth,
+            Window.AllowUserResizing,
             WindowWidth = Window.ClientBounds.Width,
             WindowHeight = Window.ClientBounds.Height,
             BackBufferWidth = buffer.BackBufferWidth,

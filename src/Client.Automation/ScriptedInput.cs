@@ -14,8 +14,8 @@ public sealed class ScriptedInput
         public int To { get; set; }
         public Keys[] Keys { get; set; } = [];
         public Dictionary<int, Buttons[]> Pads { get; set; } = [];
-        public int MouseX { get; set; }
-        public int MouseY { get; set; }
+        public int? MouseX { get; set; }
+        public int? MouseY { get; set; }
         public bool MouseDown { get; set; }
     }
 
@@ -50,18 +50,17 @@ public sealed class ScriptedInput
 
     public MouseState Mouse(int frame)
     {
-        var active = ranges.LastOrDefault(r => frame >= r.From && frame < r.To && r.MouseDown);
-        return active == null
-            ? default
-            : new MouseState(
-                active.MouseX,
-                active.MouseY,
-                0,
-                ButtonState.Pressed,
-                ButtonState.Released,
-                ButtonState.Released,
-                ButtonState.Released,
-                ButtonState.Released
-            );
+        var position = ranges.LastOrDefault(r => frame >= r.From && r.MouseX.HasValue);
+        bool down = ranges.Any(r => frame >= r.From && frame < r.To && r.MouseDown);
+        return new MouseState(
+            position?.MouseX ?? 0,
+            position?.MouseY ?? 0,
+            0,
+            down ? ButtonState.Pressed : ButtonState.Released,
+            ButtonState.Released,
+            ButtonState.Released,
+            ButtonState.Released,
+            ButtonState.Released
+        );
     }
 }

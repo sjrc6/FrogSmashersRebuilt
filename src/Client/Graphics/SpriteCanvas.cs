@@ -13,7 +13,6 @@ internal sealed class SpriteCanvas : IDisposable
     public SpriteBatch Batch => batch;
     public GraphicsDevice Device => device;
     public Assets Assets => assets;
-    public float TextEdgeWidth { get; set; }
 
     public SpriteCanvas(GraphicsDevice device, Assets assets, GameCamera camera)
     {
@@ -27,11 +26,14 @@ internal sealed class SpriteCanvas : IDisposable
 
     public void BeginFont()
     {
-        assets.UiEffect.Parameters["TextAaWidth"].SetValue(TextEdgeWidth);
         batch.Begin(
             blendState: BlendState.NonPremultiplied,
-            samplerState: SamplerState.LinearClamp,
-            effect: assets.UiEffect
+            samplerState: SamplerState.PointClamp,
+            transformMatrix: Matrix.CreateScale(
+                device.Viewport.Width / (float)Renderer.Width,
+                device.Viewport.Height / (float)Renderer.Height,
+                1
+            )
         );
     }
 

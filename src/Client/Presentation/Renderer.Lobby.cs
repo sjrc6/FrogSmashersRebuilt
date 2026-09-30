@@ -17,7 +17,7 @@ public sealed partial class Renderer
     internal void SetLobbyPreviews(LobbyRoster roster)
     {
         for (int room = 0; room < 8; room++)
-            lobbyPreviews[room] = roster.Slots[room].Player is { Spawned: false } player ? player : null;
+            lobbyPreviews[room] = roster.Slots[room].Player is { Cpu: false } player ? player : null;
     }
 
     internal Vector2 LobbyPreviewPosition(MapData map, int room) =>
@@ -31,11 +31,15 @@ public sealed partial class Renderer
 
     private void DrawLobbyPreview(World world, int room)
     {
+        var player = lobbyPreviews[room]!;
+        var color = PlayerColors[player.Color];
+        if (player.Spawned)
+            color.A = 90;
         canvas.Begin(1);
         canvas.DrawSprite(
             "76e22ac1a032c3349a2537db42725c43:21300000",
             LobbyPreviewPosition(world.Map, room),
-            PlayerColors[lobbyPreviews[room]!.Color],
+            color,
             Vector2.One,
             0
         );

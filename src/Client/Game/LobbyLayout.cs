@@ -1,3 +1,4 @@
+using FrogSmashers.Core;
 using Microsoft.Xna.Framework;
 
 namespace FrogSmashers.Client;
@@ -10,6 +11,20 @@ internal static class LobbyLayout
     public const int OutlineThickness = WallThickness / 2;
 
     public static int Cell(int room) => room < 4 ? room : room + 1;
+
+    public static bool OnStartingPlatform(World world, int room)
+    {
+        var player = world.Players[room];
+        var spawn = world.Map.Spawns[room];
+        if (!player.Alive || !player.OnGround || player.Y != Fixed.FromDecimal(spawn.Y))
+            return false;
+        return world.Map.Collision.Any(platform =>
+            platform.X == spawn.X
+            && platform.Y + platform.Height / 2 == spawn.Y
+            && player.X >= Fixed.FromDecimal(platform.X - platform.Width / 2)
+            && player.X <= Fixed.FromDecimal(platform.X + platform.Width / 2)
+        );
+    }
 
     public static Rectangle Room(int room)
     {

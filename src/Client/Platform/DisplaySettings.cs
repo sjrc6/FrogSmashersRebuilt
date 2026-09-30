@@ -17,21 +17,6 @@ internal sealed class DisplaySettings
         this.offscreen = offscreen;
     }
 
-    public void RememberWindowSize()
-    {
-        if (graphics.IsFullScreen)
-        {
-            return;
-        }
-
-        var size = window.ClientBounds;
-        if (size.Width > 0 && size.Height > 0)
-        {
-            settings.Width = size.Width;
-            settings.Height = size.Height;
-        }
-    }
-
     public void MatchDesktopBackBuffer()
     {
         if (!graphics.IsFullScreen)
@@ -57,11 +42,10 @@ internal sealed class DisplaySettings
 
     public void Apply()
     {
-        RememberWindowSize();
         graphics.HardwareModeSwitch = false;
         graphics.IsFullScreen = !offscreen && settings.Fullscreen;
-        graphics.PreferredBackBufferWidth = settings.Width;
-        graphics.PreferredBackBufferHeight = settings.Height;
+        graphics.PreferredBackBufferWidth = Renderer.Width;
+        graphics.PreferredBackBufferHeight = Renderer.Height;
         graphics.SynchronizeWithVerticalRetrace = !offscreen && settings.VSync;
         graphics.ApplyChanges();
         MatchDesktopBackBuffer();

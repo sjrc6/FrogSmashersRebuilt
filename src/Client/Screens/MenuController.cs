@@ -223,16 +223,29 @@ internal sealed partial class MenuController
             var player = game.Lobby.LocalPlayers.FirstOrDefault(player => player.Id == device);
             if (start)
             {
-                if (player?.Spawned == true && device >= 2)
+                game.Controls.ClearPendingEdges(device);
+                if (player?.Spawned != true)
+                    game.Lobby.JoinOrSpawn(device);
+                else if (game.Lobby.TryChooseAgain(device))
+                    continue;
+                else if (device >= 2 && !menuOpen)
                 {
-                    if (menuOpen)
-                        continue;
                     OpenOwned(GameScreen.LobbyMenu, device);
                     return;
                 }
-                game.Lobby.JoinOrSpawn(device);
+                continue;
             }
             if (player?.Spawned == false)
+            {
+                bool backOut =
+                    device < 2
+                        ? game.Controls.Press(game.Settings.Keyboard[device].Attack)
+                        : game.Controls.PadPress(device - 2, Buttons.X);
+                if (backOut)
+                {
+                    game.Lobby.BackOut(device);
+                    continue;
+                }
                 game.Lobby.Choose(
                     device,
                     (
@@ -244,6 +257,7 @@ internal sealed partial class MenuController
                         : 0,
                     game.Lobby.TeamMode ? game.Controls.Vertical(device) : 0
                 );
+            }
         }
     }
 
@@ -485,7 +499,11 @@ internal sealed partial class MenuController
         game.Controls.ClearPendingEdges();
     }
 
-    public void ShowMain() => Reset(GameScreen.Main);
+    public void ShowMain()
+    {
+        SelectedSeat = 0;
+        Reset(GameScreen.Main);
+    }
 
     public void ShowPlaying() => Reset(GameScreen.Playing);
 

@@ -187,8 +187,29 @@ internal sealed partial class PresentationChecks
             1,
             new(170, 176, 88, 255),
             new(10, 20, 30, 0),
-            new(10, 20, 30),
-            "palette shader ignores vertex alpha after clipping"
+            new(100, 100, 100),
+            "transparent palette sprites leave the background visible"
+        );
+        Pixel(
+            1,
+            new(170, 176, 88, 255),
+            new(20, 100, 200, 90),
+            new(72, 100, 135),
+            "translucent lobby frogs blend their selected color once"
+        );
+        Pixel(
+            1,
+            new(125, 99, 75, 255),
+            new(20, 100, 200, 90),
+            new(68, 82, 100),
+            "translucent lobby frogs retain palette shadows"
+        );
+        Pixel(
+            1,
+            Color.Black,
+            new(20, 100, 200, 90),
+            new(65, 65, 65),
+            "translucent lobby frog outlines share the body opacity"
         );
         Pixel(
             1,
@@ -306,10 +327,7 @@ internal sealed partial class PresentationChecks
         Equal(native.Rate, 75, "native foreground emission rate");
         Equal(SmokeEmitter.Growth(native, 0), .4047619f, "native smoke initial size curve");
         Equal(SmokeEmitter.Growth(native, 1), 1, "native smoke final size curve");
-        checks.AddRange(VerifyFontPresentation());
-        checks.AddRange(VerifyFontEdges());
-        checks.AddRange(VerifyFontAlignment());
-        checks.AddRange(VerifyFontJoins());
+        checks.AddRange(VerifyBitmapFonts());
         checks.AddRange(VerifyScorePresentation());
         renderer.Reset();
         return checks.ToArray();

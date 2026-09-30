@@ -100,10 +100,12 @@ internal sealed class GraphicsTestGame : Game
             if (captureDirectory != null)
             {
                 suite.CaptureNativeReferenceSamples(captureDirectory);
-                suite.CaptureScorePresentation(Path.Combine(captureDirectory, "scores"));
-                suite.VerifyFontEdges(Path.Combine(captureDirectory, "font-edges"));
-                suite.VerifyFontAlignment(Path.Combine(captureDirectory, "font-alignment"));
-                suite.VerifyFontJoins(Path.Combine(captureDirectory, "font-joins"));
+                suite.CaptureScorePresentation(Path.Combine(captureDirectory, "scores", "720p"));
+                graphics.PreferredBackBufferWidth = 1920;
+                graphics.PreferredBackBufferHeight = 1080;
+                graphics.ApplyChanges();
+                suite.CaptureScorePresentation(Path.Combine(captureDirectory, "scores", "1080p"));
+                suite.VerifyBitmapFonts(Path.Combine(captureDirectory, "fonts"));
             }
 
             Console.WriteLine(JsonSerializer.Serialize(new { PresentationChecks = checks.Length, Checks = checks }));

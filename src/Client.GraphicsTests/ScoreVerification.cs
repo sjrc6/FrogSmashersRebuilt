@@ -7,11 +7,25 @@ internal sealed partial class PresentationChecks
 {
     public void CaptureScorePresentation(string directory)
     {
+        foreach (int playerCount in new[] { 4, 5, 8 })
+            CaptureScoreLayout(Path.Combine(directory, $"{playerCount}-players"), playerCount);
+    }
+
+    private void CaptureScoreLayout(string directory, int playerCount)
+    {
         Directory.CreateDirectory(directory);
         renderer.Reset();
-        var world = new World(assets.Data, new GameRules { PlayerCount = 4, MapOrder = [1] });
-        var inputs = new InputFrame[4];
-        for (int slot = 0; slot < 4; slot++)
+        var world = new World(
+            assets.Data,
+            new GameRules
+            {
+                PlayerCount = playerCount,
+                WinScore = 10,
+                MapOrder = [1],
+            }
+        );
+        var inputs = new InputFrame[playerCount];
+        for (int slot = 0; slot < playerCount; slot++)
         {
             var player = world.Players[slot];
             player.SpawnTicks = 0;
