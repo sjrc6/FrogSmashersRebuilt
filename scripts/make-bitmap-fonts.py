@@ -35,13 +35,15 @@ def rasterize_outline(glyphs, name, scale, cap_top):
     if bounds_pen.bounds is None:
         return None, (0, 0)
     x0, y0, x1, y1 = bounds_pen.bounds
-    left, right = math.floor(x0 * scale), math.ceil(x1 * scale)
+    # Bearings can sit half a source pixel off-grid (L, T, Y); sample from the ink's left edge.
+    left = math.floor(x0 * scale + 0.5)
+    right = left + math.ceil((x1 - x0) * scale)
     top, bottom = math.floor((cap_top - y1) * scale), math.ceil((cap_top - y0) * scale)
     mask = Image.new("L", (right - left, bottom - top))
     pen = PointInsidePen(glyphs, (0, 0))
     for y in range(mask.height):
         for x in range(mask.width):
-            pen.setTestPoint(((left + x + 0.5) / scale, cap_top - (top + y + 0.5) / scale))
+            pen.setTestPoint((x0 + (x + 0.5) / scale, cap_top - (top + y + 0.5) / scale))
             glyph.draw(pen)
             if pen.getResult():
                 mask.putpixel((x, y), 255)

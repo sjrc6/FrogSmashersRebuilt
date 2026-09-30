@@ -512,13 +512,9 @@ internal sealed class EffectSystem
             )
             {
                 animator.LastSmoke = center;
-                Add(
-                    "SmokeRing",
-                    center,
-                    Color.White,
-                    world.TickNumber,
-                    new EffectSpawn { Rotation = animator.Rotation }
-                );
+                var spawn = new EffectSpawn { Rotation = animator.Rotation };
+                Add("SmokeRing", center, Color.White, world.TickNumber, spawn);
+                Add("SmokeRingBack", center, Color.White, world.TickNumber, spawn);
             }
 
             animator.TrailCounter -= localDt;

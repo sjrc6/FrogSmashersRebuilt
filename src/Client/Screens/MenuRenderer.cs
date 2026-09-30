@@ -6,7 +6,6 @@ namespace FrogSmashers.Client;
 internal sealed class MenuRenderer(FrogGame game, MenuController menu)
 {
     private static readonly Color Selected = new(255, 236, 164);
-    private static readonly Color PanelColor = new(25, 36, 40, 178);
     private readonly Dictionary<string, Rectangle> glyphSources = new();
     private const float HintGap = 4;
 
@@ -30,40 +29,46 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             return;
         var entries = menu.Entries();
         bool editingSlots = menu.Screen is GameScreen.SlotEditor or GameScreen.SlotOptions;
+        var panel = MenuLayout.Panel(menu.Screen, entries.Count);
         if (editingSlots)
             DrawSlotEditor();
-        else if (menu.Screen == GameScreen.Main)
-            game.Renderer.Image(
-                "Textures/Sprites/logo_rebuilt",
-                new Rectangle(50, 39, 160, 97),
-                new Vector2(640, 22),
-                480
-            );
         else
         {
-            var first = Row(0, entries.Count);
-            var last = Row(Math.Max(0, entries.Count - 1), entries.Count);
-            game.Renderer.Panel(
-                new Rectangle(first.X - 12, first.Y - 47, first.Width + 24, last.Bottom - first.Y + 60),
-                PanelColor
-            );
-            game.Renderer.CenteredText(Title(), 640, first.Y - 22, Color.White, center: true);
+            game.Renderer.MenuPanel(panel);
+            if (menu.Screen == GameScreen.Main)
+                game.Renderer.Image(
+                    "Textures/Sprites/logo_rebuilt",
+                    new Rectangle(50, 39, 160, 97),
+                    new Vector2(640, 22),
+                    480
+                );
+            else
+                game.Renderer.CenteredText(Title(), panel.Center.X, panel.Top + 32, Color.White, center: true);
         }
         if (menu.Screen == GameScreen.Connecting)
-            game.Renderer.Text(game.Online.Lobby?.Status ?? "", 640, 283, Color.White, 1, true);
+            game.Renderer.CenteredText(
+                game.Assets.Font.Wrap(game.Online.Lobby?.Status ?? "", panel.Width - 64, 3),
+                panel.Center.X,
+                panel.Top + 100,
+                Color.White,
+                center: true
+            );
         if (menu.Screen == GameScreen.Error)
-        {
-            game.Renderer.Panel(new Rectangle(120, 190, 1040, 290), PanelColor);
-            DrawWrapped(menu.Status, 155, 218, 970, Color.White);
-        }
+            game.Renderer.Text(
+                game.Assets.Font.Wrap(menu.Status, panel.Width - 64, 8),
+                panel.Left + 32,
+                panel.Top + 72,
+                Color.White
+            );
         for (int i = 0; i < entries.Count; i++)
         {
             var rect = Row(i, entries.Count);
             var entry = entries[i];
             bool selected = i == menu.Selected;
-            game.Renderer.Panel(rect, selected ? new Color(99, 117, 120, 195) : new Color(22, 32, 38, 105));
             string label = game.Assets.Font.Wrap(entry.Label, rect.Width - 48, editingSlots ? 1 : 2);
-            var color = entry.Color ?? (selected ? Selected : Color.White);
+            var color = entry.Color ?? Color.White;
+            if (selected)
+                color = entry.Color.HasValue ? Color.Lerp(color, Color.White, .55f) : Selected;
             if (entry.Key is { } key)
             {
                 game.Renderer.CenteredText(label, rect.X + 26, rect.Center.Y, color);
@@ -75,18 +80,33 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
         }
         if (editingSlots)
             return;
-        DrawStatus();
-        if (menu.WaitingForBinding)
-            game.Renderer.Text("PRESS A KEY TO BIND", 640, 645, Color.White, center: true);
-        if (menu.EditingAddress)
-            game.Renderer.Text("TYPE ADDRESS / LOBBY ID", 640, 645, Color.White, center: true);
-        ActionHint(ButtonGlyph.Accept(menu.HintDevice), menu.EditingAddress ? "DONE" : "SELECT", 490, 692);
-        ActionHint(
-            ButtonGlyph.Back(menu.HintDevice),
-            menu.WaitingForBinding || menu.EditingAddress ? "CANCEL" : "BACK",
-            680,
-            692
-        );
+        DrawFooter(panel);
+    }
+
+    private void DrawFooter(Rectangle panel)
+    {
+        string status =
+            menu.WaitingForBinding ? "PRESS A KEY TO BIND"
+            : menu.EditingAddress ? "TYPE ADDRESS / LOBBY ID"
+            : menu.Screen == GameScreen.Error ? ""
+            : menu.Status.Length > 0 ? menu.Status
+            : game.Online.Lobby?.Notice ?? "";
+        if (status.Length > 0)
+            game.Renderer.CenteredText(
+                game.Assets.Font.Wrap(status, panel.Width - 64, 2),
+                panel.Center.X,
+                panel.Bottom - 66,
+                Selected,
+                center: true
+            );
+        var accept = ButtonGlyph.Accept(menu.HintDevice);
+        var back = ButtonGlyph.Back(menu.HintDevice);
+        string acceptText = menu.EditingAddress ? "DONE" : "SELECT";
+        string backText = menu.WaitingForBinding || menu.EditingAddress ? "CANCEL" : "BACK";
+        float acceptWidth = HintWidth(accept, acceptText);
+        float left = panel.Center.X - (acceptWidth + 32 + HintWidth(back, backText)) / 2;
+        ActionHint(accept, acceptText, left, panel.Bottom - 30);
+        ActionHint(back, backText, left + acceptWidth + 32, panel.Bottom - 30);
     }
 
     private Rectangle Row(int index, int count) => MenuLayout.Row(menu.Screen, index, count, menu.SelectedSeat);
@@ -276,10 +296,5 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
         float width = source.Width * 2;
         var size = game.Renderer.ImageSize(source, width);
         game.Renderer.Image(glyph.Path, source, new Vector2(x + size.X / 2, y - size.Y / 2), width);
-    }
-
-    private void DrawWrapped(string text, float x, float y, float width, Color color)
-    {
-        game.Renderer.Text(game.Assets.Font.Wrap(text, width), x, y, color);
     }
 }

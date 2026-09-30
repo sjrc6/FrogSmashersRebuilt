@@ -6,6 +6,7 @@ namespace FrogSmashers.Client;
 
 public sealed class Audio : IDisposable
 {
+    private const float MenuVolume = .30f;
     private readonly Assets assets;
     private readonly AudioSpatializer spatializer;
     private readonly HashSet<long> played = new();
@@ -19,6 +20,8 @@ public sealed class Audio : IDisposable
     private string mapId = "";
     private float volume = .65f;
     private bool paused;
+    private SoundEffectInstance? menuSound;
+    private long menuSoundNumber;
     public Vector3 ListenerPosition { get; set; } = new(0, 0, -10);
     public bool Enabled { get; private set; } = true;
 
@@ -28,6 +31,8 @@ public sealed class Audio : IDisposable
         set
         {
             volume = Math.Clamp(value, 0, 1);
+            if (menuSound != null)
+                menuSound.Volume = MenuVolume * volume;
             foreach (var sound in ambient)
             {
                 sound.Instance.Volume = Math.Clamp(sound.BaseVolume * volume, 0, 1);
@@ -71,6 +76,28 @@ public sealed class Audio : IDisposable
 
     public void PlayAt(string group, long eventId, float volume, Vector3 position) =>
         PlaySource(group, eventId, volume, position);
+
+    public void PlayMenuAction()
+    {
+        if (!Enabled)
+            return;
+        menuSound?.Dispose();
+        menuSound = null;
+        if (Volume <= 0)
+            return;
+        try
+        {
+            var clips = assets.Data.Sounds["Footstep"];
+            string path = clips[VariationKey(++menuSoundNumber) % (ulong)clips.Length];
+            menuSound = assets.Sound(path).CreateInstance();
+            menuSound.Volume = MenuVolume * Volume;
+            menuSound.Play();
+        }
+        catch (Exception ex) when (IsAudioFailure(ex))
+        {
+            Disable("Menu audio", ex);
+        }
+    }
 
     private void PlaySource(string group, long eventId, float sourceVolume, Vector3? position)
     {
@@ -177,6 +204,8 @@ public sealed class Audio : IDisposable
     {
         Console.Error.WriteLine(operation + " unavailable: " + ex.Message);
         Enabled = false;
+        menuSound?.Dispose();
+        menuSound = null;
         Reset();
     }
 
@@ -533,5 +562,10 @@ public sealed class Audio : IDisposable
         mapId = "";
     }
 
-    public void Dispose() => Reset();
+    public void Dispose()
+    {
+        Reset();
+        menuSound?.Dispose();
+        menuSound = null;
+    }
 }

@@ -51,6 +51,24 @@ internal sealed partial class PresentationChecks
                 .SequenceEqual(new[] { "...###.", "..####.", ".##.##.", "##..##.", "#######", "....##.", "....##." }),
             "score 4 retains its stepped diagonal, counter and two-pixel stem"
         );
+        foreach (char character in new[] { 'L', 'l' })
+            Check(
+                GlyphRows(character)
+                    .SequenceEqual(new[] { "##....", "##....", "##....", "##....", "##....", "##....", "######" }),
+                $"score {character} retains its two-pixel stem and six-pixel foot"
+            );
+        foreach (char character in new[] { 'T', 't' })
+            Check(
+                GlyphRows(character)
+                    .SequenceEqual(new[] { "######", "..##..", "..##..", "..##..", "..##..", "..##..", "..##.." }),
+                $"score {character} retains its centered stem and six-pixel bar"
+            );
+        foreach (char character in new[] { 'Y', 'y' })
+            Check(
+                GlyphRows(character)
+                    .SequenceEqual(new[] { "##..##", "##..##", "##..##", ".####.", "..##..", "..##..", "..##.." }),
+                $"score {character} retains its symmetric arms and centered stem"
+            );
         foreach (var (character, count) in new[] { ('0', 1), ('4', 1), ('6', 1), ('8', 2), ('9', 1) })
             Check(GlyphCounters(GlyphRows(character)) == count, $"score {character} retains {count} enclosed counters");
 
@@ -112,6 +130,8 @@ internal sealed partial class PresentationChecks
                         font.Draw(batch, "0123456789", new(100, 60), Color.White, 1.4f);
                         font.DrawCenteredVertical(batch, "+4", new(640, 300), Color.White, 1.5f - frame / 120f, true);
                         font.DrawCenteredVertical(batch, "WIN! +8", new(640, 460), PlayerColors[2], scale * 2, true);
+                        font.DrawCenteredVertical(batch, "FAIL! BUTTS!", new(640, 550), Color.White, scale * 2, true);
+                        font.DrawCenteredVertical(batch, "L T Y / l t y", new(640, 640), Color.White, scale * 2, true);
                         End();
                         device.SetRenderTarget(null);
                         using var stream = File.Create(Path.Combine(frames, $"frame-{frame:00}.png"));

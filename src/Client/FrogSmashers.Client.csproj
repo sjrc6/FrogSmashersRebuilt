@@ -21,6 +21,7 @@
       CopyToOutputDirectory="PreserveNewest"
     />
     <EmbeddedResource Include="Icons/Icon.bmp" LogicalName="Icon.bmp" />
+    <EmbeddedResource Include="Icons/FrogSmashersRebuilt.ico" LogicalName="Window.ico" />
     <None
       Update="Icons/FrogSmashersRebuilt.png"
       TargetPath="FrogSmashersRebuilt.png"

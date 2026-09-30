@@ -4,16 +4,39 @@ namespace FrogSmashers.Client;
 
 internal static class MenuLayout
 {
-    public static Rectangle Row(GameScreen screen, int index, int count = 0, int room = 0) =>
+    public static Rectangle Panel(GameScreen screen, int count)
+    {
+        int width = screen switch
+        {
+            GameScreen.Main => 368,
+            GameScreen.LobbyMenu => 474,
+            GameScreen.Playing or GameScreen.Connecting => 484,
+            GameScreen.Error => 1040,
+            _ => 544,
+        };
+        int height = RowsOffset(screen) + count * RowSpacing(screen) + 80;
+        int top = screen == GameScreen.Main ? 324 : (Renderer.Height - height) / 2;
+        return new((Renderer.Width - width) / 2, top, width, height);
+    }
+
+    public static Rectangle Row(GameScreen screen, int index, int count = 0, int room = 0)
+    {
+        if (screen is GameScreen.SlotEditor or GameScreen.SlotOptions)
+            return SlotRow(room, index);
+        var panel = Panel(screen, count);
+        int spacing = RowSpacing(screen);
+        return new(panel.X + 12, panel.Y + RowsOffset(screen) + index * spacing, panel.Width - 24, spacing - 4);
+    }
+
+    private static int RowSpacing(GameScreen screen) => screen == GameScreen.LobbyMenu ? 44 : 48;
+
+    private static int RowsOffset(GameScreen screen) =>
         screen switch
         {
-            GameScreen.Main => new(480, 335 + index * 49, 320, 43),
-            GameScreen.Playing => new(410, 286 + index * 49, 460, 43),
-            GameScreen.Connecting => new(410, 390 + index * 49, 460, 43),
-            GameScreen.Error => new(390, 550, 500, 43),
-            GameScreen.SlotEditor or GameScreen.SlotOptions => SlotRow(room, index),
-            GameScreen.LobbyMenu => new(415, 360 - (count * 43 - 4) / 2 + 19 + index * 43, 450, 39),
-            _ => new(380, 154 + index * 49, 520, 43),
+            GameScreen.Main => 20,
+            GameScreen.Connecting => 152,
+            GameScreen.Error => 296,
+            _ => 56,
         };
 
     private static Rectangle SlotRow(int room, int index)

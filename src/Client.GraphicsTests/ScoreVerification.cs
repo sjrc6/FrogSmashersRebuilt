@@ -9,6 +9,28 @@ internal sealed partial class PresentationChecks
     {
         foreach (int playerCount in new[] { 4, 5, 8 })
             CaptureScoreLayout(Path.Combine(directory, $"{playerCount}-players"), playerCount);
+        CaptureDeathMessages(Path.Combine(directory, "death-messages"));
+    }
+
+    private void CaptureDeathMessages(string directory)
+    {
+        renderer.Reset();
+        var world = new World(assets.Data, new GameRules { PlayerCount = 2, MapOrder = [1] });
+        renderer.DrawWorld(world, null, 1, false);
+        string[] messages = ["FAIL!", "BUTTS!", "FAREWELL, CRUEL WORLD!"];
+        for (int index = 0; index < messages.Length; index++)
+        {
+            var plume = renderer.Effects.Add("SideScorePlum", new(-4, 9 - index * 8), PlayerColors[index], 0)!;
+            plume.Text = messages[index];
+        }
+        for (int frame = 1; frame <= 87; frame++)
+        {
+            renderer.Update(1 / 60f);
+            renderer.DrawWorld(world, null, 1, false);
+            if (frame is 9 or 27 or 45 or 63 or 87)
+                SaveFrame(Path.Combine(directory, $"frame-{frame:00}.png"));
+        }
+        renderer.Reset();
     }
 
     private void CaptureScoreLayout(string directory, int playerCount)

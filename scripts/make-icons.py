@@ -13,8 +13,10 @@ SIZES = (16, 24, 32, 48, 64, 128, 256)
 
 
 def icon_frame(source, size):
-    ratio = size / max(source.size)
-    width, height = round(source.width * ratio), round(source.height * ratio)
+    if size < max(source.size):
+        return source.crop((0, 0, size, size))
+    factor = size // max(source.size)
+    width, height = source.width * factor, source.height * factor
     scaled = source.resize((width, height), Image.Resampling.NEAREST)
     frame = Image.new("RGBA", (size, size))
     frame.paste(scaled, ((size - width) // 2, (size - height) // 2))

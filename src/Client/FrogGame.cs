@@ -10,6 +10,7 @@ public class FrogGame : Game
     private readonly GraphicsDeviceManager graphics;
     private readonly DisplaySettings display;
     private readonly FrameTiming timing = new();
+    private WindowsWindowIcons? windowIcons;
     private MenuRenderer menuRenderer = null!;
     private bool showDiagnostics;
     private bool contentLoaded;
@@ -60,6 +61,8 @@ public class FrogGame : Game
     protected override void LoadContent()
     {
         display.MatchDesktopBackBuffer();
+        if (OperatingSystem.IsWindows())
+            windowIcons = new WindowsWindowIcons(Window.Handle);
         Assets = new Assets(Content, Content.RootDirectory);
         Renderer = new Renderer(GraphicsDevice, Assets) { ShakeEnabled = Settings.ScreenShake };
         Audio = new Audio(Assets, !Options.NoAudio) { Volume = Settings.Volume };
@@ -431,6 +434,7 @@ public class FrogGame : Game
             Audio?.Dispose();
             Renderer?.Dispose();
             Assets?.Dispose();
+            windowIcons?.Dispose();
         }
 
         base.Dispose(disposing);

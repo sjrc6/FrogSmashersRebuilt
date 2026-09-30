@@ -26,7 +26,8 @@ public sealed partial class Renderer
     internal void LobbyColorEffect(MapData map, int room, int color, long tick)
     {
         SetMap(map);
-        effects.Add("SpawnPuff", LobbyPreviewPosition(map, room) + Vector2.UnitY * .2f, PlayerColors[color], tick);
+        var point = map.Spawns[room];
+        SpawnPuff(map, new((float)point.X, (float)point.Y), PlayerColors[color], tick);
     }
 
     private void DrawLobbyPreview(World world, int room)
@@ -56,12 +57,15 @@ public sealed partial class Renderer
             for (int i = 0; i < pixels.Length; i++)
                 if (pixels[i] != Color.Black)
                     pixels[i] = Color.Lerp(pixels[i], Color.White, 128 / 255f);
+            float pixelsPerUnit = LobbyLayout.Height / (map.OrthoSize * 2);
             foreach (var sprite in map.Sprites.Where(sprite => sprite.SpriteId != "lobby-background"))
             {
-                int left = (int)MathF.Round(480 + (sprite.X - sprite.ScaleX / 2) * 10);
-                int top = (int)MathF.Round(270 - (sprite.Y + sprite.ScaleY / 2) * 10);
-                int width = (int)MathF.Round(sprite.ScaleX * 10);
-                int height = (int)MathF.Round(sprite.ScaleY * 10);
+                int left = (int)
+                    MathF.Round(LobbyLayout.Width / 2f + (sprite.X - map.CameraX - sprite.ScaleX / 2) * pixelsPerUnit);
+                int top = (int)
+                    MathF.Round(LobbyLayout.Height / 2f - (sprite.Y - map.CameraY + sprite.ScaleY / 2) * pixelsPerUnit);
+                int width = (int)MathF.Round(sprite.ScaleX * pixelsPerUnit);
+                int height = (int)MathF.Round(sprite.ScaleY * pixelsPerUnit);
                 var color = EffectSystem.ToColor(sprite.Color);
                 for (int y = top; y < top + height; y++)
                     pixels.AsSpan(y * LobbyLayout.Width + left, width).Fill(color);

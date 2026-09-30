@@ -10,6 +10,26 @@ public sealed partial class Renderer
 
     private float RandomRange(float low, float high) => MathHelper.Lerp(low, high, (float)cosmetics.NextDouble());
 
+    private void SpawnPuff(MapData map, Vector2 feet, Color color, long tick, float age = 0)
+    {
+        float ground = feet.Y;
+        float nearest = 1;
+        foreach (var platform in map.Collision)
+        {
+            float left = (float)(platform.X - platform.Width / 2);
+            float right = (float)(platform.X + platform.Width / 2);
+            float top = (float)(platform.Y + platform.Height / 2);
+            float distance = feet.Y - top;
+            if (feet.X < left || feet.X > right || distance < -.001f || distance > nearest)
+                continue;
+            ground = top;
+            nearest = distance;
+        }
+
+        // The opening frames' visible base is 14 pixels below the pivot, at 10 pixels per unit.
+        effects.Add("SpawnPuff", new(feet.X, ground + 1.4f), color, tick, new EffectSpawn { Age = age });
+    }
+
     private void DrawEffect(EffectSystem.VisualEffect e)
     {
         int mode = e.Owner >= 0 ? effects.ModeFor(assets.Data.Effects["FaderTrail"]) : effects.ModeFor(e.Data!);

@@ -96,7 +96,20 @@ internal sealed class GraphicsTestGame : Game
                 return;
             }
 
-            string[] checks = [.. suite.VerifySourcePresentation(), .. suite.VerifyContent()];
+            string[] checks =
+            [
+                .. suite.VerifySourcePresentation(),
+                .. suite.VerifyContent(),
+                .. suite.VerifyMenuPanels(
+                    captureDirectory == null ? null : Path.Combine(captureDirectory, "menu-panels")
+                ),
+                .. suite.VerifySmokeRings(
+                    captureDirectory == null ? null : Path.Combine(captureDirectory, "smoke-rings")
+                ),
+                .. suite.VerifySpawnEffects(
+                    captureDirectory == null ? null : Path.Combine(captureDirectory, "spawn-effects")
+                ),
+            ];
             if (captureDirectory != null)
             {
                 suite.CaptureNativeReferenceSamples(captureDirectory);

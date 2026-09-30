@@ -14,6 +14,7 @@ internal sealed partial class MenuController
     private readonly FrogGame game;
     private readonly Stack<(GameScreen Screen, int Selected)> history = new();
     private GameScreen context = GameScreen.Main;
+    private bool menuSoundPending;
     public GameScreen Screen { get; set; } = GameScreen.Intro;
     public int Selected { get; set; }
     public int SelectedSeat { get; private set; }
@@ -46,13 +47,19 @@ internal sealed partial class MenuController
         if (!EditingAddress || char.IsControl(character))
             return;
         if (Screen == GameScreen.JoinSteam && char.IsDigit(character) && SteamCode.Length < 20)
+        {
             SteamCode += character;
+            menuSoundPending = true;
+        }
         else if (
             Screen == GameScreen.JoinUdp
             && (char.IsLetterOrDigit(character) || ".:-".Contains(character))
             && JoinAddress.Length < 128
         )
+        {
             JoinAddress += character;
+            menuSoundPending = true;
+        }
     }
 
     public void Update(double elapsedSeconds)
@@ -73,11 +80,15 @@ internal sealed partial class MenuController
                 {
                     game.Cinematics.SkipIntro();
                     Screen = GameScreen.Title;
+                    menuSoundPending = input.Accept || input.Back || game.Controls.Press(Keys.Space);
                 }
                 break;
             case GameScreen.Title:
                 if (input.Accept || game.Controls.Press(Keys.Space))
+                {
                     game.MainMenu();
+                    menuSoundPending = true;
+                }
                 break;
             case GameScreen.Seats:
                 UpdateSeats();
@@ -91,6 +102,7 @@ internal sealed partial class MenuController
                         game.Match.Paused = true;
                         Selected = 0;
                         game.Controls.ClearPendingEdges();
+                        menuSoundPending = true;
                     }
                 }
                 else
@@ -110,7 +122,10 @@ internal sealed partial class MenuController
                 if (game.Match.Network?.Error != null && !game.Match.Network.IsTransportFailure)
                     game.Fail(game.Match.Network.Error);
                 else if (input.Back || input.Accept || game.Cinematics.Finished)
+                {
                     game.ReturnToLobby();
+                    menuSoundPending = input.Back || input.Accept;
+                }
                 break;
             case GameScreen.Bindings when WaitingForBinding:
                 CaptureBinding(input);
@@ -152,6 +167,12 @@ internal sealed partial class MenuController
                 game.Audio.Reset();
             }
         }
+
+        if (menuSoundPending)
+        {
+            menuSoundPending = false;
+            game.Audio.PlayMenuAction();
+        }
     }
 
     private void UpdateRows(MenuInput input)
@@ -164,13 +185,31 @@ internal sealed partial class MenuController
         var entries = Entries();
         if (entries.Count == 0)
             return;
-        Selected = Wrap(Selected + input.Vertical, entries.Count);
+        SelectRow(Wrap(Selected + input.Vertical, entries.Count));
         if (ClickRow(entries))
             return;
         if (input.Horizontal != 0)
-            entries[Selected].Change?.Invoke(input.Horizontal);
+        {
+            if (entries[Selected].Change is { } change)
+            {
+                change(input.Horizontal);
+                menuSoundPending = true;
+            }
+        }
         else if (input.Accept)
-            entries[Selected].Select();
+            ActivateEntry(entries[Selected]);
+    }
+
+    private void SelectRow(int index)
+    {
+        menuSoundPending |= Selected != index;
+        Selected = index;
+    }
+
+    private void ActivateEntry(MenuEntry entry)
+    {
+        entry.Select();
+        menuSoundPending = true;
     }
 
     private bool ClickRow(IReadOnlyList<MenuEntry> entries)
@@ -185,9 +224,9 @@ internal sealed partial class MenuController
         {
             if (!MenuLayout.Row(Screen, i, entries.Count, SelectedSeat).Contains(point))
                 continue;
-            Selected = i;
+            SelectRow(i);
             if (game.Controls.MousePressed)
-                entries[i].Select();
+                ActivateEntry(entries[i]);
             return game.Controls.MousePressed;
         }
         return false;
@@ -244,6 +283,7 @@ internal sealed partial class MenuController
                 if (backOut)
                 {
                     game.Lobby.BackOut(device);
+                    menuSoundPending = true;
                     continue;
                 }
                 game.Lobby.Choose(
@@ -323,20 +363,32 @@ internal sealed partial class MenuController
             } while (y == 1 && x == 1);
         }
         int target = y * 3 + x;
-        SelectedSeat = target > 4 ? target - 1 : target;
+        SelectRoom(target > 4 ? target - 1 : target);
         if (KeyboardAllowed && (game.Controls.MouseMoved || game.Controls.MousePressed) && Pointer() is Point point)
         {
             for (int room = 0; room < 8; room++)
                 if (MenuLayout.Room(room).Contains(point))
                 {
-                    SelectedSeat = room;
+                    SelectRoom(room);
                     if (game.Controls.MousePressed)
+                    {
                         Open(GameScreen.SlotOptions);
+                        menuSoundPending = true;
+                    }
                     return;
                 }
         }
         if (input.Accept)
+        {
             Open(GameScreen.SlotOptions);
+            menuSoundPending = true;
+        }
+    }
+
+    private void SelectRoom(int room)
+    {
+        menuSoundPending |= SelectedSeat != room;
+        SelectedSeat = room;
     }
 
     private void EditRoom(SlotType type, bool open, bool remove = false)
@@ -357,19 +409,27 @@ internal sealed partial class MenuController
         if (input.Back)
         {
             EditingAddress = false;
+            menuSoundPending = true;
             return;
         }
         if (game.Controls.Press(Keys.Back))
         {
             if (Screen == GameScreen.JoinSteam && SteamCode.Length > 0)
+            {
                 SteamCode = SteamCode[..^1];
+                menuSoundPending = true;
+            }
             if (Screen == GameScreen.JoinUdp && JoinAddress.Length > 0)
+            {
                 JoinAddress = JoinAddress[..^1];
+                menuSoundPending = true;
+            }
         }
         if (input.Accept)
         {
             EditingAddress = false;
             Selected = 1;
+            menuSoundPending = true;
         }
     }
 
@@ -391,6 +451,7 @@ internal sealed partial class MenuController
         if (input.Back)
         {
             WaitingForBinding = false;
+            menuSoundPending = true;
             return;
         }
         if (!KeyboardAllowed)
@@ -402,6 +463,7 @@ internal sealed partial class MenuController
         if (key == Keys.Escape)
         {
             WaitingForBinding = false;
+            menuSoundPending = true;
             return;
         }
         var keys = game.Settings.Keyboard[BindingDevice];
@@ -434,6 +496,7 @@ internal sealed partial class MenuController
         }
         WaitingForBinding = false;
         game.Controls.ClearPendingEdges();
+        menuSoundPending = true;
     }
 
     private void Open(GameScreen screen)
@@ -449,10 +512,13 @@ internal sealed partial class MenuController
         Owner = device;
         game.Controls.ClearPendingEdges();
         Open(screen);
+        menuSoundPending = true;
     }
 
     private void Back()
     {
+        menuSoundPending |=
+            Screen is GameScreen.Playing or GameScreen.Connecting or GameScreen.Error || history.Count > 0;
         EditingAddress = WaitingForBinding = false;
         if (Screen is GameScreen.Settings or GameScreen.MatchSettings or GameScreen.Bindings)
             game.SaveSettings();

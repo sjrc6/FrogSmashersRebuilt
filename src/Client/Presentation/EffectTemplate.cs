@@ -25,6 +25,7 @@ internal sealed class EffectTemplate(string name, EffectData data)
             "HitStar" => 3,
             "HitStarPowerHit" => 4,
             "SmokeRing" => -3,
+            "SmokeRingBack" => 3,
             "KnockedUpEffect" => -5,
             "SpawnPuff" or "TongueHitEffect" or "ShingEffect" or "Confetti." => -1,
             "HitParticle" => 0,

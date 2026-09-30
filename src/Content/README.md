@@ -4,7 +4,7 @@ The initial port used this commit `5ae12e413851bd2910853a217a6fdcd89115737f`
 
 - `Textures` - source images and four imported DDS textures with their compression and mipmaps
 - `Fonts`- font sources and generation settings
-- `UI` - generated bitmap font atlases, integer glyph metrics and button icons
+- `UI` - menu panel artwork, generated bitmap font atlases, integer glyph metrics and button icons
 - `Game` - maps, presentation scenes, sprite geometry, animations, materials, sounds, and character settings
 - `Content.mgcb`- MonoGame project content 
 

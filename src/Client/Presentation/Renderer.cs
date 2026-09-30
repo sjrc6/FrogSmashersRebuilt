@@ -13,6 +13,7 @@ public sealed partial class Renderer : IDisposable
     private readonly SpriteCanvas canvas;
     private readonly GameCamera cameraController;
     private readonly ScoreDisplay scores;
+    private readonly NineSlicePanel menuPanel;
     internal ScoreDisplay Scores => scores;
     internal SpriteCanvas Canvas => canvas;
     internal GameCamera Camera => cameraController;
@@ -49,6 +50,7 @@ public sealed partial class Renderer : IDisposable
         cameraController = new GameCamera(assets.Data.EffectsParameters);
         canvas = new SpriteCanvas(device, assets, cameraController);
         scores = new ScoreDisplay(assets, canvas, cameraController);
+        menuPanel = new NineSlicePanel(assets.Texture("UI/menu-panel"));
         effects = new EffectSystem(assets, canvas, cameraController, cosmetics);
         compositor = new FrameCompositor(device, assets);
         var projection = Matrix.CreateOrthographicOffCenter(0, Width, Height, 0, 0, 1);
@@ -199,7 +201,7 @@ public sealed partial class Renderer : IDisposable
             {
                 case SimulationEventKind.Spawn:
                     characters[e.Player] = new CharacterPresentation();
-                    effects.Add("SpawnPuff", p + Vector2.UnitY * .2f, color, e.Tick, new EffectSpawn { Age = age });
+                    SpawnPuff(world.Map, p, color, e.Tick, age);
                     break;
                 case SimulationEventKind.Jump:
                     var jumpSide = e.SurfaceSide == 0 ? Contact(world.Map, p) : Surface(e.SurfaceSide);
@@ -637,6 +639,8 @@ public sealed partial class Renderer : IDisposable
         assets.Font.DrawCenteredVertical(Batch, text, new(x, y), color ?? Color.White, scale, center);
 
     public void Panel(Rectangle rect, Color color) => Batch.Draw(assets.White, rect, color);
+
+    internal void MenuPanel(Rectangle rect) => menuPanel.Draw(Batch, rect);
 
     private float ImagePixelScale(Rectangle source, float maxWidth)
     {

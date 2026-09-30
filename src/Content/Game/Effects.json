@@ -1054,6 +1054,46 @@
     "SmokeRing": {
       "Animations": {
         "frames": [
+          "35873ef1bc408e34a9e17dae290b8fcf:21300000",
+          "be587ddbc4ffbb248a056268f201b133:21300000",
+          "35873ef1bc408e34a9e17dae290b8fcf:21300000",
+          "a9f434506d6f2584490bcad32e5c1613:21300000",
+          "7993518fed8e03e478dfaff1f4bff49f:21300000",
+          "d8b493ad5ff79fd4ba7b1b1677b3bc52:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.05,
+      "Frames": [
+        "35873ef1bc408e34a9e17dae290b8fcf:21300000",
+        "be587ddbc4ffbb248a056268f201b133:21300000",
+        "35873ef1bc408e34a9e17dae290b8fcf:21300000",
+        "a9f434506d6f2584490bcad32e5c1613:21300000",
+        "7993518fed8e03e478dfaff1f4bff49f:21300000",
+        "d8b493ad5ff79fd4ba7b1b1677b3bc52:21300000"
+      ],
+      "InitialSpriteId": "a9f434506d6f2584490bcad32e5c1613:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.05,
+        "playOnce": 1
+      },
+      "PlayOnce": true,
+      "ScaleX": 0.8,
+      "ScaleY": 0.8,
+      "SortingLayer": 0,
+      "Z": -3
+    },
+    "SmokeRingBack": {
+      "Animations": {
+        "frames": [
           "7d2c717e61a19a547aaed290f67d2154:21300000",
           "c5126e00bbdd2ba43b31712f6e81ff08:21300000",
           "7d2c717e61a19a547aaed290f67d2154:21300000",

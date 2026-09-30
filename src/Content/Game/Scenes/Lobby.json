@@ -12,343 +12,343 @@
   "CameraY": 0,
   "Collision": [
     {
-      "Height": 0.5,
+      "Height": 0.333333333,
       "Name": "Room 0,0 platform",
       "OneWay": true,
-      "Width": 9.7,
-      "X": -28.95,
-      "Y": 14.75
+      "Width": 6.466666666,
+      "X": -19.3,
+      "Y": 9.8333333335
     },
     {
-      "Height": 0.5,
+      "Height": 0.333333333,
       "Name": "Room 0,1 platform",
       "OneWay": true,
-      "Width": 9.7,
-      "X": 0.05,
-      "Y": 14.75
+      "Width": 6.466666667,
+      "X": 0.0333333335,
+      "Y": 9.8333333335
     },
     {
-      "Height": 0.5,
+      "Height": 0.333333333,
       "Name": "Room 0,2 platform",
       "OneWay": true,
-      "Width": 9.7,
-      "X": 29.05,
-      "Y": 14.75
+      "Width": 6.466666667,
+      "X": 19.3666666665,
+      "Y": 9.8333333335
     },
     {
-      "Height": 0.5,
+      "Height": 0.333333333,
       "Name": "Room 1,0 platform",
       "OneWay": true,
-      "Width": 9.7,
-      "X": -28.95,
-      "Y": -0.25
+      "Width": 6.466666666,
+      "X": -19.3,
+      "Y": -0.1666666665
     },
     {
-      "Height": 0.5,
+      "Height": 0.333333333,
       "Name": "Room 1,2 platform",
       "OneWay": true,
-      "Width": 9.7,
-      "X": 29.05,
-      "Y": -0.25
+      "Width": 6.466666667,
+      "X": 19.3666666665,
+      "Y": -0.1666666665
     },
     {
-      "Height": 0.5,
+      "Height": 0.333333333,
       "Name": "Room 2,0 platform",
       "OneWay": true,
-      "Width": 9.7,
-      "X": -28.95,
-      "Y": -15.25
+      "Width": 6.466666666,
+      "X": -19.3,
+      "Y": -10.1666666665
     },
     {
-      "Height": 0.5,
+      "Height": 0.333333333,
       "Name": "Room 2,1 platform",
       "OneWay": true,
-      "Width": 9.7,
-      "X": 0.05,
-      "Y": -15.25
+      "Width": 6.466666667,
+      "X": 0.0333333335,
+      "Y": -10.1666666665
     },
     {
-      "Height": 0.5,
+      "Height": 0.333333333,
       "Name": "Room 2,2 platform",
       "OneWay": true,
-      "Width": 9.7,
-      "X": 29.05,
-      "Y": -15.25
+      "Width": 6.466666667,
+      "X": 19.3666666665,
+      "Y": -10.1666666665
     },
     {
-      "Height": 1.2,
+      "Height": 0.8,
       "Name": "Floor",
       "OneWay": false,
-      "Width": 9.6,
-      "X": -38.7,
-      "Y": 6.9
+      "Width": 6.4,
+      "X": -25.8,
+      "Y": 4.6
     },
     {
-      "Height": 0.6,
+      "Height": 0.4,
       "Name": "Floor opening platform",
       "OneWay": true,
-      "Width": 9.7,
-      "X": -29.05,
-      "Y": 7.2
+      "Width": 6.466666667,
+      "X": -19.3666666665,
+      "Y": 4.8
     },
     {
-      "Height": 1.2,
+      "Height": 0.8,
       "Name": "Floor",
       "OneWay": false,
-      "Width": 9.7,
-      "X": -19.35,
-      "Y": 6.9
+      "Width": 6.466666666,
+      "X": -12.9,
+      "Y": 4.6
     },
     {
-      "Height": 1.2,
+      "Height": 0.8,
       "Name": "Floor",
       "OneWay": false,
-      "Width": 9.6,
-      "X": -9.7,
-      "Y": 6.9
+      "Width": 6.4,
+      "X": -6.466666667,
+      "Y": 4.6
     },
     {
-      "Height": 0.6,
+      "Height": 0.4,
       "Name": "Floor opening platform",
       "OneWay": true,
-      "Width": 9.7,
-      "X": -0.05,
-      "Y": 7.2
+      "Width": 6.466666667,
+      "X": -0.0333333335,
+      "Y": 4.8
     },
     {
-      "Height": 1.2,
+      "Height": 0.8,
       "Name": "Floor",
       "OneWay": false,
-      "Width": 9.7,
-      "X": 9.65,
-      "Y": 6.9
+      "Width": 6.466666667,
+      "X": 6.4333333335,
+      "Y": 4.6
     },
     {
-      "Height": 1.2,
+      "Height": 0.8,
       "Name": "Floor",
       "OneWay": false,
-      "Width": 9.6,
+      "Width": 6.4,
+      "X": 12.866666667,
+      "Y": 4.6
+    },
+    {
+      "Height": 0.4,
+      "Name": "Floor opening platform",
+      "OneWay": true,
+      "Width": 6.466666666,
       "X": 19.3,
-      "Y": 6.9
+      "Y": 4.8
     },
     {
-      "Height": 0.6,
+      "Height": 0.8,
+      "Name": "Floor",
+      "OneWay": false,
+      "Width": 6.466666667,
+      "X": 25.7666666665,
+      "Y": 4.6
+    },
+    {
+      "Height": 0.8,
+      "Name": "Floor",
+      "OneWay": false,
+      "Width": 6.4,
+      "X": -25.8,
+      "Y": -5.4
+    },
+    {
+      "Height": 0.4,
       "Name": "Floor opening platform",
       "OneWay": true,
-      "Width": 9.7,
-      "X": 28.95,
-      "Y": 7.2
+      "Width": 6.466666667,
+      "X": -19.3666666665,
+      "Y": -5.2
     },
     {
-      "Height": 1.2,
+      "Height": 0.8,
       "Name": "Floor",
       "OneWay": false,
-      "Width": 9.7,
-      "X": 38.65,
-      "Y": 6.9
+      "Width": 6.466666666,
+      "X": -12.9,
+      "Y": -5.4
     },
     {
-      "Height": 1.2,
+      "Height": 0.8,
       "Name": "Floor",
       "OneWay": false,
-      "Width": 9.6,
-      "X": -38.7,
-      "Y": -8.1
+      "Width": 6.4,
+      "X": -6.466666667,
+      "Y": -5.4
     },
     {
-      "Height": 0.6,
+      "Height": 0.4,
       "Name": "Floor opening platform",
       "OneWay": true,
-      "Width": 9.7,
-      "X": -29.05,
-      "Y": -7.8
+      "Width": 6.466666667,
+      "X": -0.0333333335,
+      "Y": -5.2
     },
     {
-      "Height": 1.2,
+      "Height": 0.8,
       "Name": "Floor",
       "OneWay": false,
-      "Width": 9.7,
-      "X": -19.35,
-      "Y": -8.1
+      "Width": 6.466666667,
+      "X": 6.4333333335,
+      "Y": -5.4
     },
     {
-      "Height": 1.2,
+      "Height": 0.8,
       "Name": "Floor",
       "OneWay": false,
-      "Width": 9.6,
-      "X": -9.7,
-      "Y": -8.1
+      "Width": 6.4,
+      "X": 12.866666667,
+      "Y": -5.4
     },
     {
-      "Height": 0.6,
+      "Height": 0.4,
       "Name": "Floor opening platform",
       "OneWay": true,
-      "Width": 9.7,
-      "X": -0.05,
-      "Y": -7.8
-    },
-    {
-      "Height": 1.2,
-      "Name": "Floor",
-      "OneWay": false,
-      "Width": 9.7,
-      "X": 9.65,
-      "Y": -8.1
-    },
-    {
-      "Height": 1.2,
-      "Name": "Floor",
-      "OneWay": false,
-      "Width": 9.6,
+      "Width": 6.466666666,
       "X": 19.3,
-      "Y": -8.1
+      "Y": -5.2
     },
     {
-      "Height": 0.6,
-      "Name": "Floor opening platform",
-      "OneWay": true,
-      "Width": 9.7,
-      "X": 28.95,
-      "Y": -7.8
-    },
-    {
-      "Height": 1.2,
+      "Height": 0.8,
       "Name": "Floor",
       "OneWay": false,
-      "Width": 9.7,
-      "X": 38.65,
-      "Y": -8.1
+      "Width": 6.466666667,
+      "X": 25.7666666665,
+      "Y": -5.4
     },
     {
-      "Height": 10.0,
+      "Height": 6.666666667,
       "Name": "Room wall",
       "OneWay": false,
-      "Width": 1.2,
-      "X": -14.5,
-      "Y": 17.5
+      "Width": 0.8,
+      "X": -9.666666667,
+      "Y": 11.6666666665
     },
     {
-      "Height": 10.0,
+      "Height": 6.666666667,
       "Name": "Room wall",
       "OneWay": false,
-      "Width": 1.2,
-      "X": -14.5,
-      "Y": 2.5
+      "Width": 0.8,
+      "X": -9.666666667,
+      "Y": 1.6666666665
     },
     {
-      "Height": 10.0,
+      "Height": 6.666666667,
       "Name": "Room wall",
       "OneWay": false,
-      "Width": 1.2,
-      "X": -14.5,
-      "Y": -12.5
+      "Width": 0.8,
+      "X": -9.666666667,
+      "Y": -8.3333333335
     },
     {
-      "Height": 10.0,
+      "Height": 6.666666667,
       "Name": "Room wall",
       "OneWay": false,
-      "Width": 1.2,
-      "X": 14.5,
-      "Y": 17.5
+      "Width": 0.8,
+      "X": 9.666666667,
+      "Y": 11.6666666665
     },
     {
-      "Height": 10.0,
+      "Height": 6.666666667,
       "Name": "Room wall",
       "OneWay": false,
-      "Width": 1.2,
-      "X": 14.5,
-      "Y": 2.5
+      "Width": 0.8,
+      "X": 9.666666667,
+      "Y": 1.6666666665
     },
     {
-      "Height": 10.0,
+      "Height": 6.666666667,
       "Name": "Room wall",
       "OneWay": false,
-      "Width": 1.2,
-      "X": 14.5,
-      "Y": -12.5
+      "Width": 0.8,
+      "X": 9.666666667,
+      "Y": -8.3333333335
     },
     {
-      "Height": 54.0,
+      "Height": 36,
       "Name": "Left boundary",
       "OneWay": false,
-      "Width": 4.5,
-      "X": -45.75,
-      "Y": 0.0
+      "Width": 3,
+      "X": -30.5,
+      "Y": 0
     },
     {
-      "Height": 54.0,
+      "Height": 36,
       "Name": "Right boundary",
       "OneWay": false,
-      "Width": 4.5,
-      "X": 45.75,
-      "Y": 0.0
+      "Width": 3,
+      "X": 30.5,
+      "Y": 0
     },
     {
-      "Height": 4.5,
+      "Height": 3,
       "Name": "Ceiling",
       "OneWay": false,
-      "Width": 87.0,
-      "X": 0.0,
-      "Y": 24.75
+      "Width": 58,
+      "X": 0,
+      "Y": 16.5
     },
     {
-      "Height": 4.5,
+      "Height": 3,
       "Name": "Bottom floor",
       "OneWay": false,
-      "Width": 87.0,
-      "X": 0.0,
-      "Y": -24.75
+      "Width": 58,
+      "X": 0,
+      "Y": -16.5
     }
   ],
   "Id": "Lobby",
   "IntroParticleEffects": [],
   "KillBounds": {
-    "Bottom": -29,
-    "Left": -50,
-    "Right": 50,
-    "Top": 36
+    "Bottom": -19.333333333,
+    "Left": -33.333333333,
+    "Right": 33.333333333,
+    "Top": 24
   },
   "Name": "Lobby",
   "Nodes": [],
-  "OrthoSize": 27,
+  "OrthoSize": 18,
   "Parallax": [],
   "ParallaxFrogEffects": [],
   "ParticleEmitters": [],
   "PresentationParameters": {},
   "SceneEffects": [],
-  "ScreenTop": 27,
+  "ScreenTop": 18,
   "Spawns": [
     {
-      "X": -28.95,
-      "Y": 15.0
+      "X": -19.3,
+      "Y": 10
     },
     {
-      "X": 0.05,
-      "Y": 15.0
+      "X": 0.0333333335,
+      "Y": 10
     },
     {
-      "X": 29.05,
-      "Y": 15.0
+      "X": 19.3666666665,
+      "Y": 10
     },
     {
-      "X": -28.95,
-      "Y": 0.0
+      "X": -19.3,
+      "Y": 0
     },
     {
-      "X": 29.05,
-      "Y": 0.0
+      "X": 19.3666666665,
+      "Y": 0
     },
     {
-      "X": -28.95,
-      "Y": -15.0
+      "X": -19.3,
+      "Y": -10
     },
     {
-      "X": 0.05,
-      "Y": -15.0
+      "X": 0.0333333335,
+      "Y": -10
     },
     {
-      "X": 29.05,
-      "Y": -15.0
+      "X": 19.3666666665,
+      "Y": -10
     }
   ],
   "Sprites": [
@@ -365,11 +365,11 @@
         1
       ],
       "Name": "Room 0,0 platform",
-      "ScaleX": 9.7,
-      "ScaleY": 0.5,
+      "ScaleX": 6.466666666,
+      "ScaleY": 0.333333333,
       "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
-      "X": -28.95,
-      "Y": 14.75,
+      "X": -19.3,
+      "Y": 9.8333333335,
       "Z": 1
     },
     {
@@ -380,11 +380,11 @@
         1
       ],
       "Name": "Room 0,1 platform",
-      "ScaleX": 9.7,
-      "ScaleY": 0.5,
+      "ScaleX": 6.466666667,
+      "ScaleY": 0.333333333,
       "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
-      "X": 0.05,
-      "Y": 14.75,
+      "X": 0.0333333335,
+      "Y": 9.8333333335,
       "Z": 1
     },
     {
@@ -395,11 +395,11 @@
         1
       ],
       "Name": "Room 0,2 platform",
-      "ScaleX": 9.7,
-      "ScaleY": 0.5,
+      "ScaleX": 6.466666667,
+      "ScaleY": 0.333333333,
       "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
-      "X": 29.05,
-      "Y": 14.75,
+      "X": 19.3666666665,
+      "Y": 9.8333333335,
       "Z": 1
     },
     {
@@ -410,11 +410,11 @@
         1
       ],
       "Name": "Room 1,0 platform",
-      "ScaleX": 9.7,
-      "ScaleY": 0.5,
+      "ScaleX": 6.466666666,
+      "ScaleY": 0.333333333,
       "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
-      "X": -28.95,
-      "Y": -0.25,
+      "X": -19.3,
+      "Y": -0.1666666665,
       "Z": 1
     },
     {
@@ -425,11 +425,11 @@
         1
       ],
       "Name": "Room 1,2 platform",
-      "ScaleX": 9.7,
-      "ScaleY": 0.5,
+      "ScaleX": 6.466666667,
+      "ScaleY": 0.333333333,
       "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
-      "X": 29.05,
-      "Y": -0.25,
+      "X": 19.3666666665,
+      "Y": -0.1666666665,
       "Z": 1
     },
     {
@@ -440,11 +440,11 @@
         1
       ],
       "Name": "Room 2,0 platform",
-      "ScaleX": 9.7,
-      "ScaleY": 0.5,
+      "ScaleX": 6.466666666,
+      "ScaleY": 0.333333333,
       "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
-      "X": -28.95,
-      "Y": -15.25,
+      "X": -19.3,
+      "Y": -10.1666666665,
       "Z": 1
     },
     {
@@ -455,11 +455,11 @@
         1
       ],
       "Name": "Room 2,1 platform",
-      "ScaleX": 9.7,
-      "ScaleY": 0.5,
+      "ScaleX": 6.466666667,
+      "ScaleY": 0.333333333,
       "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
-      "X": 0.05,
-      "Y": -15.25,
+      "X": 0.0333333335,
+      "Y": -10.1666666665,
       "Z": 1
     },
     {
@@ -470,11 +470,11 @@
         1
       ],
       "Name": "Room 2,2 platform",
-      "ScaleX": 9.7,
-      "ScaleY": 0.5,
+      "ScaleX": 6.466666667,
+      "ScaleY": 0.333333333,
       "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
-      "X": 29.05,
-      "Y": -15.25,
+      "X": 19.3666666665,
+      "Y": -10.1666666665,
       "Z": 1
     },
     {
@@ -485,11 +485,11 @@
         1
       ],
       "Name": "Floor opening platform",
-      "ScaleX": 9.7,
-      "ScaleY": 0.6,
+      "ScaleX": 6.466666667,
+      "ScaleY": 0.4,
       "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
-      "X": -29.05,
-      "Y": 7.2,
+      "X": -19.3666666665,
+      "Y": 4.8,
       "Z": 1
     },
     {
@@ -500,11 +500,11 @@
         1
       ],
       "Name": "Floor opening platform",
-      "ScaleX": 9.7,
-      "ScaleY": 0.6,
+      "ScaleX": 6.466666667,
+      "ScaleY": 0.4,
       "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
-      "X": -0.05,
-      "Y": 7.2,
+      "X": -0.0333333335,
+      "Y": 4.8,
       "Z": 1
     },
     {
@@ -515,11 +515,11 @@
         1
       ],
       "Name": "Floor opening platform",
-      "ScaleX": 9.7,
-      "ScaleY": 0.6,
+      "ScaleX": 6.466666666,
+      "ScaleY": 0.4,
       "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
-      "X": 28.95,
-      "Y": 7.2,
+      "X": 19.3,
+      "Y": 4.8,
       "Z": 1
     },
     {
@@ -530,11 +530,11 @@
         1
       ],
       "Name": "Floor opening platform",
-      "ScaleX": 9.7,
-      "ScaleY": 0.6,
+      "ScaleX": 6.466666667,
+      "ScaleY": 0.4,
       "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
-      "X": -29.05,
-      "Y": -7.8,
+      "X": -19.3666666665,
+      "Y": -5.2,
       "Z": 1
     },
     {
@@ -545,11 +545,11 @@
         1
       ],
       "Name": "Floor opening platform",
-      "ScaleX": 9.7,
-      "ScaleY": 0.6,
+      "ScaleX": 6.466666667,
+      "ScaleY": 0.4,
       "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
-      "X": -0.05,
-      "Y": -7.8,
+      "X": -0.0333333335,
+      "Y": -5.2,
       "Z": 1
     },
     {
@@ -560,11 +560,11 @@
         1
       ],
       "Name": "Floor opening platform",
-      "ScaleX": 9.7,
-      "ScaleY": 0.6,
+      "ScaleX": 6.466666666,
+      "ScaleY": 0.4,
       "SpriteId": "9618327f4daaadd4e9d004d08a1a8009:21300000",
-      "X": 28.95,
-      "Y": -7.8,
+      "X": 19.3,
+      "Y": -5.2,
       "Z": 1
     }
   ]

@@ -3,6 +3,7 @@
 **/obj/
 /.build/
 /artifacts/
+/designs/
 **/*.user
 **/__pycache__/
 *.py[cod]
