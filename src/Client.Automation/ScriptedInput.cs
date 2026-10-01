@@ -37,17 +37,19 @@ public sealed class ScriptedInput
         new(ranges.Where(r => frame >= r.From && frame < r.To).SelectMany(r => r.Keys).Distinct().ToArray());
 
     public GamePadState Pad(int frame, int pad) =>
-        new(
-            Vector2.Zero,
-            Vector2.Zero,
-            0,
-            0,
-            ranges
-                .Where(r => frame >= r.From && frame < r.To)
-                .SelectMany(r => r.Pads.GetValueOrDefault(pad, []))
-                .Distinct()
-                .ToArray()
-        );
+        !ranges.Any(range => frame >= range.From && frame < range.To && range.Pads.ContainsKey(pad))
+            ? default
+            : new(
+                Vector2.Zero,
+                Vector2.Zero,
+                0,
+                0,
+                ranges
+                    .Where(r => frame >= r.From && frame < r.To)
+                    .SelectMany(r => r.Pads.GetValueOrDefault(pad, []))
+                    .Distinct()
+                    .ToArray()
+            );
 
     public MouseState Mouse(int frame)
     {

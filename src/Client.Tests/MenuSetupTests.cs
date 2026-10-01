@@ -19,45 +19,25 @@ internal static class MenuSetupTests
             .Select(path => Path.ChangeExtension(Path.GetRelativePath(contentRoot, path), null).Replace('\\', '/'));
         check(bakedPaths.SetEquals(shippedPaths), "all baked keyboard icons are reachable from their input keys");
 
-        var settings = ClientSettings.Parse(
-            """
-            {"Volume":0.35,"MatchDefaults":{"TeamMode":true,"WinScore":12,"MatchRounds":4,
-             "CharactersBounceEachOther":true,"FirstMap":3,"ShuffleMaps":true},
-             "Keyboard":[{"Jump":27},{"Strafe":78}]}
-            """
-        );
-        var defaults = settings.MatchDefaults;
-        check(
-            defaults.TeamMode
-                && defaults.WinScore == 12
-                && defaults.MatchRounds == 4
-                && defaults.CharactersBounceEachOther,
-            "saved match choices load"
-        );
-        check(
-            defaults.FirstMap == 3 && defaults.ShuffleMaps && settings.Volume == .35f,
-            "personal settings and arena choices load independently"
-        );
+        var settings = ClientSettings.Parse("""{"Volume":0.35,"Keyboard":[{"Jump":27},{"Strafe":78}]}""");
+        check(settings.Volume == .35f, "personal settings load");
         check(
             settings.Keyboard[0].Jump == Keys.T && settings.Keyboard[1].Strafe == Keys.N,
             "Escape is reserved and the second keyboard retains its strafe binding"
         );
         string saved = JsonSerializer.Serialize(settings);
         check(
-            !saved.Contains("PlayerCount") && !saved.Contains("ExpectedPeers") && !saved.Contains("MapOrder"),
-            "runtime state and retired rules are not persisted"
+            !saved.Contains("Match") && !saved.Contains("PlayerCount") && !saved.Contains("MapOrder"),
+            "match and lobby state are not persisted"
         );
-        check(ClientSettings.Parse(saved).MatchDefaults == defaults, "new defaults survive settings serialization");
-        var current = ClientSettings.Parse("""{"MatchDefaults":{"WinScore":3,"MatchRounds":200,"FirstMap":-1}}""");
-        check(
-            current.MatchDefaults.WinScore == 3
-                && current.MatchDefaults.MatchRounds == 20
-                && current.MatchDefaults.FirstMap == 0,
-            "invalid match defaults normalize"
-        );
-        check(ClientSettings.Parse("null").MatchDefaults.MatchRounds == 6, "empty JSON settings use defaults");
-
-        var setup = new MatchSetup(settings, 7);
+        check(ClientSettings.Parse(saved).Volume == settings.Volume, "personal settings survive serialization");
+        var setup = new MatchSetup(7);
+        check(setup.Preferences == new MatchPreferences(), "new sessions start with default match settings");
+        setup.Preferences.TeamMode = true;
+        setup.Preferences.WinScore = 12;
+        setup.Preferences.MatchRounds = 4;
+        setup.Preferences.FirstMap = 3;
+        setup.Preferences.ShuffleMaps = true;
         check(setup.Lobby.Join(0) && !setup.Lobby.Join(0), "one device cannot claim two seats");
         check(
             setup.Lobby.Join(1) && setup.Lobby.Join(-1) && setup.Lobby.Join(-1),
@@ -71,10 +51,7 @@ internal static class MenuSetupTests
             "match derives its roster from the local party"
         );
         setup.Preferences.WinScore = 17;
-        check(
-            match.Rules.WinScore == 12 && settings.MatchDefaults.WinScore == 12,
-            "editing the lobby does not mutate active rules or saved defaults"
-        );
+        check(match.Rules.WinScore == 12, "editing the lobby does not mutate active match rules");
         match.Rules.Teams[0] = 7;
         match.Rules.MapOrder[0] = 6;
         check(
@@ -91,6 +68,17 @@ internal static class MenuSetupTests
         check(
             setup.Seats[0].Device == 1 && setup.Seats[0].Team == 5 && setup.Lobby.Join(2),
             "removal retains remaining device and team assignments and frees a seat"
+        );
+
+        setup.ResetPreferences();
+        check(setup.Preferences == new MatchPreferences(), "resetting the lobby clears every match preference");
+        check(
+            settings.Volume == .35f && settings.Keyboard[1].Strafe == Keys.N,
+            "lobby reset leaves personal settings intact"
+        );
+        check(
+            !JsonSerializer.Serialize(setup.CreateOptions()).Contains("CharactersBounceEachOther"),
+            "match rules no longer contain the body-bounce modifier"
         );
 
         KeyboardState keyboard = default;
@@ -120,16 +108,16 @@ internal static class MenuSetupTests
             ButtonState.Released
         );
         controls.Poll();
-        check(MenuInput.Read(controls, 3) == default, "other controllers and keyboard cannot navigate an owned menu");
+        check(MenuInput.Read(controls, 3) == default, "inactive controller has no menu actions");
         check(
-            MenuInput.Read(controls, 0).Accept && MenuInput.Read(controls, 0).Vertical == 1 && controls.MousePressed,
-            "keyboard owner retains fixed menu input and mouse edges"
+            MenuInput.Read(controls).Accept && MenuInput.Read(controls).Vertical == 1 && controls.MousePressed,
+            "keyboard and controller menu actions combine without doubling navigation"
         );
         pads[1] = new(Vector2.Zero, Vector2.Zero, 0, 0, Buttons.A | Buttons.DPadRight);
         controls.Poll();
         check(
-            MenuInput.Read(controls, 3).Accept && MenuInput.Read(controls, 3).Horizontal == 1 && !controls.MousePressed,
-            "owning controller can navigate while a held mouse does not repeat"
+            MenuInput.Read(controls).Accept && MenuInput.Read(controls).Horizontal == 1 && !controls.MousePressed,
+            "another controller can navigate while a held mouse does not repeat"
         );
         keyboard = default;
         pads[1] = default;
@@ -151,7 +139,7 @@ internal static class MenuSetupTests
             MenuInput.Read(controls, 0).Vertical == -1 && MenuInput.Read(controls, 0).Horizontal == 1,
             "WASD navigates fixed menus"
         );
-        check(MenuInput.Read(controls, 3) == default, "WASD cannot control another player's menu");
+        check(MenuInput.Read(controls).Vertical == -1, "keyboard navigation remains available after controller input");
         check(
             MenuLayout.Pointer(new Point(480, 384), 960, 768) == new Point(640, 360),
             "mouse accounts for letterboxing and window scale"
@@ -171,6 +159,75 @@ internal static class MenuSetupTests
         check(controls.MouseRightPressed && !controls.MousePressed, "right click has its own menu input edge");
         controls.Poll();
         check(!controls.MouseRightPressed, "holding right click does not repeatedly change a menu value");
-        Console.WriteLine("Settings validation, match isolation, local party and menu input ownership passed");
+        mouse = new(
+            200,
+            200,
+            0,
+            ButtonState.Pressed,
+            ButtonState.Released,
+            ButtonState.Released,
+            ButtonState.Released,
+            ButtonState.Released
+        );
+        controls.Poll(windowActive: false);
+        check(
+            !controls.MouseMoved && !controls.MousePressed && !controls.MouseRightPressed,
+            "inactive mouse clicks and motion are ignored"
+        );
+        mouse = new(
+            300,
+            300,
+            0,
+            ButtonState.Released,
+            ButtonState.Released,
+            ButtonState.Released,
+            ButtonState.Released,
+            ButtonState.Released
+        );
+        controls.Poll(windowActive: false);
+        mouse = new(
+            400,
+            400,
+            0,
+            ButtonState.Pressed,
+            ButtonState.Released,
+            ButtonState.Pressed,
+            ButtonState.Released,
+            ButtonState.Released
+        );
+        controls.Poll();
+        check(
+            !controls.MouseMoved && !controls.MousePressed && !controls.MouseRightPressed,
+            "refocusing cannot click or hover a menu item"
+        );
+        controls.Poll();
+        check(!controls.MousePressed && !controls.MouseRightPressed, "held focus click stays suppressed");
+        mouse = new(
+            400,
+            400,
+            0,
+            ButtonState.Released,
+            ButtonState.Released,
+            ButtonState.Released,
+            ButtonState.Released,
+            ButtonState.Released
+        );
+        controls.Poll();
+        mouse = new(
+            410,
+            410,
+            0,
+            ButtonState.Pressed,
+            ButtonState.Released,
+            ButtonState.Pressed,
+            ButtonState.Released,
+            ButtonState.Released
+        );
+        controls.Poll();
+        check(
+            controls.MouseMoved && controls.MousePressed && controls.MouseRightPressed,
+            "fresh focused mouse input works normally"
+        );
+        Console.WriteLine("Settings validation, match isolation, local party and shared menu input passed");
     }
 }

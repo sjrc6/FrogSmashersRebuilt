@@ -5,11 +5,12 @@ using Microsoft.Xna.Framework;
 
 namespace FrogSmashers.Client;
 
-internal sealed class LobbyController(FrogGame game)
+internal sealed partial class LobbyController(FrogGame game)
 {
     private const double TickSeconds = 1.0 / World.TickRate;
     private readonly (int Peer, int Id)?[] occupants = new (int, int)?[8];
     private readonly LobbyPlayer?[] previewPlayers = new LobbyPlayer?[8];
+    private readonly LobbyBots bots = new();
     private long previewSoundId = long.MinValue;
     private string receivedSettings = "";
     private string? lastNotice;
@@ -39,6 +40,7 @@ internal sealed class LobbyController(FrogGame game)
         PreviousWorld = new World([data.PresentationScenes["Lobby"]], rules, 1, data.CharacterParameters);
         Array.Clear(occupants);
         Array.Clear(previewPlayers);
+        bots.Reset();
         accumulator = sendClock = 0;
         receivedSettings = "";
         lastNotice = null;
@@ -50,14 +52,14 @@ internal sealed class LobbyController(FrogGame game)
     {
         var local = LocalPlayers.Select(player => player with { Peer = 0 }).ToArray();
         var roster = game.Setup.Lobby.Roster;
-        roster.Replace(Enumerable.Range(0, 8).Select(_ => new LobbySlot()).ToArray());
+        roster.Reset();
         roster.SetPlayers(0, local);
     }
 
     public void Close()
     {
-        game.Setup.Lobby.Roster.Replace(Enumerable.Range(0, 8).Select(_ => new LobbySlot()).ToArray());
-        game.Setup.Lobby.Roster.SetCapacity(game.Options.Slots);
+        game.Setup.ResetPreferences();
+        game.Setup.Lobby.Roster.Reset();
         World = PreviousWorld = null;
         Array.Clear(occupants);
         Array.Clear(previewPlayers);
@@ -72,6 +74,11 @@ internal sealed class LobbyController(FrogGame game)
 
     public void JoinOrSpawn(int device)
     {
+        if (Roster.Spectator(LocalPeer) != null)
+        {
+            game.Toasts.Show("JOIN FROM VIEW PLAYERS");
+            return;
+        }
         var players = LocalPlayers;
         var player = players.FirstOrDefault(player => player.Id == device);
         if (player != null)
@@ -112,7 +119,13 @@ internal sealed class LobbyController(FrogGame game)
         SetPlayers(players.Select(value => value.Id == device ? changed : value).ToArray());
     }
 
-    public void BackOut(int device) => SetPlayers(LocalPlayers.Where(player => player.Id != device).ToArray());
+    public void BackOut(int device)
+    {
+        if (Online is { IsHost: false } && Roster.Humans(LocalPeer).Length == 1)
+            Spectate(LocalPeer, true);
+        else
+            Remove(LocalPeer, device);
+    }
 
     public bool CanChooseAgain(int room) =>
         World != null
@@ -133,8 +146,15 @@ internal sealed class LobbyController(FrogGame game)
         return false;
     }
 
-    public bool Edit(int room, SlotType type, bool open, bool remove = false) =>
-        Online != null ? Online.EditSlot(room, type, open, remove) : Roster.Edit(room, type, open, remove);
+    public bool Edit(int room, SlotType type) => Online != null ? Online.EditSlot(room, type) : Roster.Edit(room, type);
+
+    public void ApplySlotType(SlotType type)
+    {
+        if (Online != null)
+            Online.ApplySlotType(type);
+        else
+            Roster.ApplySlotType(type);
+    }
 
     public void Update(double elapsed)
     {
@@ -199,6 +219,7 @@ internal sealed class LobbyController(FrogGame game)
             }
             PreviousWorld!.Restore(World!.Capture());
             World.Tick(ReadInputs());
+            bots.Observe(World, Roster);
             game.Renderer.Consume(World.Events, World);
             game.Audio.PlayEvents(World.Events);
             if (World.TickNumber % 4 == 0)
@@ -243,13 +264,9 @@ internal sealed class LobbyController(FrogGame game)
             var player = Roster.Slots[room].Player;
             if (player == null || !player.Spawned || player.Peer != LocalPeer)
                 continue;
-            bool menuOwnsDevice =
-                game.Menus.Screen != GameScreen.Seats
-                && game.Menus.Owner is int owner
-                && (owner == player.Id || owner < 2 && player.Id < 2);
             inputs[room] =
-                menuOwnsDevice ? default
-                : player.Cpu ? BotController.GetInput(World!, room)
+                player.Cpu ? bots.Read(World!, room)
+                : game.Menus.Screen != GameScreen.Seats ? default
                 : game.Controls.Read(player.Id);
         }
         return inputs;

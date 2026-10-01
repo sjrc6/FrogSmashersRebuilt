@@ -33,13 +33,16 @@ internal sealed class OnlineController : IDisposable
         int capacity,
         LobbyRoster localRoster,
         MatchOptions match,
-        bool allowLan
+        bool allowLan,
+        int joinDevice
     )
     {
         if (target.StartsWith("steam", StringComparison.Ordinal))
             PrepareSteam();
         CloseLobby();
-        var players = localRoster.Players(0);
+        var players = localRoster.Players(0).Where(player => host || !player.Cpu).ToArray();
+        if (!host && players.Length == 0)
+            players = [new LobbyPlayer(joinDevice)];
         string settings = JsonSerializer.Serialize(match);
         if (host)
             Lobby = target switch

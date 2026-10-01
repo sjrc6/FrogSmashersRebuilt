@@ -1,4 +1,3 @@
-using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
 namespace FrogSmashers.Client;
@@ -6,6 +5,7 @@ namespace FrogSmashers.Client;
 internal sealed partial class MenuController
 {
     public string BindingTitle => game.Controls.DeviceName(BindingDevice);
+    public bool ShowStickInputs => Screen == GameScreen.Bindings && BindingDevice >= 2;
 
     private void OpenBindings(int device)
     {
@@ -17,8 +17,6 @@ internal sealed partial class MenuController
 
     private void RefreshBindingDevice()
     {
-        if (Owner >= 2 && !game.Controls.Pads[Owner.Value - 2].IsConnected)
-            Owner = 0;
         if (game.Controls.BindingDevices().Contains(BindingDevice))
             return;
         BindingDevice = 0;
@@ -33,38 +31,13 @@ internal sealed partial class MenuController
         menuSoundPending = true;
     }
 
-    private void UpdateBindings(MenuInput input)
-    {
-        if (input.Back)
-        {
-            Back();
-            return;
-        }
-        if (input.Horizontal != 0)
-        {
-            CycleBindingDevice(input.Horizontal);
-            return;
-        }
-        if (KeyboardAllowed && game.Controls.MousePressed && Pointer() is Point point)
-        {
-            var panel = MenuLayout.Panel(Screen, Entries().Count);
-            foreach (int direction in new[] { -1, 1 })
-                if (MenuLayout.BindingPageButton(panel, direction).Contains(point))
-                {
-                    CycleBindingDevice(direction);
-                    return;
-                }
-        }
-        UpdateRows(input);
-    }
-
     private MenuEntry BindingEntry(string name, int action)
     {
-        if (WaitingForBinding && Selected == action)
+        if (WaitingForBinding && Selected == action + 1)
             return new(name, Value: "...");
         return BindingDevice < 2
             ? new(name, BeginBinding, Key: BindingKeys()[action])
-            : new(name, BeginBinding, Button: game.Settings.Controllers[BindingDevice - 2][action]);
+            : new(name, BeginBinding, Button: game.Controls.ControllerBindings(BindingDevice - 2)[action]);
     }
 
     private void BeginBinding()
@@ -84,15 +57,13 @@ internal sealed partial class MenuController
         if (BindingDevice < 2)
             game.Settings.Keyboard[BindingDevice] = new ClientSettings().Keyboard[BindingDevice];
         else
-            game.Settings.Controllers[BindingDevice - 2] = new();
+            game.Controls.ResetControllerBindings(BindingDevice - 2);
         game.Controls.ClearPendingEdges();
     }
 
     private void CaptureBinding()
     {
-        bool cancel = KeyboardAllowed && game.Controls.Press(Keys.Escape);
-        cancel |= BindingDevice >= 2 && game.Controls.PadPress(BindingDevice - 2, Buttons.Start);
-        cancel |= Owner >= 2 && game.Controls.PadPress(Owner.Value - 2, Buttons.Start);
+        bool cancel = game.Controls.MenuDevice() != null;
         if (cancel)
         {
             FinishBinding();
@@ -103,7 +74,7 @@ internal sealed partial class MenuController
             foreach (var button in PadBindings.BindableButtons)
                 if (game.Controls.BindingPress(BindingDevice - 2, button))
                 {
-                    game.Settings.Controllers[BindingDevice - 2][Selected] = button;
+                    game.Controls.ControllerBindings(BindingDevice - 2)[Selected - 1] = button;
                     FinishBinding();
                     return;
                 }
@@ -119,7 +90,7 @@ internal sealed partial class MenuController
             return;
         }
         var keys = game.Settings.Keyboard[BindingDevice];
-        switch (Selected)
+        switch (Selected - 1)
         {
             case 0:
                 keys.Left = key;

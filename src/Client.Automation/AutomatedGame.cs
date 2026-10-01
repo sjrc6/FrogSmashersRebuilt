@@ -8,6 +8,7 @@ internal sealed class AutomatedGame : FrogGame
 {
     private readonly AutomationOptions automation;
     private double virtualClock;
+    private bool requestedSpectating;
     private long? networkFinishMilliseconds;
     protected override bool LimitFrameRate => automation.Frames == 0;
     protected override bool SaveSettingsOnExit => false;
@@ -42,10 +43,13 @@ internal sealed class AutomatedGame : FrogGame
     protected override void Update(GameTime gameTime)
     {
         base.Update(gameTime);
+        if (automation.Spectate && !requestedSpectating && Online.Lobby is { Connected: true, Starting: false } lobby)
+            requestedSpectating = lobby.SetSpectating(lobby.LocalPeer, true);
         if (
             automation.StartPlayers > 0
             && Online.Lobby is { IsHost: true, Starting: false } online
             && online.Roster.Count == automation.StartPlayers
+            && online.Roster.Spectators.Count >= automation.StartSpectators
         )
             online.StartMatch(JsonSerializer.Serialize(Setup.CreateOptions(Options.MapOrder)));
     }
@@ -93,15 +97,25 @@ internal sealed class AutomatedGame : FrogGame
         }
 
         var buffer = GraphicsDevice.PresentationParameters;
+        var playerActions = Menus.Screen == GameScreen.ViewPlayers ? Menus.PlayerActions() : default;
         var result = new
         {
             Page = Menus.Screen.ToString(),
-            Menus.Owner,
+            Menus.HintDevice,
             Menus.Selected,
             Menus.SelectedSeat,
             MenuItems = Menus.Entries().Select(entry => entry.Text).ToArray(),
+            PlayerActions = new
+            {
+                Accept = playerActions.Accept?.Label,
+                Remove = playerActions.Remove?.Label,
+                DisabledReason = playerActions.Accept?.DisabledReason ?? playerActions.Remove?.DisabledReason,
+            },
             LocalDevices = Setup.Seats.Select(seat => seat.Device).ToArray(),
             LobbySlots = Menus.ShowingLobby ? Lobby.Roster.Slots : null,
+            LobbySpectators = Online.Lobby?.Roster.Spectators,
+            JoinHintDevices = Menus.ShowingLobby ? Lobby.JoinHintDevices() : null,
+            MatchPeerSlots = Online.Lobby?.PeerSlots,
             LobbyPlayers = Menus.ShowingLobby
                 ? Lobby
                     .World?.Players.Select(
@@ -122,7 +136,7 @@ internal sealed class AutomatedGame : FrogGame
                 ? Renderer.Effects.Active.Count(effect => effect.Name == "SpawnPuff")
                 : 0,
             LobbyTick = Menus.ShowingLobby ? Lobby.World?.TickNumber : null,
-            MatchDefaults = Setup.Preferences,
+            MatchSettings = Setup.Preferences,
             Settings.Volume,
             MenuBackground = Match.IsMenuBackground,
             Paused = Menus.LocalPresentationPaused,

@@ -49,7 +49,7 @@ internal static class CombatTests
             bat.Players[1].Position == frozen && bat.Players[1].HitstopTicks > 0,
             "hitstop freezes the struck player"
         );
-        var bouncer = CreateWorld(new() { CharactersBounceEachOther = true });
+        var bouncer = CreateWorld();
         var source = bouncer.Players[0];
         var target = bouncer.Players[1];
         source.Y = 10;
@@ -65,18 +65,20 @@ internal static class CombatTests
         target.HitstopScale = 0;
         var beforeBounce = bouncer.Capture();
         Step(bouncer);
-        var collisionHit = bouncer.Events.Single(e => e.Kind == SimulationEventKind.Hit);
         Check(
-            collisionHit.HitKind == HitKind.Bouncer
-                && collisionHit.HitEffectX == FromDecimal(.5m)
-                && collisionHit.HitEffectY == 11
-                && collisionHit.HitstopSeconds == 1,
-            "bouncer effects use the original midpoint and retain a longer pre-existing hitstop duration"
+            target.HitsTaken == 0
+                && target.Mode != CharacterMode.Bouncing
+                && source.HitstopTicks == 0
+                && !bouncer.Events.Any(e => e.Kind == SimulationEventKind.Hit),
+            "launched frogs pass through other frogs without body hits or transferred hitstop"
         );
         bouncer.Restore(beforeBounce);
         bouncer.Players[0].HasReachedApex = true;
         Step(bouncer);
-        Check(!bouncer.Events.Any(e => e.Kind == SimulationEventKind.Hit), "body bounces stop after the launch apex");
+        Check(
+            !bouncer.Events.Any(e => e.Kind == SimulationEventKind.Hit),
+            "body contact also causes no hit after the launch apex"
+        );
         var launch = CreateWorld();
         var launched = launch.Players[0];
         launched.Y = 10;

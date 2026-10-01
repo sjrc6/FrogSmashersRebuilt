@@ -12,8 +12,6 @@ public sealed partial class Renderer
     private readonly LobbyPlayer?[] lobbyPreviews = new LobbyPlayer?[8];
     private int outlinedRoom = -1;
 
-    internal bool LobbyJoinPrompt => (int)time % 2 == 1;
-
     internal void SetLobbyPreviews(LobbyRoster roster)
     {
         for (int room = 0; room < 8; room++)

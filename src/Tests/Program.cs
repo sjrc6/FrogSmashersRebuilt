@@ -90,6 +90,8 @@ internal static class Program
             NetworkSessionTests.TerminalBarrier();
             NetworkProtocolTests.PacketValidationAndDesync();
             NetworkProtocolTests.PacketStructure();
+            LobbyRosterTests.Run();
+            SpectatorNetworkTests.Run();
             LobbyTests.Run(Check);
             if (!args.Contains("--no-sockets"))
             {

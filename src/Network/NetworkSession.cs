@@ -5,7 +5,7 @@ namespace FrogSmashers.Network;
 public sealed class NetworkSession : IDisposable
 {
     private const uint Magic = 0x46535242;
-    private const int Protocol = 2;
+    private const int Protocol = 3;
     private const int BatchSize = 24;
     private readonly SessionConfig config;
     private readonly IPeerTransport transport;
@@ -27,7 +27,8 @@ public sealed class NetworkSession : IDisposable
     public byte[] PreviousSnapshot { get; private set; }
     public string? Error { get; private set; }
     public bool IsTransportFailure { get; private set; }
-    public long ConfirmedFrame => Math.Min(World.TickNumber - 1, lastReceivedFrames.Min());
+    public long ConfirmedFrame =>
+        Math.Min(World.TickNumber - 1, lastReceivedFrames.Where((_, peer) => IsPlayerPeer(peer)).Min());
     public long RollbackCount { get; private set; }
     public long LastRollbackFromFrame { get; private set; } = -1;
 
@@ -39,6 +40,8 @@ public sealed class NetworkSession : IDisposable
     public int LocalPeer => config.LocalPeer;
     public int[] LocalSlots => config.PeerSlots[config.LocalPeer];
 
+    private bool IsPlayerPeer(int peer) => config.PeerSlots[peer].Length > 0;
+
     public long MinimumRemoteTick
     {
         get
@@ -46,7 +49,7 @@ public sealed class NetworkSession : IDisposable
             long minimum = long.MaxValue;
             for (int peer = 0; peer < remoteSimulationTicks.Length; peer++)
             {
-                if (peer != LocalPeer)
+                if (peer != LocalPeer && IsPlayerPeer(peer))
                 {
                     minimum = Math.Min(minimum, remoteSimulationTicks[peer]);
                 }
@@ -63,7 +66,7 @@ public sealed class NetworkSession : IDisposable
             long lead = 0;
             for (int peer = 0; peer < remoteSimulationTicks.Length; peer++)
             {
-                if (peer != LocalPeer)
+                if (peer != LocalPeer && IsPlayerPeer(peer))
                 {
                     lead = Math.Max(lead, World.TickNumber - remoteSimulationTicks[peer] - estimatedOneWayTicks[peer]);
                 }
@@ -84,7 +87,11 @@ public sealed class NetworkSession : IDisposable
 
         for (int peer = 0; peer < remoteConfirmedFrames.Length; peer++)
         {
-            if (peer != LocalPeer && (remoteConfirmedFrames[peer] < frame || verifiedStateFrames[peer] < frame + 1))
+            if (
+                peer != LocalPeer
+                && IsPlayerPeer(peer)
+                && (remoteConfirmedFrames[peer] < frame || verifiedStateFrames[peer] < frame + 1)
+            )
             {
                 return false;
             }
@@ -234,6 +241,8 @@ public sealed class NetworkSession : IDisposable
 
     private void AdvanceContiguous(int peer)
     {
+        if (!IsPlayerPeer(peer))
+            return;
         while (HasInputsForEverySlot(peer, lastReceivedFrames[peer] + 1))
         {
             lastReceivedFrames[peer]++;
@@ -275,6 +284,7 @@ public sealed class NetworkSession : IDisposable
             }
 
             long first = lastAcknowledgedFrames[peer] + 1;
+            first = Math.Max(first, Math.Max(config.InputDelay, World.TickNumber - config.HistoryFrames + 1));
             long last = lastReceivedFrames[config.LocalPeer];
             if (first > last)
             {
@@ -349,6 +359,16 @@ public sealed class NetworkSession : IDisposable
                 return;
             }
             var inputs = ReadInputs(reader, header.InputCount, slotCount);
+            if (
+                !IsPlayerPeer(LocalPeer)
+                && slotCount > 0
+                && header.InputCount > 0
+                && header.FirstInputFrame > lastReceivedFrames[peer] + 1
+            )
+            {
+                Error = "Spectator fell behind retained input history";
+                return;
+            }
             long floor = Math.Max(0, World.TickNumber - config.HistoryFrames + 1);
             lastAcknowledgedFrames[peer] = Math.Max(lastAcknowledgedFrames[peer], header.LastReceivedFrame);
             remoteConfirmedFrames[peer] = Math.Max(remoteConfirmedFrames[peer], header.ConfirmedFrame);
@@ -363,7 +383,7 @@ public sealed class NetworkSession : IDisposable
                     );
             }
 
-            if (header.HashFrame >= floor && header.HashFrame > 0)
+            if (IsPlayerPeer(peer) && header.HashFrame >= floor && header.HashFrame > 0)
             {
                 remoteHashes[(peer, header.HashFrame)] = header.Hash;
             }
@@ -515,7 +535,10 @@ public sealed class NetworkSession : IDisposable
             remoteHashes.Remove(k);
         }
 
-        if (lastAcknowledgedFrames.Where((_, p) => p != config.LocalPeer).Any(a => a + 1 < floor))
+        if (
+            IsPlayerPeer(LocalPeer)
+            && lastAcknowledgedFrames.Where((_, p) => p != config.LocalPeer && IsPlayerPeer(p)).Any(a => a + 1 < floor)
+        )
         {
             Error = "Peer stopped acknowledging inputs; connection cannot safely continue";
         }

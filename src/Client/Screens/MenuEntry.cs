@@ -11,7 +11,9 @@ internal sealed record MenuEntry(
     Color? Color = null,
     string? Value = null,
     string? DisabledReason = null,
-    Buttons? Button = null
+    Buttons? Button = null,
+    bool IsTitle = false,
+    bool SeparatorBefore = false
 )
 {
     public string Text => Value == null ? Label : Label + ": " + Value;

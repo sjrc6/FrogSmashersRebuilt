@@ -53,6 +53,11 @@ public sealed class SteamLobby : GameLobby
         var validation = new LobbyRoster();
         if (!validation.SetPlayers(0, players) || !validation.SetCapacity(capacity))
             throw new ArgumentException("Invalid Steam lobby configuration");
+        if (hosting && initialRooms == null)
+        {
+            validation.ConfigureEmpty(SlotType.Private, capacity);
+            initialRooms = validation.Slots;
+        }
         this.hosting = hosting;
         this.capacity = capacity;
         this.players = players.ToArray();
@@ -71,7 +76,7 @@ public sealed class SteamLobby : GameLobby
             callbacks.Add(Callback<GameLobbyJoinRequested_t>.Create(c => RequestedLobby = c.m_steamIDLobby.m_SteamID));
             if (hosting)
             {
-                status = "Creating private Steam lobby";
+                status = "Creating Steam lobby";
                 var created = CallResult<LobbyCreated_t>.Create(
                     (result, failed) =>
                     {
@@ -86,7 +91,9 @@ public sealed class SteamLobby : GameLobby
                     }
                 );
                 callbacks.Add(created);
-                created.Set(SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypePrivate, 8));
+                created.Set(
+                    SteamMatchmaking.CreateLobby(Visibility(initialRooms ?? validation.Slots), LobbyRoster.MaxPeers)
+                );
             }
             else
             {
@@ -138,7 +145,7 @@ public sealed class SteamLobby : GameLobby
 
         lobbyId = new CSteamID(c.m_ulSteamIDLobby);
         SteamMatchmaking.SetLobbyData(lobbyId, "game", "FrogSmashersRebuilt");
-        SteamMatchmaking.SetLobbyData(lobbyId, "protocol", "5");
+        SteamMatchmaking.SetLobbyData(lobbyId, "protocol", "6");
         SteamMatchmaking.SetLobbyData(lobbyId, "content", contentHash);
         SteamMatchmaking.SetLobbyData(lobbyId, "state", "forming");
         StartRelay();
@@ -160,7 +167,7 @@ public sealed class SteamLobby : GameLobby
         lobbyId = new CSteamID(c.m_ulSteamIDLobby);
         if (
             SteamMatchmaking.GetLobbyData(lobbyId, "game") != "FrogSmashersRebuilt"
-            || SteamMatchmaking.GetLobbyData(lobbyId, "protocol") != "5"
+            || SteamMatchmaking.GetLobbyData(lobbyId, "protocol") != "6"
             || SteamMatchmaking.GetLobbyData(lobbyId, "content") != contentHash
         )
         {
@@ -193,7 +200,12 @@ public sealed class SteamLobby : GameLobby
             players,
             contentHash,
             settings,
-            initialRooms
+            initialRooms,
+            invited: !hosting,
+            isFriend: address =>
+                ulong.TryParse(address, out var id)
+                && SteamFriends.GetFriendRelationship(new CSteamID(id))
+                    == EFriendRelationship.k_EFriendRelationshipFriend
         );
     }
 
@@ -242,12 +254,20 @@ public sealed class SteamLobby : GameLobby
             int capacity = Roster.Capacity;
             int occupied = Roster.Count;
             int open = Roster.Slots.Count(slot => slot.Open && slot.Type == SlotType.Open && slot.Player == null);
-            string advertisement = $"{capacity}:{occupied}:{open}";
+            int friends = Roster.Slots.Count(slot => slot.Type == SlotType.Friend && slot.Player == null);
+            int privateSlots = Roster.Slots.Count(slot => slot.Type == SlotType.Private && slot.Player == null);
+            var visibility = Visibility(Roster.Slots);
+            string advertisement =
+                $"{capacity}:{occupied}:{open}:{friends}:{privateSlots}:{visibility}:{Roster.Spectators.Count}";
             if (advertisement != advertisedCapacity)
             {
                 SteamMatchmaking.SetLobbyData(lobbyId, "capacity", capacity.ToString());
                 SteamMatchmaking.SetLobbyData(lobbyId, "players", occupied.ToString());
                 SteamMatchmaking.SetLobbyData(lobbyId, "open_slots", open.ToString());
+                SteamMatchmaking.SetLobbyData(lobbyId, "friend_slots", friends.ToString());
+                SteamMatchmaking.SetLobbyData(lobbyId, "private_slots", privateSlots.ToString());
+                SteamMatchmaking.SetLobbyData(lobbyId, "spectators", Roster.Spectators.Count.ToString());
+                SteamMatchmaking.SetLobbyType(lobbyId, visibility);
                 advertisedCapacity = advertisement;
             }
         }
@@ -258,6 +278,16 @@ public sealed class SteamLobby : GameLobby
             SteamMatchmaking.SetLobbyJoinable(lobbyId, !Starting);
             SteamMatchmaking.SetLobbyData(lobbyId, "state", state);
         }
+    }
+
+    internal static ELobbyType Visibility(IEnumerable<LobbySlot> slots)
+    {
+        var types = slots.Where(slot => slot.Player?.Peer != 0).Select(slot => slot.Type).ToArray();
+        if (types.Contains(SlotType.Open))
+            return ELobbyType.k_ELobbyTypePublic;
+        if (types.Contains(SlotType.Friend))
+            return ELobbyType.k_ELobbyTypeFriendsOnly;
+        return ELobbyType.k_ELobbyTypePrivate;
     }
 
     public void InviteFriends()

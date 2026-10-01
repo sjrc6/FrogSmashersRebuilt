@@ -85,7 +85,7 @@ internal sealed class MatchController : IDisposable
         ResetPresentation();
     }
 
-    public MatchOptions StartNetwork(IGameLobby lobby, IReadOnlyList<LocalSeat> localSeats)
+    public MatchOptions StartNetwork(IGameLobby lobby)
     {
         Close();
         var options =

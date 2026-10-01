@@ -25,7 +25,7 @@ internal sealed class SimulatedNetwork
         int duplicatePercent = 3
     )
     {
-        if (peers is < 2 or > 8)
+        if (peers is < 2 or > LobbyRoster.MaxPeers)
         {
             throw new ArgumentOutOfRangeException(nameof(peers));
         }

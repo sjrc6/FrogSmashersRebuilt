@@ -25,10 +25,10 @@ public sealed class SessionConfig
     )
     {
         if (
-            peerSlots.Length is < 1 or > 8
+            peerSlots.Length is < 1 or > LobbyRoster.MaxPeers
             || localPeer < 0
             || localPeer >= peerSlots.Length
-            || peerSlots.Any(x => x.Length == 0)
+            || peerSlots.Count(x => x.Length == 0) > LobbyRoster.MaxSpectators
         )
         {
             throw new ArgumentException("Invalid peer roster");
@@ -52,7 +52,7 @@ public sealed class SessionConfig
         HistoryFrames = historyFrames;
         using var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream, Encoding.UTF8, true);
-        writer.Write("FrogSmashersRebuilt.Protocol.2");
+        writer.Write("FrogSmashersRebuilt.Protocol.3");
         writer.Write(NetworkBuild.ContentFingerprint(contentHash));
         writer.Write(inputDelay);
         writer.Write(peerSlots.Length);

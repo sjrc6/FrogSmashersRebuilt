@@ -13,21 +13,23 @@ public sealed class Controls
     public GamePadState[] Pads { get; } = new GamePadState[ControllerCount];
 
     private readonly GamePadState[] beforePads = new GamePadState[ControllerCount];
+    private readonly ControllerDevice?[] controllerDevices = new ControllerDevice?[ControllerCount];
     private readonly HorizontalInput[] horizontal = new HorizontalInput[KeyboardCount + ControllerCount];
     private readonly InputButtons[] held = new InputButtons[KeyboardCount + ControllerCount];
     private readonly InputButtons[] edges = new InputButtons[KeyboardCount + ControllerCount];
     public Func<KeyboardState>? KeyboardSource { get; set; }
     public Func<int, GamePadState>? GamePadSource { get; set; }
-    public Func<int, string>? GamePadNameSource { get; set; }
+    internal Func<int, ControllerDevice>? ControllerSource { get; set; }
     public Func<MouseState>? MouseSource { get; set; }
     public MouseState MouseNow { get; private set; }
     private MouseState mouseBefore;
+    private bool mouseActive = true;
     private bool mouseHoverSuspended;
-    public bool MouseMoved => !mouseHoverSuspended && MouseNow.Position != mouseBefore.Position;
+    public bool MouseMoved => mouseActive && !mouseHoverSuspended && MouseNow.Position != mouseBefore.Position;
     public bool MousePressed =>
-        MouseNow.LeftButton == ButtonState.Pressed && mouseBefore.LeftButton == ButtonState.Released;
+        mouseActive && MouseNow.LeftButton == ButtonState.Pressed && mouseBefore.LeftButton == ButtonState.Released;
     public bool MouseRightPressed =>
-        MouseNow.RightButton == ButtonState.Pressed && mouseBefore.RightButton == ButtonState.Released;
+        mouseActive && MouseNow.RightButton == ButtonState.Pressed && mouseBefore.RightButton == ButtonState.Released;
 
     public Controls(ClientSettings settings) => this.settings = settings;
 
@@ -45,18 +47,23 @@ public sealed class Controls
         horizontal[device].AdvanceTick();
     }
 
-    public void Poll()
+    public void Poll(bool windowActive = true)
     {
         KeysBefore = KeysNow;
         KeysNow = KeyboardSource?.Invoke() ?? Keyboard.GetState();
         mouseBefore = MouseNow;
         MouseNow = MouseSource?.Invoke() ?? Mouse.GetState();
+        if (!windowActive || !mouseActive)
+            mouseBefore = MouseNow;
+        mouseActive = windowActive;
         if (MouseNow.Position == mouseBefore.Position)
             mouseHoverSuspended = false;
         for (int i = 0; i < ControllerCount; i++)
         {
             beforePads[i] = Pads[i];
             Pads[i] = GamePadSource?.Invoke(i) ?? GamePad.GetState(i, GamePadDeadZone.None);
+            if (!Pads[i].IsConnected || !beforePads[i].IsConnected)
+                controllerDevices[i] = null;
         }
 
         for (int i = 0; i < KeyboardCount + ControllerCount; i++)
@@ -73,6 +80,10 @@ public sealed class Controls
 
     public bool PadPress(int i, Buttons button) => Pads[i].IsButtonDown(button) && beforePads[i].IsButtonUp(button);
 
+    public bool PadRelease(int i, Buttons button) => Pads[i].IsButtonUp(button) && beforePads[i].IsButtonDown(button);
+
+    public bool Release(Keys key) => KeysNow.IsKeyUp(key) && KeysBefore.IsKeyDown(key);
+
     internal bool BindingPress(int pad, Buttons binding) =>
         PadBindings.IsDown(Pads[pad], binding) && !PadBindings.IsDown(beforePads[pad], binding);
 
@@ -83,8 +94,37 @@ public sealed class Controls
     {
         if (device < 2)
             return $"KEYBOARD {device + 1}";
-        string? name = GamePadNameSource?.Invoke(device - 2) ?? GamePad.GetCapabilities(device - 2).DisplayName;
+        string? name = Controller(device - 2).Name;
         return string.IsNullOrWhiteSpace(name) ? $"CONTROLLER {device - 1}" : name.ToUpperInvariant();
+    }
+
+    private ControllerDevice Controller(int pad)
+    {
+        if (controllerDevices[pad] is { } device)
+            return device;
+        if (ControllerSource != null)
+            device = ControllerSource(pad);
+        else
+        {
+            var capabilities = GamePad.GetCapabilities(pad);
+            device = new(capabilities.DisplayName, capabilities.Identifier);
+        }
+        controllerDevices[pad] = device;
+        return device;
+    }
+
+    internal PadBindings ControllerBindings(int pad)
+    {
+        string key = Controller(pad).BindingKey;
+        if (!settings.ControllerBindings.TryGetValue(key, out var bindings))
+            settings.ControllerBindings[key] = bindings = new();
+        return bindings;
+    }
+
+    internal void ResetControllerBindings(int pad)
+    {
+        settings.ControllerBindings.Remove(Controller(pad).BindingKey);
+        ClearPendingEdges();
     }
 
     public bool AnyPad(Buttons button)
@@ -184,7 +224,9 @@ public sealed class Controls
         else
         {
             var p = Pads[device - KeyboardCount];
-            var bindings = settings.Controllers[device - KeyboardCount];
+            if (!p.IsConnected)
+                return default;
+            var bindings = ControllerBindings(device - KeyboardCount);
             up = PadBindings.IsDown(p, bindings.Up);
             down = PadBindings.IsDown(p, bindings.Down);
             jump = PadBindings.IsDown(p, bindings.Jump);
@@ -211,7 +253,9 @@ public sealed class Controls
             return (KeysNow.IsKeyDown(bindings.Left), KeysNow.IsKeyDown(bindings.Right));
         }
         var pad = Pads[device - KeyboardCount];
-        var padBindings = settings.Controllers[device - KeyboardCount];
+        if (!pad.IsConnected)
+            return (false, false);
+        var padBindings = ControllerBindings(device - KeyboardCount);
         return (PadBindings.IsDown(pad, padBindings.Left), PadBindings.IsDown(pad, padBindings.Right));
     }
 

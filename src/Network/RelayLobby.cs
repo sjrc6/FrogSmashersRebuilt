@@ -3,12 +3,18 @@ using FrogSmashers.Core;
 
 namespace FrogSmashers.Network;
 
-internal sealed class RelayLobby : IGameLobby, IPeerTransport
+internal sealed partial class RelayLobby : IGameLobby, IPeerTransport
 {
-    private const uint Magic = 0x46534C32;
+    private const uint Magic = 0x46534C33;
     private readonly IWire wire;
     private readonly string? host;
     private readonly string contentHash;
+    private readonly bool invited;
+    private readonly Func<string, bool> isFriend;
+    private readonly Dictionary<int, LobbyAccess> access = new();
+    private LobbyAccess localAccess;
+    private bool requestedSpectating;
+    private int matchPeerCount;
     private string nonce = Guid.NewGuid().ToString("N");
     private readonly Dictionary<string, int> addresses = new();
     private readonly Dictionary<int, string> clientNonces = new();
@@ -50,6 +56,7 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
     public string? Notice { get; private set; }
     public int LocalPeer { get; private set; } = -1;
     public LobbyRoster Roster { get; } = new();
+    public LobbyAccess Access => IsHost ? default : localAccess;
     public int[][] PeerSlots { get; private set; } = [];
     public int[] PlayerTeams { get; private set; } = [];
     public int[] PlayerColors { get; private set; } = [];
@@ -62,11 +69,15 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
         LobbyPlayer[] players,
         string hash,
         string settings,
-        IReadOnlyList<LobbySlot>? initialRooms = null
+        IReadOnlyList<LobbySlot>? initialRooms = null,
+        bool invited = false,
+        Func<string, bool>? isFriend = null
     )
     {
         this.wire = wire;
         this.host = host;
+        this.invited = invited;
+        this.isFriend = isFriend ?? (_ => false);
         contentHash = hash;
         MatchSettingsJson = settings;
         requested = players.ToArray();
@@ -88,47 +99,11 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
             LocalPeer = 0;
         }
         else
+        {
+            if (players.Length == 0 || players.Any(player => player.Cpu))
+                throw new ArgumentException("Guests must bring at least one human player");
             Roster.SetPlayers(0, []);
-    }
-
-    public bool SetPlayers(LobbyPlayer[] players)
-    {
-        if (!Connected || Starting)
-            return false;
-        if (IsHost)
-        {
-            if (!Roster.SetPlayers(0, players))
-                return false;
-            Changed();
         }
-        else
-        {
-            var validation = new LobbyRoster();
-            if (!validation.SetPlayers(LocalPeer, players))
-                return false;
-            requested = players.ToArray();
-            requestVersion++;
-            lastSend = -1000;
-        }
-        return true;
-    }
-
-    public bool EditSlot(int room, SlotType type, bool open, bool remove = false)
-    {
-        if (!IsHost || Starting || room is < 0 or > 7)
-            return false;
-        int peer = Roster.Slots[room].Player?.Peer ?? 0;
-        if (!Roster.Edit(room, type, open, remove))
-            return false;
-        if (peer > 0 && Roster.Players(peer).Length == 0)
-        {
-            Kick(peer, false);
-            return true;
-        }
-        if (peer > 0)
-            epochs[peer]++;
-        Changed();
-        return true;
     }
 
     private void Changed()
@@ -158,12 +133,13 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
     {
         if (!IsHost || !addresses.Remove(address, out int peer))
             return;
-        if (Starting)
+        if (Starting && PeerSlots[peer].Length > 0)
         {
             ReturnToLobby();
             Notice = "PLAYER LEFT";
         }
-        Roster.SetPlayers(peer, []);
+        Roster.RemovePeer(peer);
+        access.Remove(peer);
         clientNonces.Remove(peer);
         epochs.Remove(peer);
         versions.Remove(peer);
@@ -189,9 +165,9 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
             Notice = "SPAWN ALL PLAYERS";
             return false;
         }
-        if (Enumerable.Prepend(addresses.Values, 0).Any(peer => Roster.Players(peer).Length == 0))
+        if (Roster.Humans(0).Length == 0 && Roster.Spectator(0) == null && Roster.Players(0).Length == 0)
         {
-            Notice = "JOIN A PLAYER ON EACH PC";
+            Notice = "JOIN OR SPECTATE FIRST";
             return false;
         }
         MatchSettingsJson = settings;
@@ -207,26 +183,35 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
                             Player = slot.Player with { Peer = remap[slot.Player.Peer] },
                         }
                 )
-                .ToArray()
+                .ToArray(),
+            Roster.Spectators.Select(player => player with { Peer = remap[player.Peer] }).ToArray()
         );
+        var oldAccess = new Dictionary<int, LobbyAccess>(access);
         var oldNonces = new Dictionary<int, string>(clientNonces);
         var oldVersions = new Dictionary<int, int>(versions);
         var oldEpochs = new Dictionary<int, int>(epochs);
+        access.Clear();
+        clientNonces.Clear();
+        versions.Clear();
+        epochs.Clear();
         lastSeen.Clear();
         foreach (string address in addresses.Keys.ToArray())
         {
             int old = addresses[address];
             int peer = addresses[address] = remap[old];
+            access[peer] = oldAccess.GetValueOrDefault(old);
             clientNonces[peer] = oldNonces[old];
             versions[peer] = oldVersions[old];
             epochs[peer] = oldEpochs[old];
             lastSeen[peer] = clock.ElapsedMilliseconds;
         }
         Starting = true;
+        matchPeerCount = oldPeers.Length;
         FreezeRoster();
         Changed();
         if (addresses.Count == 0)
             Ready = true;
+        UpdateStartBarrier();
         return true;
     }
 
@@ -253,6 +238,7 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
         started.Clear();
         incoming.Clear();
         PeerSlots = [];
+        matchPeerCount = 0;
         PlayerTeams = PlayerColors = [];
         Array.Clear(lobbyInputs);
         Array.Clear(inputTimes);
@@ -293,6 +279,8 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
                         Hash = contentHash,
                         Nonce = Starting ? acceptedNonce : nonce,
                         Players = requested,
+                        Spectating = requestedSpectating,
+                        Invited = invited,
                         Version = requestVersion,
                         Epoch = requestEpoch,
                         Revision = receivedRevision,
@@ -314,6 +302,21 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
         }
         if (!Connected && clock.Elapsed.TotalSeconds > 30)
             Error = "Lobby connection timed out";
+        UpdateStartBarrier();
+    }
+
+    private void UpdateStartBarrier()
+    {
+        if (!IsHost || !Starting)
+            return;
+        var players = addresses.Values.Where(peer => PeerSlots[peer].Length > 0).ToArray();
+        if (!startSent && players.All(acknowledged.Contains))
+        {
+            startSent = true;
+            lastSend = -1000;
+        }
+        if (players.All(started.Contains))
+            Ready = true;
     }
 
     private Control State(int peer) =>
@@ -325,6 +328,9 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
             Nonce = nonce,
             ClientNonce = clientNonces[peer],
             Slots = Roster.Slots.ToArray(),
+            Spectators = Roster.Spectators.ToArray(),
+            Access = AccessFor(peer),
+            MatchPeerCount = matchPeerCount,
             Settings = MatchSettingsJson,
             Starting = Starting,
             Revision = revision,
@@ -369,7 +375,11 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
                 if (destination == 0)
                     incoming.Enqueue(new(origin, data[23..]));
                 else
-                    wire.Send(addresses.Single(pair => pair.Value == destination).Key, data, false);
+                {
+                    string? address = addresses.FirstOrDefault(pair => pair.Value == destination).Key;
+                    if (address != null)
+                        wire.Send(address, data, false);
+                }
             }
             else if (!IsHost && message.Source == host && destination == LocalPeer)
             {
@@ -390,6 +400,8 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
         && control.Notice != null
         && control.Players != null
         && control.Slots != null
+        && control.Spectators != null
+        && control.Spectators.Length <= LobbyRoster.MaxSpectators
         && control.Hash.Length <= 128
         && control.Nonce.Length <= 32
         && control.ClientNonce.Length <= 32
@@ -422,13 +434,7 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
                     acknowledged.Add(peer);
                 if (control.Kind == "started")
                     started.Add(peer);
-                if (acknowledged.Count == addresses.Count && !startSent)
-                {
-                    startSent = true;
-                    lastSend = -1000;
-                }
-                if (started.Count == addresses.Count)
-                    Ready = true;
+                UpdateStartBarrier();
             }
             return;
         }
@@ -443,7 +449,7 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
             control.Kind is not ("state" or "start")
             || control.Hash != contentHash
             || !Guid.TryParseExact(control.Nonce, "N", out _)
-            || control.Peer is < 1 or > 7
+            || control.Peer is < 1 or >= LobbyRoster.MaxPeers
             || control.Revision < receivedRevision
             || control.Generation < Generation
         )
@@ -455,24 +461,38 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
             ResetMatch();
             Generation = control.Generation;
         }
-        if (Starting && (!control.Starting || control.Revision != receivedRevision))
+        if (
+            Starting
+            && (
+                !control.Starting
+                || !Roster.Slots.SequenceEqual(control.Slots)
+                || control.MatchPeerCount != matchPeerCount
+            )
+        )
         {
             Error = "Host changed the agreed match configuration";
             return;
         }
-        Roster.Replace(control.Slots);
+        Roster.Replace(control.Slots, control.Spectators);
+        localAccess = control.Access;
         LocalPeer = control.Peer;
         acceptedNonce = control.Nonce;
         receivedRevision = control.Revision;
         MatchSettingsJson = control.Settings;
         Notice = control.Notice;
         if (control.Version == requestVersion || control.Epoch != requestEpoch)
-            requested = Roster.Players(LocalPeer);
+        {
+            requestedSpectating = Roster.Spectator(LocalPeer) != null;
+            requested = requestedSpectating ? [Roster.Spectator(LocalPeer)!] : Roster.Players(LocalPeer);
+        }
         requestEpoch = control.Epoch;
         lastSeen[0] = clock.ElapsedMilliseconds;
         if (control.Starting && !Starting)
         {
+            if (control.MatchPeerCount is < 1 or > LobbyRoster.MaxPeers || control.Peer >= control.MatchPeerCount)
+                return;
             Starting = true;
+            matchPeerCount = control.MatchPeerCount;
             lastSend = -1000;
             FreezeRoster();
         }
@@ -494,18 +514,25 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
         }
         if (!addresses.TryGetValue(source, out int peer))
         {
-            if (Starting || banned.Contains(source) || addresses.Count >= 7)
+            if (Starting || banned.Contains(source) || addresses.Count >= LobbyRoster.MaxPeers - 1)
             {
                 Reject(source, "Lobby is unavailable or the match has started", control.Nonce);
                 return;
             }
-            peer = Enumerable.Range(1, 7).First(id => !addresses.ContainsValue(id));
-            if (!Roster.SetPlayers(peer, control.Players))
+            peer = Enumerable.Range(1, LobbyRoster.MaxPeers - 1).First(id => !addresses.ContainsValue(id));
+            var permission = new LobbyAccess(control.Invited, isFriend(source));
+            if (
+                control.Spectating
+                || control.Players.Length == 0
+                || control.Players.Any(p => p.Cpu)
+                || !Roster.SetPlayers(peer, control.Players, permission)
+            )
             {
                 Reject(source, "Not enough open slots for your local players", control.Nonce);
                 return;
             }
             addresses[source] = peer;
+            access[peer] = permission;
             clientNonces[peer] = control.Nonce;
             versions[peer] = control.Version;
             epochs[peer] = 0;
@@ -523,7 +550,14 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
         {
             if (control.Epoch == epochs[peer])
             {
-                Notice = Roster.SetPlayers(peer, control.Players) ? null : "NO OPEN SLOTS";
+                var next = CopyRoster();
+                if (ApplyParty(next, peer, control.Players, control.Spectating, AccessFor(peer)))
+                {
+                    Roster.Replace(next.Slots, next.Spectators);
+                    Notice = null;
+                }
+                else
+                    Notice = control.Spectating ? "CANNOT SPECTATE" : "NO OPEN SLOTS";
                 Changed();
             }
             versions[peer] = control.Version;
@@ -540,7 +574,7 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
             .ToArray();
         if (players.Length < 2 || players.Any(player => !player.Spawned))
             throw new ArgumentException("Invalid match roster");
-        int peers = players.Max(player => player.Peer) + 1;
+        int peers = matchPeerCount;
         PeerSlots = Enumerable
             .Range(0, peers)
             .Select(peer =>
@@ -551,8 +585,6 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
                     .ToArray()
             )
             .ToArray();
-        if (PeerSlots.Any(slots => slots.Length == 0))
-            throw new ArgumentException("Empty match peer");
         PlayerTeams = players.Select(player => player.Team).ToArray();
         PlayerColors = players.Select(player => player.Color).ToArray();
     }
@@ -619,7 +651,9 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
         packet[21] = (byte)LocalPeer;
         packet[22] = (byte)peer;
         data.CopyTo(packet.AsSpan(23));
-        wire.Send(host ?? addresses.Single(pair => pair.Value == peer).Key, packet, false);
+        string? address = host ?? addresses.FirstOrDefault(pair => pair.Value == peer).Key;
+        if (address != null)
+            wire.Send(address, packet, false);
     }
 
     public bool TryReceive(out Datagram datagram) => incoming.TryDequeue(out datagram);
@@ -717,6 +751,11 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
         public string ClientNonce { get; set; } = "";
         public LobbyPlayer[] Players { get; set; } = [];
         public LobbySlot[] Slots { get; set; } = [];
+        public LobbyPlayer[] Spectators { get; set; } = [];
+        public bool Spectating { get; set; }
+        public bool Invited { get; set; }
+        public LobbyAccess Access { get; set; }
+        public int MatchPeerCount { get; set; }
         public int Peer { get; set; }
         public int Version { get; set; }
         public int Epoch { get; set; }

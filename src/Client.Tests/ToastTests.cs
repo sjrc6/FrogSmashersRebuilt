@@ -18,10 +18,10 @@ internal static class ToastTests
             toasts.Previous == "FIRST" && toasts.PreviousVisibility == 1,
             "replacement keeps previous toast for exit"
         );
-        toasts.Update(.1);
+        toasts.Update(ToastController.TransitionSeconds / 10);
         check(
             toasts.PreviousVisibility - toasts.CurrentVisibility > .2f,
-            "equal-height outgoing toast remains visibly exposed below incoming toast after 100 ms"
+            "equal-height outgoing toast remains visibly exposed below incoming toast early in the transition"
         );
         check(
             Math.Abs(toasts.CurrentVisibility + toasts.PreviousVisibility - 1) < .0001f,
@@ -39,12 +39,12 @@ internal static class ToastTests
         );
         toasts.Show("THIRD");
         check(toasts.PreviousVisibility == 1, "same-frame retrigger preserves the outgoing visible toast");
-        toasts.Update(.1);
+        toasts.Update(ToastController.TransitionSeconds / 10);
         check(
             toasts.CurrentVisibility > 0 && toasts.PreviousVisibility > toasts.CurrentVisibility,
             "repeated toast enters while its previous copy retracts"
         );
-        toasts.Update(3.75);
+        toasts.Update(ToastController.DisplaySeconds - ToastController.TransitionSeconds / 10 - .1);
         check(toasts.Current == "THIRD", "repeated toast gets a new display timer");
         toasts.Update(.2);
         check(toasts.Current == null && toasts.Previous == "THIRD", "expired message retracts");

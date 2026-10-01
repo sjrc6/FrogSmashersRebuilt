@@ -45,6 +45,7 @@ internal static class Program
             InputTests.Run(Check);
             ControllerBindingTests.Run(Check);
             MenuSetupTests.Run(root!, Check);
+            LobbyMenuTests.Run(Check);
             ToastTests.Run(Check);
             LobbyTests.Run(root!, Check);
             if (!args.Contains("--skip-compatibility"))

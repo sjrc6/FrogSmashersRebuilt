@@ -356,33 +356,6 @@ public sealed partial class World
         );
     }
 
-    private void HitByBouncingPlayer(PlayerState victim, PlayerState bouncer)
-    {
-        victim.HitsTaken++;
-        var velocity = bouncer.Velocity * FromDecimal(.75m);
-        ResetHit(victim, bouncer.LastHitBy, velocity);
-        if (velocity.Y == Fixed.Zero)
-        {
-            velocity = new(velocity.X, FromDecimal(.33m));
-        }
-
-        SetVelocity(victim, velocity);
-        ApplyHitstop(victim, bouncer.HitsTaken, 0);
-        ApplyHitstop(bouncer, bouncer.HitsTaken, 0);
-        ApplyNearbyHitstop(victim, bouncer.HitsTaken);
-        Emit(
-            SimulationEventKind.Hit,
-            victim,
-            bouncer.Slot,
-            velocity.Length,
-            comboHits: victim.HitsTaken,
-            hitKind: HitKind.Bouncer,
-            velocity: velocity,
-            hitstopSeconds: (Fixed)victim.HitstopTicks / TickRate,
-            hitEffectPosition: (victim.Center + bouncer.Center) / 2
-        );
-    }
-
     private void ApplyHitstop(PlayerState player, Fixed duration, Fixed scale)
     {
         player.HitstopScale = player.HitstopTicks > 0 ? Fixed.Min(player.HitstopScale, scale) : scale;

@@ -36,14 +36,15 @@ internal readonly record struct ButtonGlyph(string Path)
     public static ButtonGlyph[] PadBinding(Buttons binding) =>
         PadBindings.BindableButtons.Where(button => (binding & button) != 0).Select(Pad).Distinct().ToArray();
 
-    public static ButtonGlyph Accept(int? owner) => owner >= 2 ? Pad("oButton") : Key(Keys.Enter);
+    public static ButtonGlyph Accept(int device) => device >= 2 ? Pad("oButton") : Key(Keys.Enter);
 
-    public static ButtonGlyph Back(int? owner) => owner >= 2 ? Pad("aButton") : Key(Keys.Escape);
+    public static ButtonGlyph Back(int device) => device >= 2 ? Pad("aButton") : Key(Keys.Escape);
 
-    public static ButtonGlyph Start(int device) =>
-        device >= 2 ? Pad("startButton") : Key(device == 0 ? Keys.Space : Keys.RightShift);
+    public static ButtonGlyph Remove(int device) => device >= 2 ? Pad(Buttons.X) : Key(Keys.U);
 
-    public static ButtonGlyph Menu(int? owner) => owner >= 2 ? Pad("startButton") : Key(Keys.Escape);
+    public static ButtonGlyph ApplyAll(int device) => device >= 2 ? Pad(Buttons.Y) : Key(Keys.Tab);
+
+    public static ButtonGlyph Menu(int device) => device >= 2 ? Pad("startButton") : Key(Keys.Escape);
 
     public static ButtonGlyph Key(Keys key) =>
         HasKeyIcon(key) ? new($"UI/Buttons/keyboard/baked/{key}") : new("UI/Buttons/keyboard/key");

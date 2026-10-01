@@ -38,33 +38,15 @@ internal sealed partial class MenuController
             case GameScreen.Seats:
                 return [];
             case GameScreen.LobbyMenu:
-                var lobbyRows = new List<MenuEntry> { new("RESUME", ReturnFromLobbyMenu) };
+                var lobbyRows = new List<MenuEntry>();
                 if (game.Lobby.IsHost)
                 {
                     lobbyRows.Add(new("START MATCH", StartFromSeats));
                     lobbyRows.Add(Link("MATCH SETTINGS", GameScreen.MatchSettings));
-                    lobbyRows.Add(Link("PLAYER SLOTS", GameScreen.SlotEditor));
+                    lobbyRows.Add(Link("EDIT SLOTS", GameScreen.SlotEditor));
                 }
                 lobbyRows.Add(Link("SETTINGS", GameScreen.Settings));
-                foreach (
-                    var player in game.Lobby.LocalPlayers.Where(player =>
-                        !player.Cpu && (player.Id == Owner || Owner < 2 && player.Id < 2)
-                    )
-                )
-                {
-                    int device = player.Id;
-                    string label = new LocalSeat(device).Label;
-                    lobbyRows.Add(
-                        new(
-                            label + ": BACK OUT",
-                            () =>
-                            {
-                                game.Lobby.BackOut(device);
-                                ReturnFromLobbyMenu();
-                            }
-                        )
-                    );
-                }
+                lobbyRows.Add(Link("VIEW PLAYERS", GameScreen.ViewPlayers));
                 if (game.Online.Lobby is SteamLobby steamLobby)
                     lobbyRows.Add(new("INVITE FRIENDS", steamLobby.InviteFriends));
                 if (game.Online.Lobby == null)
@@ -75,34 +57,8 @@ internal sealed partial class MenuController
                 return lobbyRows;
             case GameScreen.SlotEditor:
                 return [];
-            case GameScreen.SlotOptions:
-                var slot = game.Lobby.Roster.Slots[SelectedSeat];
-                var roomRows = new List<MenuEntry>();
-                if (slot.Player is { Cpu: false } occupant)
-                    roomRows.Add(
-                        new(
-                            occupant.Peer == game.Lobby.LocalPeer ? "BACK OUT" : "KICK",
-                            () => EditRoom(slot.Type, slot.Open, remove: true)
-                        )
-                    );
-                roomRows.Add(
-                    new(
-                        "SLOT TYPE",
-                        Value: slot.Type switch
-                        {
-                            SlotType.Cpu => "CPU",
-                            SlotType.Local => "LOCAL",
-                            _ => "ANY PLAYER",
-                        },
-                        Change: amount =>
-                        {
-                            EditRoom((SlotType)Wrap((int)slot.Type + amount, 3), slot.Open);
-                            Selected = Entries().Count - 2;
-                        }
-                    )
-                );
-                roomRows.Add(new(slot.Open ? "CLOSE SLOT" : "OPEN SLOT", () => EditRoom(slot.Type, !slot.Open)));
-                return roomRows;
+            case GameScreen.ViewPlayers:
+                return PlayerRows();
             case GameScreen.Settings:
                 var personal = new List<MenuEntry>
                 {
@@ -153,7 +109,7 @@ internal sealed partial class MenuController
                         }
                     ),
                 };
-                personal.Add(new("CONTROLS", () => OpenBindings(Owner ?? HintDevice)));
+                personal.Add(new("CONTROLS", () => OpenBindings(HintDevice)));
                 personal.Add(BackRow());
                 return personal;
             case GameScreen.MatchSettings:
@@ -181,45 +137,32 @@ internal sealed partial class MenuController
                         Change: _ => Rules.ShuffleMaps = !Rules.ShuffleMaps
                     ),
                 };
-                if (!Rules.TeamMode)
-                    entries.Add(
-                        new(
-                            "BODY BOUNCES",
-                            Value: OnOff(Rules.CharactersBounceEachOther),
-                            Change: _ => Rules.CharactersBounceEachOther = !Rules.CharactersBounceEachOther
-                        )
-                    );
                 entries.Add(BackRow());
                 return entries;
             case GameScreen.Online:
                 return
                 [
-                    Link("HOST STEAM", GameScreen.HostSteam),
-                    Link("JOIN STEAM", GameScreen.JoinSteam),
-                    Link("UDP / LAN", GameScreen.Udp),
+                    Link("CREATE LOBBY", GameScreen.CreateLobby),
+                    Link("JOIN LOBBY", GameScreen.JoinLobby),
                     BackRow(),
                 ];
-            case GameScreen.HostSteam:
+            case GameScreen.CreateLobby:
                 return
                 [
-                    Link("MATCH SETTINGS", GameScreen.MatchSettings),
-                    Link("PLAYER SLOTS", GameScreen.SlotEditor),
-                    new("OPEN PRIVATE LOBBY", () => game.BeginLobby("steam", true)),
-                    BackRow(),
-                ];
-            case GameScreen.Udp:
-                return [Link("HOST UDP", GameScreen.HostUdp), Link("JOIN BY ADDRESS", GameScreen.JoinUdp), BackRow()];
-            case GameScreen.HostUdp:
-                return
-                [
-                    Link("MATCH SETTINGS", GameScreen.MatchSettings),
-                    Link("PLAYER SLOTS", GameScreen.SlotEditor),
+                    new("TYPE", Value: Creation.TypeLabel, Change: Creation.CycleType),
                     new(
-                        "NETWORK ACCESS",
-                        Value: AllowLan ? "LAN / INTERNET" : "THIS PC",
-                        Change: _ => AllowLan = !AllowLan
+                        "MAX PLAYERS",
+                        Value: Creation.Capacity(game.Lobby.Roster).ToString(),
+                        Change: amount => Creation.ChangeCapacity(amount, game.Lobby.Roster)
                     ),
-                    new("OPEN LOBBY", () => game.BeginLobby("udp", true)),
+                    new("CREATE LOBBY", CreateOnlineLobby),
+                    BackRow(),
+                ];
+            case GameScreen.JoinLobby:
+                return
+                [
+                    Link("JOIN STEAM", GameScreen.JoinSteam),
+                    Link("JOIN LAN / UDP", GameScreen.JoinUdp),
                     BackRow(),
                 ];
             case GameScreen.JoinSteam:
@@ -243,7 +186,11 @@ internal sealed partial class MenuController
             case GameScreen.Playing:
                 if (!game.Match.Paused)
                     return [];
-                var pauseRows = new List<MenuEntry> { new("RESUME", Resume), Link("SETTINGS", GameScreen.Settings) };
+                var pauseRows = new List<MenuEntry>
+                {
+                    Link("SETTINGS", GameScreen.Settings),
+                    Link("VIEW PLAYERS", GameScreen.ViewPlayers),
+                };
                 if (game.Online.Lobby == null || game.Online.Lobby.IsHost)
                     pauseRows.Add(new("RETURN TO LOBBY", game.ReturnToLobby));
                 pauseRows.Add(new("QUIT GAME", game.MainMenu, Color: new(255, 85, 85)));
@@ -252,6 +199,7 @@ internal sealed partial class MenuController
                 string[] names = ["LEFT", "RIGHT", "UP", "DOWN", "JUMP", "BAT", "TONGUE", "STRAFE"];
                 return names
                     .Select((name, i) => BindingEntry(name, i))
+                    .Prepend(new MenuEntry(BindingTitle, Change: CycleBindingDevice, IsTitle: true))
                     .Append(new MenuEntry("RESET TO DEFAULT", ResetBindings))
                     .Append(BackRow())
                     .ToArray();

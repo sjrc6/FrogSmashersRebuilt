@@ -1,5 +1,6 @@
 using FrogSmashers.Client;
 using FrogSmashers.Core;
+using FrogSmashers.Network;
 
 internal static class LobbyTests
 {
@@ -39,7 +40,49 @@ internal static class LobbyTests
             world.Tick(inputs);
         check(LobbyLayout.OnStartingPlatform(world, 0), "landing back on the platform restores the prompt");
         VerifyDoorways(content, map, check);
+        VerifyBots(content, map, check);
         Console.WriteLine("Lobby platform landing and color-selection eligibility passed");
+    }
+
+    private static void VerifyBots(GameContent content, MapData map, Action<bool, string> check)
+    {
+        var world = new World([map], new GameRules { Lobby = true, PlayerCount = 8 }, 1, content.CharacterParameters);
+        var roster = new LobbyRoster();
+        roster.SetPlayers(0, [new(0, Spawned: true)]);
+        roster.Edit(1, SlotType.Cpu);
+        roster.SetPlayers(0, [.. roster.Players(0), new(1, Spawned: true)]);
+        for (int room = 0; room < 3; room++)
+            world.SetLobbySlot(room, true, room);
+        var inputs = new InputFrame[8];
+        world.Tick(inputs);
+        var bots = new LobbyBots();
+        check(bots.Read(world, 1) == default, "Lobby CPU stays peaceful without being attacked");
+        world.Players[0].X = world.Players[1].X - 4;
+        world.Players[0].Y = world.Players[1].Y;
+        world.Players[0].Facing = 1;
+        for (int room = 0; room < 3; room++)
+            world.Players[room].SpawnTicks = 0;
+        bool hit = false;
+        for (int tick = 0; tick < 15 && !hit; tick++)
+        {
+            inputs[0] = tick < 3 ? new(0, 0, InputButtons.Attack) : default;
+            world.Tick(inputs);
+            bots.Observe(world, roster);
+            hit = world.Events.Any(item => item.Kind == SimulationEventKind.Hit && item.Player == 1 && item.Other == 0);
+        }
+        check(hit, "Lobby retaliation fixture delivers a real bat hit");
+        world.Players[0].X = world.Players[1].X - 10;
+        world.Players[0].Y = world.Players[1].Y;
+        world.Players[2].X = world.Players[1].X + 1;
+        world.Players[2].Y = world.Players[1].Y;
+        check(bots.Read(world, 1).X == -1, "Provoked CPU pursues its attacker instead of a closer innocent player");
+        world.SetLobbySlot(0, false, 0);
+        world.SetLobbySlot(0, true, 0);
+        check(bots.Read(world, 1) == default, "Attacker respawn clears lobby retaliation");
+        bots.Observe(world, roster);
+        world.SetLobbySlot(1, false, 1);
+        world.SetLobbySlot(1, true, 1);
+        check(bots.Read(world, 1) == default, "CPU respawn clears lobby retaliation");
     }
 
     private static void VerifyDoorways(GameContent content, MapData map, Action<bool, string> check)

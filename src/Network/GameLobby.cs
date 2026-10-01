@@ -16,6 +16,7 @@ public abstract class GameLobby : IGameLobby
     public string? Notice => Active?.Notice;
     public int LocalPeer => Active?.LocalPeer ?? -1;
     public LobbyRoster Roster => Active?.Roster ?? emptyRoster;
+    public LobbyAccess Access => Active?.Access ?? default;
     public int[][] PeerSlots => Active?.PeerSlots ?? [];
     public int[] PlayerTeams => Active?.PlayerTeams ?? [];
     public int[] PlayerColors => Active?.PlayerColors ?? [];
@@ -23,8 +24,13 @@ public abstract class GameLobby : IGameLobby
 
     public bool SetPlayers(LobbyPlayer[] players) => Active?.SetPlayers(players) ?? false;
 
-    public bool EditSlot(int room, SlotType type, bool open, bool remove = false) =>
-        Active?.EditSlot(room, type, open, remove) ?? false;
+    public bool EditSlot(int room, SlotType type) => Active?.EditSlot(room, type) ?? false;
+
+    public bool ApplySlotType(SlotType type) => Active?.ApplySlotType(type) ?? false;
+
+    public bool RemovePlayer(int peer, int id) => Active?.RemovePlayer(peer, id) ?? false;
+
+    public bool SetSpectating(int peer, bool spectating) => Active?.SetSpectating(peer, spectating) ?? false;
 
     public void Kick(int peer, bool ban) => Active?.Kick(peer, ban);
 

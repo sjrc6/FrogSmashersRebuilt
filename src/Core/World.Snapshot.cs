@@ -154,7 +154,6 @@ public sealed partial class World
 
         writer.Write(Rules.WinScore);
         writer.Write(Rules.MatchRounds);
-        writer.Write(Rules.CharactersBounceEachOther);
         writer.Write(Rules.Showdown);
         writer.Write(Rules.RoundFinishTicks);
         writer.Write(Rules.ScoreScreenTicks);

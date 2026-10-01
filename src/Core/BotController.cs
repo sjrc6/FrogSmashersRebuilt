@@ -5,7 +5,7 @@ namespace FrogSmashers.Core;
 
 public static class BotController
 {
-    public static InputFrame GetInput(World world, int slot)
+    public static InputFrame GetInput(World world, int slot, int? targetSlot = null)
     {
         var player = world.Players[slot];
         if (!player.Alive)
@@ -17,7 +17,12 @@ public static class BotController
         Fixed nearestDistanceSquared = 1_000_000;
         foreach (var other in world.Players)
         {
-            if (other == player || !other.Alive || world.Rules.TeamMode && other.Team == player.Team)
+            if (
+                other == player
+                || !other.Alive
+                || world.Rules.TeamMode && other.Team == player.Team
+                || targetSlot.HasValue && other.Slot != targetSlot.Value
+            )
             {
                 continue;
             }

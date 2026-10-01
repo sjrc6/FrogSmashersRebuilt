@@ -10,8 +10,7 @@ public sealed class ClientSettings
     public int FrameLimit { get; set; } = 240;
     public float Volume { get; set; } = .65f;
     public bool ScreenShake { get; set; } = true;
-    public MatchPreferences MatchDefaults { get; set; } = new();
-    public PadBindings[] Controllers { get; set; } = Enumerable.Range(0, 8).Select(_ => new PadBindings()).ToArray();
+    public Dictionary<string, PadBindings> ControllerBindings { get; set; } = new();
     public KeyBindings[] Keyboard { get; set; } =
     [
         new(),
@@ -73,12 +72,12 @@ public sealed class ClientSettings
             value.Keyboard = new ClientSettings().Keyboard;
         }
 
-        value.MatchDefaults ??= new();
-        if (value.Controllers == null || value.Controllers.Length != 8 || value.Controllers.Any(pad => pad == null))
-            value.Controllers = new ClientSettings().Controllers;
-        foreach (var pad in value.Controllers)
+        value.ControllerBindings ??= new();
+        foreach (var key in value.ControllerBindings.Keys.ToArray())
+            if (string.IsNullOrWhiteSpace(key) || value.ControllerBindings[key] == null)
+                value.ControllerBindings.Remove(key);
+        foreach (var pad in value.ControllerBindings.Values)
             pad.Normalize();
-        value.MatchDefaults.Normalize();
         var defaults = new ClientSettings().Keyboard;
         for (int i = 0; i < 2; i++)
         {

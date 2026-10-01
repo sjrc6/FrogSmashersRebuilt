@@ -66,16 +66,16 @@ internal static class LobbyTests
                 == 3,
             "Joining party reused occupied colors"
         );
-        check(host.EditSlot(5, SlotType.Open, false), "Capacity edit rejected");
+        check(host.EditSlot(5, SlotType.Closed), "Capacity edit rejected");
         Pump();
         check(client.Roster.Capacity == 5, "Capacity change was not rebroadcast");
-        check(host.EditSlot(4, SlotType.Open, false), "Slot close rejected");
+        check(host.EditSlot(4, SlotType.Closed), "Slot close rejected");
         Pump();
         check(
             client.Roster.Capacity == 4 && !client.Roster.Slots[4].Open,
             "Slot edits did not update advertised capacity"
         );
-        check(host.EditSlot(4, SlotType.Open, true), "Slot reopen rejected");
+        check(host.EditSlot(4, SlotType.Open), "Slot reopen rejected");
         Pump();
         check(client.Roster.Capacity == 5, "Reopened slot capacity was not rebroadcast");
         var choosing = client.Roster.Players(client.LocalPeer);
@@ -111,7 +111,7 @@ internal static class LobbyTests
         check(host.StartMatch("{\"seed\":9}"), "Host could not start ready roster");
         Pump();
         check(host.Ready && client.Ready, "Manual lobby start barrier failed");
-        check(!host.EditSlot(7, SlotType.Open, true) && !client.SetPlayers([]), "Frozen match accepted roster changes");
+        check(!host.EditSlot(7, SlotType.Open) && !client.SetPlayers([]), "Frozen match accepted roster changes");
         check(
             host.PeerSlots.Length == 2
                 && host.PeerSlots[0].SequenceEqual(new[] { 0 })
@@ -152,15 +152,18 @@ internal static class LobbyTests
         TestReturnToLobby(host, client, hostWire, clientWire, Pump, check);
         TestRoomEdits(check);
         TestPlayerRemoval(check);
+        TestSpectators(check);
+        TestAdmission(check);
+        TestTwelveConnections(check);
         var rooms = new LobbyRoster();
-        rooms.Edit(4, SlotType.Cpu, true);
+        rooms.Edit(4, SlotType.Cpu);
         using var roomWire = new ManualWire();
         using var roomHost = new RelayLobby(roomWire, null, 6, rooms.Players(0), "fingerprint", "{}", rooms.Slots);
         check(
             roomHost.Roster.Slots[4].Player?.Cpu == true && roomHost.Roster.Slots[0].Player == null,
             "Opening online moved the existing local room assignments"
         );
-        roomHost.EditSlot(0, SlotType.Cpu, true);
+        roomHost.EditSlot(0, SlotType.Cpu);
         check(
             roomHost.Roster.Players(0).Select(player => player.Id).Distinct().Count() == 2,
             "Adding a CPU reused another room's device identity"
@@ -259,7 +262,7 @@ internal static class LobbyTests
         var roster = new LobbyRoster();
         roster.SetCapacity(3);
         roster.SetPlayers(0, [new(0, Color: 2)]);
-        roster.Edit(1, SlotType.Local, true);
+        roster.Edit(1, SlotType.Local);
         check(
             !roster.SetPlayers(1, [new(0), new(1)]) && roster.Count == 1,
             "Partial party was admitted when only one remote slot was free"
@@ -271,27 +274,23 @@ internal static class LobbyTests
         );
         check(!roster.SetCapacity(1) && roster.Capacity == 3, "Capacity removed an occupied slot");
         check(
-            roster.Edit(1, SlotType.Cpu, true) && roster.Slots[1].Player is { Cpu: true, Spawned: true, Peer: 0 },
+            roster.Edit(1, SlotType.Cpu) && roster.Slots[1].Player is { Cpu: true, Spawned: true, Peer: 0 },
             "CPU was not assigned to the selected room"
         );
+        check(roster.RemovePlayer(1, 0) && roster.SetPlayers(2, [new(0)]), "Removed slot did not reopen");
         check(
-            roster.Edit(2, SlotType.Open, true, remove: true) && roster.SetPlayers(2, [new(0)]),
-            "Removed slot did not reopen"
+            roster.Edit(1, SlotType.Closed) && roster.Slots[1].Player == null && roster.Capacity == 2,
+            "Changing CPU to Closed did not remove the bot and close its room"
         );
         check(
-            roster.Edit(1, SlotType.Cpu, false)
-                && roster.Capacity == 2
-                && roster.Slots[1] is { Type: SlotType.Cpu, Open: false, Player: null },
-            "Closing a CPU slot lost its type or capacity"
+            roster.Edit(1, SlotType.Cpu) && roster.Slots[1].Player?.Cpu == true && roster.Capacity == 3,
+            "Choosing CPU in a closed room did not open it"
         );
         check(
-            roster.Edit(1, SlotType.Cpu, true) && roster.Slots[1].Player?.Cpu == true && roster.Capacity == 3,
-            "Opening a CPU slot did not restore the CPU and capacity"
+            roster.Edit(1, SlotType.Local) && roster.Slots[1].Player == null,
+            "Changing CPU to Local did not remove the bot"
         );
-        check(
-            roster.Edit(1, SlotType.Local, true) && roster.Slots[1].Player == null,
-            "Changing CPU to local left a bot in the room"
-        );
+        check(!roster.Edit(0, SlotType.Closed), "Changing a human-occupied room type was accepted");
         check(!roster.SetPlayers(2, [new(0), new(0)]), "Duplicate input device claimed multiple slots");
     }
 
@@ -319,13 +318,13 @@ internal static class LobbyTests
             }
         }
         Pump();
-        check(host.EditSlot(2, SlotType.Open, true, remove: true), "Remote player removal failed");
+        check(host.RemovePlayer(client.LocalPeer, 0), "Remote player removal failed");
         Pump();
         check(
             client.Error == null && client.Roster.Players(client.LocalPeer) is [{ Id: 1 }],
             "Removing one remote player removed their whole local party or restored the removed player"
         );
-        check(host.EditSlot(3, SlotType.Open, false), "Closing the last remote slot failed");
+        check(host.RemovePlayer(client.LocalPeer, 1), "Closing the last remote slot failed");
         Pump();
         check(
             client.Error != null && host.Roster.Count == 2 && host.StartMatch("{}"),
@@ -333,11 +332,186 @@ internal static class LobbyTests
         );
     }
 
+    private static void TestSpectators(Action<bool, string> check)
+    {
+        using var hostWire = new ManualWire();
+        using var clientWire = new ManualWire();
+        using var host = new RelayLobby(
+            hostWire,
+            null,
+            8,
+            [new(0, Spawned: true), new(1, Spawned: true)],
+            "spectators",
+            "{}"
+        );
+        using var client = new RelayLobby(
+            clientWire,
+            "host",
+            8,
+            [new(0, Spawned: true), new(1, Spawned: true)],
+            "spectators",
+            ""
+        );
+        void Pump()
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                client.Poll();
+                Route(clientWire, hostWire, "client");
+                host.Poll();
+                Route(hostWire, clientWire, "host");
+            }
+        }
+        Pump();
+        check(!client.SetPlayers([]), "Guest cannot vacate every player without spectating");
+        check(
+            !client.SetSpectating(client.LocalPeer, true) && !host.SetSpectating(0, true),
+            "Both host and guest must back out extra humans before spectating"
+        );
+        check(
+            !client.EditSlot(7, SlotType.Cpu) && !client.ApplySlotType(SlotType.Cpu),
+            "Guests cannot create or edit CPUs"
+        );
+        check(client.RemovePlayer(client.LocalPeer, 0), "Guest can back out an extra local player");
+        Pump();
+        check(client.SetSpectating(client.LocalPeer, true), "Last guest can spectate");
+        Pump();
+        check(
+            host.Roster.Count == 2 && client.Roster.Spectator(client.LocalPeer)?.Id == 1,
+            "Spectating frees the room and broadcasts the spectator identity"
+        );
+        host.ApplySlotType(SlotType.Closed);
+        Pump();
+        check(!client.SetSpectating(client.LocalPeer, false), "Cannot unspectate into a full lobby");
+        host.EditSlot(2, SlotType.Open);
+        Pump();
+        check(client.SetSpectating(client.LocalPeer, false), "Spectator can reclaim an eligible room");
+        Pump();
+        check(
+            host.Roster.Slots[2].Player is { Id: 1, Spawned: false },
+            "Unspectating restores the same device in color selection"
+        );
+        check(host.SetSpectating(client.LocalPeer, true), "Host can force the remaining guest to spectate");
+        Pump();
+        check(client.Roster.Spectator(client.LocalPeer) != null, "Host role change supersedes client requests");
+        check(host.StartMatch("{}"), "Match can start with a spectator connection");
+        Pump();
+        check(
+            host.Ready && client.Ready && host.PeerSlots[1].Length == 0,
+            "Spectator takes part in the match without owning a frog"
+        );
+        check(
+            !client.SetSpectating(client.LocalPeer, false) && !host.RemovePlayer(0, 0),
+            "Role and player edits are frozen throughout a match"
+        );
+        client.Dispose();
+        Pump();
+        check(
+            host.Starting && host.Ready && host.Roster.Spectators.Count == 0,
+            "Spectator departure does not return players to the lobby"
+        );
+        check(host.ReturnToLobby(), "Host can return after spectator departure");
+
+        using var emptyWire = new ManualWire();
+        bool refusedEmpty = false;
+        try
+        {
+            using var invalid = new RelayLobby(emptyWire, "host", 8, [], "spectators", "");
+        }
+        catch (ArgumentException)
+        {
+            refusedEmpty = true;
+        }
+        check(refusedEmpty, "An arriving guest must reserve a player slot");
+    }
+
+    private static void TestAdmission(Action<bool, string> check)
+    {
+        foreach (var type in new[] { SlotType.Private, SlotType.Friend })
+        foreach (bool invited in new[] { false, true })
+        foreach (bool friend in new[] { false, true })
+        {
+            var rooms = new LobbyRoster();
+            rooms.SetPlayers(0, [new(0)]);
+            rooms.ConfigureEmpty(type, 2);
+            using var hostWire = new ManualWire();
+            using var clientWire = new ManualWire();
+            using var host = new RelayLobby(
+                hostWire,
+                null,
+                2,
+                rooms.Players(0),
+                "policy",
+                "{}",
+                rooms.Slots,
+                isFriend: source => source == "client" && friend
+            );
+            using var client = new RelayLobby(clientWire, "host", 8, [new(0)], "policy", "", invited: invited);
+            for (int i = 0; i < 8; i++)
+            {
+                client.Poll();
+                Route(clientWire, hostWire, "client");
+                host.Poll();
+                Route(hostWire, clientWire, "host");
+            }
+            bool allowed = type == SlotType.Private ? invited : friend;
+            check(
+                client.Connected == allowed && (client.Error == null) == allowed,
+                $"Host verifies {type} admission, invited={invited}, friend={friend}"
+            );
+        }
+    }
+
+    private static void TestTwelveConnections(Action<bool, string> check)
+    {
+        using var hostWire = new ManualWire();
+        using var host = new RelayLobby(hostWire, null, 8, [new(0, Spawned: true)], "twelve", "{}");
+        var guests = new Dictionary<string, (ManualWire Wire, RelayLobby Lobby)>();
+        void Pump()
+        {
+            for (int step = 0; step < 10; step++)
+            {
+                foreach (var (name, guest) in guests)
+                {
+                    guest.Lobby.Poll();
+                    Route(guest.Wire, hostWire, name);
+                }
+                host.Poll();
+                foreach (var message in hostWire.Sent)
+                    guests[message.Address].Wire.Incoming.Enqueue(new("host", message.Data));
+                hostWire.Sent.Clear();
+            }
+        }
+        for (int peer = 1; peer < 12; peer++)
+        {
+            var wire = new ManualWire();
+            var lobby = new RelayLobby(wire, "host", 8, [new(0, Spawned: true)], "twelve", "");
+            guests.Add(peer.ToString(), (wire, lobby));
+            Pump();
+            check(lobby.Connected, $"Connection {peer} joins beside existing spectators");
+            if (peer <= 4)
+            {
+                check(lobby.SetSpectating(lobby.LocalPeer, true), "Reserve one of four spectator connections");
+                Pump();
+            }
+        }
+        check(host.Roster.Count == 8 && host.Roster.Spectators.Count == 4, "Eight players plus four spectators fit");
+        check(host.StartMatch("{}"), "Full lobby can start");
+        Pump();
+        check(host.Ready && guests.Values.All(guest => guest.Lobby.Ready), "All twelve connections receive the match");
+        check(
+            host.PeerSlots.Length == 12 && host.PeerSlots.Count(slots => slots.Length == 0) == 4,
+            "Spectators have separate empty input ownership"
+        );
+        foreach (var guest in guests.Values)
+            guest.Lobby.Dispose();
+    }
+
     private static byte[] Packet(string json)
     {
         var bytes = Encoding.UTF8.GetBytes(json);
         var packet = new byte[bytes.Length + 5];
-        BitConverter.TryWriteBytes(packet, 0x46534C32u);
+        BitConverter.TryWriteBytes(packet, 0x46534C33u);
         packet[4] = 1;
         bytes.CopyTo(packet, 5);
         return packet;

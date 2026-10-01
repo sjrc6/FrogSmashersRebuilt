@@ -159,39 +159,6 @@ public sealed partial class World
                 player.VY -= gravity * deltaTime;
             }
 
-            if (
-                Rules.CharactersBounceEachOther
-                && !Rules.TeamMode
-                && !player.HasBounceDodged
-                && player.HitsTaken >= 1
-                && !player.OnGround
-                && !player.HasReachedApex
-                && deltaTime > 0
-            )
-            {
-                foreach (var other in Players)
-                {
-                    if (
-                        other != player
-                        && other.Alive
-                        && other.Mode != CharacterMode.Bouncing
-                        && other.Slot != player.LastHitBy
-                        && !(other.Mode == CharacterMode.Attacking && other.AttackPhase == AttackPhase.Swing)
-                        && CircleTouchesBox(
-                            player.Center,
-                            FromDecimal(.5m),
-                            other.X - 1,
-                            other.Y,
-                            other.X + 1,
-                            other.Y + 2
-                        )
-                    )
-                    {
-                        HitByBouncingPlayer(other, player);
-                    }
-                }
-            }
-
             if (player.OnGround && player.HasReachedApex)
             {
                 if (player.Mode == CharacterMode.Tongue)

@@ -84,7 +84,6 @@ public sealed partial class World
             Teams = (int[])rules.Teams.Clone(),
             WinScore = rules.WinScore,
             MatchRounds = rules.MatchRounds,
-            CharactersBounceEachOther = rules.CharactersBounceEachOther,
             Showdown = rules.Showdown,
             RoundFinishTicks = rules.RoundFinishTicks,
             ScoreScreenTicks = rules.ScoreScreenTicks,
@@ -133,7 +132,6 @@ public sealed partial class World
         FixedVector? position = null,
         int surfaceSide = 0,
         Fixed hitstopSeconds = default,
-        FixedVector? hitEffectPosition = null,
         bool awardedScore = false
     ) =>
         events.Add(
@@ -153,8 +151,8 @@ public sealed partial class World
                 velocity.Y,
                 surfaceSide,
                 hitstopSeconds,
-                hitEffectPosition?.X ?? player?.Center.X ?? Fly.X,
-                hitEffectPosition?.Y ?? player?.Center.Y ?? Fly.Y,
+                player?.Center.X ?? Fly.X,
+                player?.Center.Y ?? Fly.Y,
                 awardedScore
             )
         );

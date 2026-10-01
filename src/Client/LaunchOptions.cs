@@ -121,7 +121,7 @@ public sealed class LaunchOptions
           --seed 1                   Match random seed
           --host udp|steam --slots 8  Open a lobby with up to eight player slots
           --join udp:127.0.0.1        Join UDP host (--port 24804)
-          --join steam:LOBBY_ID       Join a private Steam lobby
+          --join steam:LOBBY_ID       Join a Steam lobby by invite ID
           --local-players 1..8        Local players for a network match
           --lan                      Bind UDP host to LAN (default localhost)
           --record match.fsr         Record a local match

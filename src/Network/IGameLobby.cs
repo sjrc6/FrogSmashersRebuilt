@@ -15,12 +15,16 @@ public interface IGameLobby : IDisposable
     string? Notice { get; }
     int LocalPeer { get; }
     LobbyRoster Roster { get; }
+    LobbyAccess Access { get; }
     int[][] PeerSlots { get; }
     int[] PlayerTeams { get; }
     int[] PlayerColors { get; }
     string MatchSettingsJson { get; }
     bool SetPlayers(LobbyPlayer[] players);
-    bool EditSlot(int room, SlotType type, bool open, bool remove = false);
+    bool EditSlot(int room, SlotType type);
+    bool ApplySlotType(SlotType type);
+    bool RemovePlayer(int peer, int id);
+    bool SetSpectating(int peer, bool spectating);
     void Kick(int peer, bool ban);
     void SetMatchSettings(string settings);
     bool StartMatch(string settings);

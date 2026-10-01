@@ -4,7 +4,7 @@ namespace FrogSmashers.Client;
 
 internal sealed class LocalLobby
 {
-    public LobbyRoster Roster { get; } = new();
+    public LobbyRoster Roster { get; } = new(SlotType.Local);
     public IReadOnlyList<LocalSeat> Seats =>
         Roster
             .Players(0)

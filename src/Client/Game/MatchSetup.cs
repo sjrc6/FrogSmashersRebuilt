@@ -2,7 +2,7 @@ namespace FrogSmashers.Client;
 
 internal sealed class MatchSetup
 {
-    public MatchPreferences Preferences { get; }
+    public MatchPreferences Preferences { get; private set; } = new();
     public LocalLobby Lobby { get; } = new();
     public IReadOnlyList<LocalSeat> Seats => Lobby.Seats;
     public uint Seed { get; }
@@ -12,11 +12,9 @@ internal sealed class MatchSetup
         set => Preferences.FirstMap = value;
     }
 
-    public MatchSetup(ClientSettings settings, uint seed)
-    {
-        Preferences = settings.MatchDefaults with { };
-        Seed = seed;
-    }
+    public MatchSetup(uint seed) => Seed = seed;
+
+    public void ResetPreferences() => Preferences = new();
 
     public MatchOptions CreateOptions(int[]? customMapOrder = null)
     {

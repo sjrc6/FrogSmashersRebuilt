@@ -4,7 +4,6 @@ public enum HitKind
 {
     Bat,
     Tongue,
-    Bouncer,
 }
 
 public enum SimulationEventKind

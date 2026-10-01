@@ -304,10 +304,6 @@ public sealed class Audio : IDisposable
                     PlayAt("BatHit" + Math.Clamp(e.ComboHits, 1, 5), id, .5f, position);
                     PlayAt("BatHitVoice" + Math.Clamp(e.ComboHits, 1, 5), id | 1, .5f, position);
                 }
-                else if (e.HitKind == HitKind.Bouncer)
-                {
-                    PlayAt("CharacterCollision", id, .5f, position);
-                }
                 else
                 {
                     PlayAt("TongueCollide", id, .5f, position);

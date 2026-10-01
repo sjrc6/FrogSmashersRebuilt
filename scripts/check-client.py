@@ -33,7 +33,7 @@ def command(name, options, sound=False):
     )
 
 
-def run(name, options, sound=False):
+def run(name, options, sound=False, expect_error=False):
     result = subprocess.run(
         command(name, options, sound), cwd=root, env=env, text=True, capture_output=True, timeout=90
     )
@@ -41,7 +41,7 @@ def run(name, options, sound=False):
     if result.returncode:
         raise RuntimeError(f"{name} exited {result.returncode}: {result.stdout}\n{result.stderr}")
     value = json.loads((out / (name + ".json")).read_text())
-    assert value["Error"] is None, value
+    assert (value["Error"] is not None) == expect_error, value
     print(name, value, flush=True)
     return value
 
@@ -61,7 +61,7 @@ def verify_paused_pixels(first, second):
     with Image.open(out / first) as a, Image.open(out / second) as b:
         difference = ImageChops.difference(a.convert("RGB"), b.convert("RGB"))
         for left, right in ((440, 472), (808, 840)):
-            difference.paste((0, 0, 0), (left, 252, right, 296))
+            difference.paste((0, 0, 0), (left, 310, right, 336))
         assert difference.getbbox() is None, "Presentation changes outside the animated pause arrows"
 
 
@@ -71,10 +71,8 @@ def verify_pause():
         json.dumps(
             [
                 dict(From=120, To=121, Keys=["Escape"]),
-                dict(From=130, To=131, Keys=["Down"]),
                 dict(From=140, To=141, Keys=["Enter"]),
                 dict(From=200, To=201, Keys=["Escape"]),
-                dict(From=210, To=211, Keys=["Up"]),
                 dict(From=260, To=261, Keys=["Escape"]),
             ]
         )
@@ -179,9 +177,9 @@ def verify_menu_background():
 
 def verify_local_replay():
     rows = [
-        (1, 2, ["Enter"]), (3, 4, ["Space"]), (5, 6, ["Space"]),
-        (7, 8, ["RightShift"]), (9, 10, ["RightShift"]), (11, 12, ["Escape"]),
-        (13, 14, ["Down"]), (15, 16, ["Enter"]),
+        (1, 2, ["Enter"]), (3, 4, ["U"]), (5, 6, ["U"]),
+        (7, 8, ["OemPeriod"]), (9, 10, ["OemPeriod"]), (11, 12, ["Escape"]),
+        (15, 16, ["Enter"]),
         (50, 100, ["D", "T"]), (80, 140, ["Left", "M"]), (150, 190, ["U"]),
         (200, 201, ["Escape"]), (203, 204, ["Escape"]),
     ]
@@ -215,8 +213,8 @@ def verify_local_replay():
 
 def verify_replay_exit(record):
     keys = [(1, "Escape"), (3, "Down"), (5, "Down"), (7, "Enter"),
-            (9, "Space"), (11, "Space"), (13, "RightShift"), (15, "RightShift"),
-            (17, "Escape"), (19, "Down"), (21, "Enter")]
+            (9, "U"), (11, "U"), (13, "OemPeriod"), (15, "OemPeriod"),
+            (17, "Escape"), (21, "Enter")]
     rows = [(frame, frame + 1, [key]) for frame, key in keys]
     script = out / "replay-to-local-input.json"
     script.write_text(json.dumps([dict(From=a, To=b, Keys=c) for a, b, c in rows]))
@@ -242,7 +240,7 @@ def verify_lobby_menus():
         path.write_text(json.dumps(rows))
         return run(name, ["--no-intro", "--input-script", str(path), "--frames", str(frames), "--capture", str(out / (name + ".png"))])
 
-    joining = [click(1, 640, 357), key(3, "Space"), key(5, "Y"), key(9, "Space"), key(11, "RightShift"), key(13, "RightShift")]
+    joining = [click(1, 640, 357), key(3, "U"), key(5, "Y"), key(9, "U"), key(11, "OemPeriod"), key(13, "OemPeriod")]
     choosing = capture("lobby-color", joining, 8)
     assert choosing["Page"] == "Seats" and choosing["LocalDevices"] == [], choosing
     assert 0 <= choosing["LobbySlots"][0]["Player"]["Color"] < 8 and not choosing["LobbyPlayers"][0]["Alive"], choosing
@@ -252,65 +250,91 @@ def verify_lobby_menus():
     assert walking["LobbyPlayers"][0]["X"] > spawned["LobbyPlayers"][0]["X"] + 1, walking
     assert walking["LobbyTick"] == spawned["LobbyTick"], walking
 
-    platform = [key(1, "Enter"), key(3, "Space"), key(5, "Space"), key(30, "T")]
+    platform = [key(1, "Enter"), key(3, "U"), key(5, "U"), key(30, "T")]
     jumping = capture("lobby-platform-jump", platform, 33)
     assert not jumping["LobbyPlayers"][0]["CanChooseAgain"], jumping
     landed = capture("lobby-platform-land", platform, 120)
     assert landed["LobbyPlayers"][0]["CanChooseAgain"], landed
-    choosing_again = platform + [key(122, "Space")]
+    choosing_again = platform + [key(122, "U")]
     changed_color = capture("lobby-choose-again", choosing_again, 124)
     assert changed_color["Page"] == "Seats" and not changed_color["LobbySlots"][0]["Player"]["Spawned"], changed_color
     assert not changed_color["LobbyPlayers"][0]["Alive"], changed_color
-    backed_out = capture("lobby-color-backout", choosing_again + [key(126, "U")], 128)
+    backed_out = capture("lobby-color-backout", choosing_again + [key(126, "T")], 128)
     assert backed_out["LobbySlots"][0]["Player"] is None and backed_out["LocalDevices"] == [], backed_out
-    rejoined = capture("lobby-rejoin", choosing_again + [key(126, "U"), key(130, "Space"), key(132, "Space")], 136)
+    rejoined = capture("lobby-rejoin", choosing_again + [key(126, "T"), key(130, "U"), key(132, "U")], 136)
     assert rejoined["LocalDevices"] == [0] and rejoined["LobbyPlayers"][0]["Alive"], rejoined
-    # Start offers color selection on the pad owner's platform and pauses elsewhere.
-    controller = [key(1, "Enter"), pad(3, 0, "Start"), pad(5, 0, "Start"), pad(30, 0, "Start")]
+    # Attack joins/spawns and offers color selection on the starting platform; Start always opens the menu.
+    controller = [key(1, "Enter"), pad(3, 0, "X"), pad(5, 0, "X"), pad(30, 0, "X")]
     pad_choosing = capture("lobby-pad-choose-again", controller, 32)
     assert pad_choosing["Page"] == "Seats" and not pad_choosing["LobbySlots"][0]["Player"]["Spawned"], pad_choosing
-    pad_backed_out = capture("lobby-pad-backout", controller + [pad(34, 0, "X")], 36)
+    pad_backed_out = capture("lobby-pad-backout", controller + [pad(34, 0, "A")], 36)
     assert pad_backed_out["LobbySlots"][0]["Player"] is None, pad_backed_out
 
-    settings = joining + [key(15, "Escape")] + [key(frame, "S") for frame in (17, 19, 21, 23)] + [key(25, "Enter")]
+    settings = joining + [key(15, "Escape")] + [key(frame, "S") for frame in (17, 19, 21)] + [key(25, "Enter")]
     settings += [key(frame, "S") for frame in (27, 29, 31)] + [key(33, "D")]
     personal = capture("personal-settings", settings, 35)
     assert personal["Page"] == "Settings" and abs(personal["Volume"] - .70) < .001, personal
     assert not any("TEAMS" in row or "WIN SCORE" in row or "MACHINES" in row for row in personal["MenuItems"]), personal
     # Mouse actions still work, and returning from personal settings preserves the party.
-    returned = capture("return-to-lobby", settings + [click(37, 640, 490), key(39, "Escape")], 50)
+    returned = capture("return-to-lobby", settings + [click(37, 640, 449), key(39, "Escape")], 50)
     assert returned["Page"] == "Seats" and returned["LocalDevices"] == [0, 1], returned
 
-    cpu = [key(1, "Enter"), key(3, "Space"), key(5, "Space"), key(7, "Escape")]
-    cpu += [key(frame, "Down") for frame in (9, 11, 13)]
+    cpu = [key(1, "Enter"), key(3, "U"), key(5, "U"), key(7, "Escape")]
+    cpu += [key(frame, "Down") for frame in (9, 11)]
     cpu += [key(15, "Enter"), key(17, "Left"), key(19, "Up")]
     edge = capture("slot-edge", cpu, 21)
     assert edge["Page"] == "SlotEditor" and edge["SelectedSeat"] == 0, edge
-    cpu += [key(23, "Right"), key(25, "Enter"), key(27, "Right"), key(29, "Right")]
+    cpu += [key(23, "Right"), dict(From=25, To=30, Keys=["Enter"]), key(27, "Left")]
     added = capture("slot-cpu", cpu, 31)
-    assert added["Page"] == "SlotOptions" and added["LobbySlots"][1]["Type"] == 2 and added["LocalDevices"] == [0, -1], added
-    cpu += [key(33, "Down"), key(35, "Enter")]
-    closed = capture("slot-closed", cpu, 37)
-    assert closed["Page"] == "SlotOptions" and not closed["LobbySlots"][1]["Open"] and closed["LocalDevices"] == [0], closed
-    quit_lobby = cpu + [key(frame, "Escape") for frame in (39, 41, 43, 45)] + [key(47, "Up"), key(49, "Enter")]
-    left = capture("quit-lobby", quit_lobby, 51)
+    assert added["Page"] == "SlotEditor" and added["LobbySlots"][1]["Type"] == 5 and added["LocalDevices"] == [0, -1], added
+    cycled = capture("slot-cycle-away-from-cpu", cpu + [key(33, "Enter")], 35)
+    assert cycled["LobbySlots"][1]["Type"] == 1 and cycled["LobbySlots"][1]["Player"] is None, cycled
+    all_cpus = capture("slot-apply-cpu", cpu + [key(33, "Tab")], 35)
+    assert sum(slot["Player"] is not None and slot["Player"]["Cpu"] for slot in all_cpus["LobbySlots"]) == 7, all_cpus
+    all_local = capture("slot-apply-local", cpu + [key(33, "Tab"), key(35, "Enter"), key(37, "Tab")], 39)
+    assert all(slot["Type"] == 1 for slot in all_local["LobbySlots"]) and all_local["LocalDevices"] == [0], all_local
+    cpu += [key(33, "U")] + [key(frame, "Enter") for frame in (35, 37, 39, 41)]
+    local = capture("slot-local", cpu, 43)
+    assert local["Page"] == "SlotEditor" and local["LobbySlots"][1]["Type"] == 1 and local["LocalDevices"] == [0], local
+    quit_lobby = cpu + [key(frame, "Escape") for frame in (45, 47, 49)] + [key(51, "Up"), key(53, "Enter")]
+    left = capture("quit-lobby", quit_lobby, 54)
     assert left["Page"] == "Main" and left["LocalDevices"] == [], left
-    fresh = capture("fresh-lobby", quit_lobby + [key(53, "Enter")], 56)
+    fresh = capture("fresh-lobby", quit_lobby + [key(55, "Enter")], 58)
     assert fresh["Page"] == "Seats" and fresh["LobbyTick"] < 10 and fresh["LocalDevices"] == [], fresh
-    assert all(slot["Open"] and slot["Type"] == 0 and slot["Player"] is None for slot in fresh["LobbySlots"]), fresh
+    assert all(slot["Open"] and slot["Type"] == 1 and slot["Player"] is None for slot in fresh["LobbySlots"]), fresh
     assert not any(player["Alive"] for player in fresh["LobbyPlayers"]) and fresh["LobbySpawnPuffs"] == 0, fresh
-    cpu += [key(39, "Enter"), key(41, "Escape"), key(43, "Escape"), key(45, "Up"), key(47, "Up"), key(49, "Enter")]
-    started = capture("cpu-start-slot", cpu, 54)
+    cpu += [key(45, "Enter"), key(47, "Escape"), key(49, "Up"), key(51, "Up"), key(53, "Enter")]
+    started = capture("cpu-start-slot", cpu, 60)
     assert started["Page"] == "Playing" and started["LocalDevices"] == [0, -1] and started["Players"] == 2, started
 
-    occupied = [key(1, "Enter"), key(3, "Space"), key(5, "Space"), key(7, "Escape")]
-    occupied += [key(frame, "Down") for frame in (9, 11, 13)]
-    occupied += [key(15, "Enter"), key(17, "Enter"), key(19, "Down"), key(21, "Right"), key(23, "Right"), key(25, "Right")]
-    changed = capture("slot-replace-player", occupied, 27)
-    assert changed["Page"] == "SlotOptions" and changed["Selected"] == 0, changed
-    assert changed["LobbySlots"][0]["Type"] == 0 and changed["LobbySlots"][0]["Player"] is None, changed
+    occupied = [key(1, "Enter"), key(3, "U"), key(5, "U"), key(7, "Escape")]
+    occupied += [key(frame, "Down") for frame in (9, 11)]
+    occupied += [key(15, "Enter"), key(17, "Enter")]
+    unchanged = capture("slot-occupied", occupied, 19)
+    assert unchanged["Page"] == "SlotEditor" and unchanged["LobbySlots"][0]["Player"]["Id"] == 0, unchanged
+    changed = capture("slot-backout", occupied + [key(21, "U")], 23)
+    assert changed["LobbySlots"][0]["Player"] is None, changed
 
-    room_edges = [key(1, "Enter"), key(3, "Escape"), key(5, "Down"), key(7, "Down"), key(9, "Down"), key(11, "Enter")]
+    for controllers, expected in ((1, [0, 1, 2]), (7, [0, 2, 3, 4, 5, 6, 7, 8]), (8, list(range(2, 10)))):
+        hints = capture(f"join-hints-{controllers}", [key(1, "Enter"), dict(From=0, To=30, Pads={str(i): [] for i in range(controllers)})], 25)
+        assert hints["JoinHintDevices"] == expected, hints
+    online = [key(1, "Down"), key(3, "Enter")]
+    choices = capture("online-choices", online, 5)
+    assert choices["MenuItems"] == ["CREATE LOBBY", "JOIN LOBBY", "BACK"], choices
+    creation = capture("create-lobby", online + [key(7, "Enter")], 9)
+    assert creation["Page"] == "CreateLobby" and creation["MenuItems"][:2] == ["TYPE: PRIVATE", "MAX PLAYERS: 8"], creation
+
+    controller_online = [pad(1, 0, "DPadDown"), pad(3, 0, "A"), pad(5, 0, "A")]
+    controller_creation = capture("controller-create-lobby", controller_online, 8)
+    assert controller_creation["Page"] == "CreateLobby" and controller_creation["HintDevice"] == 2, controller_creation
+    controller_joining = capture("controller-join-lobby", controller_online + [pad(9, 0, "B"), pad(11, 0, "DPadDown"), pad(13, 0, "A")], 16)
+    assert controller_joining["Page"] == "JoinLobby" and controller_joining["HintDevice"] == 2, controller_joining
+    preview_cycle = [key(1, "Enter"), key(3, "Escape"), key(5, "Down"), key(7, "Down"), key(11, "Enter"),
+                     dict(From=13, To=20, Keys=["Enter"]), key(15, "Left"), key(17, "Right")]
+    preview_returned = capture("slot-preview-past-cpu", preview_cycle, 23)
+    assert preview_returned["LobbySlots"][0]["Type"] == 1 and preview_returned["LobbySlots"][0]["Player"] is None, preview_returned
+
+    room_edges = [key(1, "Enter"), key(3, "Escape"), key(5, "Down"), key(7, "Down"), key(11, "Enter")]
     room_edges += [key(13, "Right"), key(15, "Right"), key(17, "Right"), key(19, "Down"), key(21, "Down"), key(23, "Down")]
     bottom = capture("slot-bottom-edge", room_edges, 25)
     assert bottom["SelectedSeat"] == 7, bottom
@@ -318,23 +342,117 @@ def verify_lobby_menus():
     across = capture("slot-skip-center", room_edges, 31)
     assert across["SelectedSeat"] == 3, across
 
-    preview = [key(1, "Enter"), pad(3, 0, "Start"), pad(5, 1, "Start"), pad(7, 0, "Start"), pad(8, 0, "A"), pad(9, 0, "Start"), pad(11, 1, "B")]
-    paused_preview = capture("lobby-pending-paused", preview, 13)
-    assert paused_preview["Page"] == "LobbyMenu" and paused_preview["Owner"] == 2, paused_preview
-    assert not paused_preview["LobbySlots"][1]["Player"]["Spawned"] and paused_preview["LobbySpawnPuffs"] >= 3, paused_preview
+    preview = [key(1, "Enter"), pad(3, 0, "X"), pad(5, 0, "Start")]
+    paused_preview = capture("lobby-start-opens-menu", preview, 7)
+    assert paused_preview["Page"] == "LobbyMenu" and not paused_preview["LobbySlots"][0]["Player"]["Spawned"], paused_preview
+    assert paused_preview["HintDevice"] == 2, paused_preview
+    spawned_after_menu = capture("lobby-attack-spawns", preview + [key(9, "Escape"), pad(11, 0, "X")], 13)
+    assert spawned_after_menu["Page"] == "Seats" and spawned_after_menu["LobbySlots"][0]["Player"]["Spawned"], spawned_after_menu
+    start_on_platform = capture("lobby-start-on-platform", controller[:3] + [pad(30, 0, "Start")], 32)
+    assert start_on_platform["Page"] == "LobbyMenu" and start_on_platform["LobbySlots"][0]["Player"]["Spawned"], start_on_platform
 
-    rows = [key(1, "Enter"), pad(3, 0, "Start"), pad(5, 0, "Start"), pad(7, 1, "Start"), pad(9, 1, "Start"), pad(10, 0, "A"), pad(11, 0, "Start"),
-            key(13, "Down", "Enter"), pad(15, 1, "DPadDown", "A"), click(17, 640, 165)]
-    owned = capture("lobby-menu-owner", rows, 19)
-    assert owned["Page"] == "LobbyMenu" and owned["Owner"] == 2 and owned["Selected"] == 0 and owned["LocalDevices"] == [2, 3], owned
-    assert not any("COLOR / TEAM" in row for row in owned["MenuItems"]), owned
-    rows += [pad(21, 0, "DPadDown"), pad(23, 0, "A"), pad(31, 1, "Start"), key(33, "Escape"), pad(33, 0, "B"), pad(35, 1, "DPadDown"), pad(37, 1, "A")]
-    playing = capture("controller-start", rows, 29)
+    rows = [key(1, "Enter"), pad(3, 0, "X"), pad(5, 0, "X"), pad(7, 1, "X"), pad(9, 1, "X"), pad(11, 0, "Start"), key(13, "Down")]
+    shared_keyboard = capture("lobby-menu-shared-keyboard", rows, 15)
+    assert shared_keyboard["Page"] == "LobbyMenu" and shared_keyboard["Selected"] == 1 and shared_keyboard["HintDevice"] == 0, shared_keyboard
+    assert shared_keyboard["LocalDevices"] == [2, 3] and not any("COLOR / TEAM" in row for row in shared_keyboard["MenuItems"]), shared_keyboard
+    rows += [pad(17, 1, "DPadDown")]
+    shared_pad = capture("lobby-menu-shared-controller", rows, 19)
+    assert shared_pad["Selected"] == 2 and shared_pad["HintDevice"] == 3, shared_pad
+    rows += [click(21, 640, 365)]
+    shared_mouse = capture("lobby-menu-shared-mouse", rows, 23)
+    assert shared_mouse["Page"] == "Settings" and shared_mouse["HintDevice"] == 0, shared_mouse
+    rows += [pad(25, 0, "B"), pad(27, 1, "DPadUp"), pad(29, 1, "DPadUp"), pad(31, 1, "DPadUp"), pad(33, 1, "A")]
+    playing = capture("controller-start", rows, 35)
     assert playing["Page"] == "Playing" and playing["Players"] == 2 and not playing["Paused"], playing
-    owned = capture("match-menu-owner", rows, 39)
-    assert owned["Page"] == "Settings" and owned["Owner"] == 3 and owned["Paused"], owned
-    resumed = capture("controller-resume", rows + [pad(41, 1, "B"), pad(43, 1, "B")], 46)
-    assert resumed["Page"] == "Playing" and resumed["Owner"] is None and not resumed["Paused"], resumed
+    rows += [pad(37, 1, "Start"), key(41, "Enter")]
+    shared_pause = capture("match-menu-shared-keyboard", rows, 43)
+    assert shared_pause["Page"] == "Settings" and shared_pause["HintDevice"] == 0 and shared_pause["Paused"], shared_pause
+    resumed = capture("controller-resume", rows + [pad(45, 0, "B"), pad(47, 1, "B")], 49)
+    assert resumed["Page"] == "Playing" and not resumed["Paused"], resumed
+
+
+def verify_player_menu():
+    def key(frame, name):
+        return dict(From=frame, To=frame + 1, Keys=[name])
+    def click(frame, x, y):
+        return dict(From=frame, To=frame + 1, MouseX=x, MouseY=y, MouseDown=True)
+    def capture(name, rows, frames):
+        path = out / (name + "-input.json")
+        path.write_text(json.dumps(rows))
+        return run(name, ["--no-intro", "--input-script", str(path), "--frames", str(frames), "--capture", str(out / (name + ".png"))])
+    party = [key(1, "Enter"), key(3, "U"), key(5, "U"), key(7, "OemPeriod"), key(9, "OemPeriod")]
+    players = party + [key(11, "Escape")] + [key(frame, "Down") for frame in (13, 15, 17, 19)] + [key(21, "Enter")]
+    highlighted = capture("players-highlight", players, 24)
+    assert highlighted["Page"] == "ViewPlayers" and highlighted["PlayerActions"]["Accept"] == "BACK OUT", highlighted
+    removed = capture("players-direct-backout", players + [key(25, "Enter")], 28)
+    assert removed["Page"] == "ViewPlayers" and removed["LocalDevices"] == [1], removed
+    mouse = players + [click(25, 640, 310)]
+    selected = capture("players-click-selects", mouse, 28)
+    assert selected["Page"] == "ViewPlayers" and selected["LocalDevices"] == [0, 1], selected
+    mouse += [click(29, 640, 419), click(33, 640, 405), click(37, 640, 423)]
+    empty = capture("players-click-actions", mouse, 40)
+    assert empty["Page"] == "LobbyMenu" and empty["LocalDevices"] == [] and "RESUME" not in empty["MenuItems"], empty
+    cpu = [key(1, "Enter"), key(3, "Escape"), key(5, "Down"), key(7, "Down"), key(9, "Enter"),
+           key(11, "Enter"), key(13, "Escape"), key(15, "Down"), key(17, "Down"), key(19, "Enter")]
+    highlighted_cpu = capture("players-cpu-highlight", cpu, 22)
+    assert highlighted_cpu["PlayerActions"] == dict(Accept=None, Remove="KICK", DisabledReason=None), highlighted_cpu
+    kicked = capture("players-cpu-kick", cpu + [key(23, "U")], 26)
+    assert kicked["Page"] == "ViewPlayers" and kicked["LocalDevices"] == [], kicked
+    paused = party + [key(11, "Escape"), key(13, "Enter"), key(17, "Escape")]
+    pause = capture("pause-without-resume", paused, 20)
+    assert pause["Page"] == "Playing" and pause["Paused"] and "RESUME" not in pause["MenuItems"], pause
+    resumed = capture("pause-click-back", paused + [click(21, 720, 448)], 24)
+    assert resumed["Page"] == "Playing" and not resumed["Paused"], resumed
+    readonly = capture("players-match-readonly", paused + [key(21, "Down"), key(23, "Enter"), key(25, "Enter")], 28)
+    assert readonly["Page"] == "ViewPlayers" and readonly["PlayerActions"]["DisabledReason"] == "LOBBY ONLY" and readonly["LocalDevices"] == [0, 1], readonly
+    print("PASS: direct player actions, clickable footer, CPU kick, read-only match list and pause without Resume.")
+
+
+def verify_player_network_actions():
+    def key(frame, name):
+        return dict(From=frame, To=frame + 1, Keys=[name])
+    for unspectate in (False, True):
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as reserve:
+            reserve.bind(("127.0.0.1", 0))
+            port = reserve.getsockname()[1]
+        host_rows = [key(160, "Escape")] + [key(t, "Down") for t in (162, 164, 166, 168)] + [key(170, "Enter"), key(172, "Down")]
+        guest_rows = [key(160, "Escape"), key(162, "Down"), key(164, "Enter"), key(166, "Down"), key(180, "Enter"), key(220, "Enter")]
+        if unspectate:
+            guest_rows += [key(260, "Enter")]
+        processes = []
+        label = "return" if unspectate else "spectate"
+        for name, rows, options, frames in [
+            ("players-host-" + label, host_rows, ["--host", "udp", "--local-players", "1"], 390),
+            ("players-guest-" + label, guest_rows, ["--join", "udp:127.0.0.1", "--local-players", "2"], 500),
+        ]:
+            path = out / (name + "-input.json")
+            path.write_text(json.dumps(rows))
+            args = options + ["--port", str(port), "--frames", str(frames), "--input-script", str(path), "--capture", str(out / (name + ".png"))]
+            processes.append((name, subprocess.Popen(command(name, args), cwd=root, env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)))
+        try:
+            values = []
+            for name, process in processes:
+                log, _ = process.communicate(timeout=60)
+                (out / (name + ".log")).write_text(log)
+                assert process.returncode == 0, (name, log)
+                value = json.loads((out / (name + ".json")).read_text())
+                assert value["Error"] is None and value["Page"] == "ViewPlayers", value
+                values.append(value)
+            host, guest = values
+            expected = "SPECTATE" if unspectate else "UNSPECTATE"
+            assert guest["PlayerActions"] == dict(Accept=expected, Remove=None, DisabledReason=None), guest
+            assert guest["Selected"] == 1, guest
+            if unspectate:
+                assert guest["LobbySpectators"] == [] and guest["LobbySlots"][1]["Player"]["Id"] == 1 and not guest["LobbySlots"][1]["Player"]["Spawned"], guest
+            else:
+                assert len(guest["LobbySpectators"]) == 1 and guest["LobbySpectators"][0]["Id"] == 1, guest
+            assert host["PlayerActions"] == dict(Accept=expected, Remove="KICK", DisabledReason=None), host
+        finally:
+            for _, process in processes:
+                if process.poll() is None:
+                    process.kill()
+                    process.wait()
+    print("PASS: guest directly backs out, spectates and unspectates; host gets both actions; selection follows the player.")
 
 
 def verify_arenas():
@@ -361,12 +479,40 @@ def verify_arenas():
     run("title", ["--frames", "1680", "--capture", str(out / "title.png")], sound=True)
 
 
+def verify_online_creation():
+    def key(frame, name):
+        return dict(From=frame, To=frame + 1, Keys=[name])
+    actions = [(1, "Enter"), (3, "Escape"), (5, "Down"), (7, "Down"), (11, "Enter"),
+               (13, "Enter"), (15, "Escape"), (17, "Down"), (19, "Down"), (21, "Down"), (23, "Enter"),
+               (25, "Enter"), (27, "Left"), (29, "Down"), (31, "Left"), (33, "Left"), (35, "Left"),
+               (37, "Left"), (39, "Down"), (41, "Enter")]
+    rows = [key(frame, name) for frame, name in actions]
+    script = out / "open-local-cpu-input.json"
+    script.write_text(json.dumps(rows))
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as reserve:
+        reserve.bind(("0.0.0.0", 0))
+        port = reserve.getsockname()[1]
+        failed = run("create-lobby-failure", ["--no-intro", "--port", str(port), "--input-script", str(script), "--frames", "60"], expect_error=True)
+        assert failed["Page"] == "Seats" and failed["LobbySlots"][0]["Player"]["Cpu"], failed
+        assert all(slot["Type"] in (1, 5) for slot in failed["LobbySlots"]), failed
+    created = run("create-lobby-keeps-cpu", ["--no-intro", "--port", str(port), "--input-script", str(script), "--frames", "60"])
+    assert created["Page"] == "Seats" and created["LobbySlots"][0]["Player"]["Cpu"], created
+    assert [slot["Type"] for slot in created["LobbySlots"]] == [5, 0, 0, 0, 4, 4, 4, 4], created
+    script.write_text(json.dumps(rows + [key(61, "Escape"), key(63, "Up"), key(65, "Up"), key(67, "Enter")]))
+    returned = run("leave-online-restores-local", ["--no-intro", "--port", str(port), "--input-script", str(script), "--frames", "70"])
+    assert returned["Page"] == "Seats" and returned["LobbySlots"][0]["Player"]["Cpu"], returned
+    assert all(slot["Type"] in (1, 5) for slot in returned["LobbySlots"]), returned
+    print("CPU preserved when creating online; chosen capacity applied; failed creation and leaving restore local room types.")
+
+
 def verify_lobby_network():
     with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as reserve:
         reserve.bind(('127.0.0.1',0)); port=reserve.getsockname()[1]
-    keys=[(120,'Escape'),(122,'Down'),(124,'Down'),(126,'Down'),(128,'Enter'),(130,'Down'),(132,'Down'),(134,'Enter'),(136,'Down'),(138,'Enter'),(140,'Escape'),(142,'Right'),(144,'Enter'),(146,'Down'),(148,'Enter'),(150,'Escape'),(152,'Escape'),(154,'Escape')]
+    keys=[(120,'Escape'),(122,'Down'),(124,'Down'),(128,'Enter'),
+          (130,'Down'),(132,'Down'),(134,'Right'),(138,'Right'),(140,'Right'),(142,'Right'),(144,'Right'),
+          (148,'Right'),(152,'Right'),(154,'Right'),(156,'Right'),(158,'Right'),(164,'Escape'),(166,'Escape')]
     script=out/'online-capacity-input.json'
-    script.write_text(json.dumps([dict(From=f,To=f+1,Keys=[k]) for f,k in keys]))
+    script.write_text(json.dumps([dict(From=f,To=f+1,Keys=[k]) for f,k in keys] + [dict(From=136,To=147,Keys=['Enter']),dict(From=150,To=161,Keys=['Enter'])]))
     base=['--local-players','2','--port',str(port)]
     processes=[]
     for name,args in [
@@ -444,7 +590,7 @@ def main():
     settings_file = Path(env["XDG_DATA_HOME"]) / "FrogSmashersRebuilt/settings.json"
     settings_file.parent.mkdir(parents=True, exist_ok=True)
     settings_file.write_text(
-        json.dumps(dict(Fullscreen=False, VSync=False, MatchDefaults=dict(FirstMap=0)))
+        json.dumps(dict(Fullscreen=False, VSync=False))
     )
     verify_render_cadence()
     pause_script = verify_pause()
@@ -454,9 +600,12 @@ def main():
     record = verify_local_replay()
     verify_replay_exit(record)
     verify_lobby_menus()
+    verify_player_menu()
     if not args.quick:
         verify_arenas()
     if args.network:
+        verify_player_network_actions()
+        verify_online_creation()
         verify_lobby_network()
         verify_network()
     print("PASS: client input, replay and render cadence checks; captures in", out)

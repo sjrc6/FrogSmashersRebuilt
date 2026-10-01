@@ -53,7 +53,8 @@ def validate_packages(targets):
         for pattern in DEVELOPMENT_EXECUTABLES:
             if any(folder.rglob(pattern)):
                 raise SystemExit(f"{target}: development executable found in game package: {pattern}")
-        builds[target] = json.loads((folder / "BuildInfo.json").read_text(encoding="utf-8"))
+        build_info = ROOT / ".build/bin/FrogSmashers.Client" / f"release_{target}" / "BuildInfo.json"
+        builds[target] = json.loads(build_info.read_text(encoding="utf-8"))
         manifest_hash = hashlib.sha256((folder / "Content/content.json").read_bytes()).hexdigest().upper()
         if manifest_hash != builds[target]["ContentManifestSha256"]:
             raise SystemExit(f"{target}: published content does not match the build identity")

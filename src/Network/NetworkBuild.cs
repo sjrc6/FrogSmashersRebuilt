@@ -17,7 +17,7 @@ public static class NetworkBuild
         Convert.ToHexString(
             SHA256.HashData(
                 Encoding.UTF8.GetBytes(
-                    $"FrogSmashersRebuilt.Protocol.2|{coreModuleId:N}|{networkModuleId:N}|{contentHash}"
+                    $"FrogSmashersRebuilt.Protocol.3|{coreModuleId:N}|{networkModuleId:N}|{contentHash}"
                 )
             )
         );

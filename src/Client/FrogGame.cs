@@ -1,4 +1,5 @@
 using FrogSmashers.Core;
+using FrogSmashers.Network;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -41,7 +42,7 @@ public class FrogGame : Game
     {
         Options = options;
         Controls = new Controls(Settings);
-        Setup = new MatchSetup(Settings, options.Seed);
+        Setup = new MatchSetup(options.Seed);
         graphics = new GraphicsDeviceManager(this)
         {
             PreferredBackBufferWidth = Renderer.Width,
@@ -98,9 +99,14 @@ public class FrogGame : Game
         {
             for (int index = 0; index < Options.LocalPlayers; index++)
             {
-                Setup.Lobby.Join(Options.Demo ? -1 : index);
+                Setup.Lobby.Join(Options.Demo && Options.Host != null ? -1 : index);
             }
 
+            if (Options.Host != null)
+                Setup.Lobby.Roster.ConfigureEmpty(
+                    Options.Host == "steam" ? SlotType.Private : SlotType.Open,
+                    Options.Slots
+                );
             BeginLobby(Options.Host ?? Options.Join!, Options.Host != null);
         }
         else if (Options.Replay != null)
@@ -131,7 +137,7 @@ public class FrogGame : Game
 
     protected override void Update(GameTime gameTime)
     {
-        Controls.Poll();
+        Controls.Poll(IsActive || Options.Offscreen);
         double elapsedSeconds = ElapsedSeconds(gameTime);
         Toasts.Update(elapsedSeconds);
         CheckLobbyReturn();
@@ -192,13 +198,10 @@ public class FrogGame : Game
             return;
         }
 
+        if (Online.Lobby?.Connected == true)
+            Lobby.RememberParty();
         Match.Close();
         Online.CloseLobby();
-        if (Setup.Seats.Count == 0)
-        {
-            Setup.Lobby.Join(0);
-        }
-
         BeginLobby("steam:" + invitation, false);
     }
 
@@ -255,7 +258,8 @@ public class FrogGame : Game
                 Setup.Lobby.Roster.Capacity,
                 Setup.Lobby.Roster,
                 Setup.CreateOptions(Options.MapOrder),
-                Menus.AllowLan
+                Menus.AllowLan,
+                Menus.HintDevice
             );
             Lobby.Open();
             Menus.ShowConnecting();
@@ -271,7 +275,7 @@ public class FrogGame : Game
     {
         try
         {
-            Match.StartNetwork(Online.Lobby!, Setup.Seats);
+            Match.StartNetwork(Online.Lobby!);
             matchGeneration = Online.Lobby!.Generation;
             Console.WriteLine(
                 $"Connected peer {Online.Lobby!.LocalPeer}; players {Match.World!.Players.Length}; initial hash {Match.World.HashState():x16}"
@@ -327,8 +331,7 @@ public class FrogGame : Game
 
     internal void LeaveOnlineLobby()
     {
-        if (Online.Lobby?.Connected == true)
-            Lobby.RememberParty();
+        Lobby.RememberParty();
         Match.Close();
         Online.CloseLobby();
         Cinematics.Stop();
@@ -375,7 +378,6 @@ public class FrogGame : Game
 
     internal void SaveSettings()
     {
-        Settings.MatchDefaults = Setup.Preferences with { };
         Online.Lobby?.SetMatchSettings(
             System.Text.Json.JsonSerializer.Serialize(Setup.CreateOptions(Options.MapOrder))
         );
