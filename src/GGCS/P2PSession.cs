@@ -19,12 +19,14 @@ public sealed class P2PSession<TInput, TState>
     private readonly Dictionary<int, int[]> peerHandles;
     private readonly Dictionary<int, DelayedInputQueue<TInput>> delays = new();
     private readonly Dictionary<int, SortedDictionary<int, ulong>> remoteChecksums = new();
+    private readonly Dictionary<int, int> verifiedStateFrames = new();
     private readonly ConnectionStatus[] statuses;
     private readonly int[] localHandles;
     private readonly SessionEvents events = new();
     private int submittedFrame = -1;
     private int nextOutgoingFrame;
     private int lastChecksumFrame = -1;
+    private int requestedChecksumFrame = -1;
     private bool stopped;
     private bool hasSynchronized;
     private uint disconnectMask;
@@ -84,9 +86,12 @@ public sealed class P2PSession<TInput, TState>
     }
 
     public int CurrentFrame => engine.CurrentFrame;
+    public int LastSubmittedFrame => submittedFrame;
     public int ConfirmedFrame => engine.ConfirmedFrame;
     public IReadOnlyList<int> LocalPlayerHandles => Array.AsReadOnly(localHandles);
     public bool IsInputObserver => localHandles.Length == 0;
+    public int ConfirmedInputFramesAvailable =>
+        (int)Math.Clamp((long)GloballyKnownFrame() - CurrentFrame + 1, 0, options.HistoryFrames);
     public SessionState State =>
         stopped ? SessionState.Disconnected
         : peers.Values.Any(p => p.State == SessionState.Synchronizing) ? SessionState.Synchronizing
@@ -108,6 +113,22 @@ public sealed class P2PSession<TInput, TState>
 
     public bool TryGetChecksum(int stateFrame, out ulong checksum) => engine.TryGetChecksum(stateFrame, out checksum);
 
+    public bool ConfirmState(int stateFrame)
+    {
+        if (stateFrame < 0)
+            throw new ArgumentOutOfRangeException(nameof(stateFrame));
+        requestedChecksumFrame = Math.Max(requestedChecksumFrame, stateFrame);
+        CheckDesyncs();
+        return !stopped
+            && !HasPendingDisconnect
+            && stateFrame <= ConfirmedFrame + 1
+            && peers.All(peer =>
+                peerHandles[peer.Key].All(handle => statuses[handle].Disconnected)
+                || peer.Value.State == SessionState.Running
+                    && verifiedStateFrames.GetValueOrDefault(peer.Key, -1) >= stateFrame
+            );
+    }
+
     public bool TryGetConfirmedState(int stateFrame, out SavedState<TState> state)
     {
         state = default;
@@ -122,11 +143,30 @@ public sealed class P2PSession<TInput, TState>
 
     public PeerNetworkStats GetNetworkStats(int peerId) => FindPeer(peerId).Stats;
 
+    public IReadOnlyList<PeerNetworkStats> NetworkStats => AllPeers().Select(peer => peer.Stats).ToArray();
+
     public void SetInputDelay(int playerHandle, int delay)
     {
         if (!delays.TryGetValue(playerHandle, out var queue))
             throw new ArgumentException("Only a local player's input delay can be changed.", nameof(playerHandle));
         queue.SetDelay(delay);
+    }
+
+    public void SeedLocalInputDelay(int playerHandle, ReadOnlySpan<TInput> inputs)
+    {
+        if (CurrentFrame != 0 || submittedFrame >= 0 || !delays.TryGetValue(playerHandle, out var queue))
+            throw new InvalidOperationException("Seed a local player's delay before the session advances.");
+        queue.Seed(inputs);
+        for (int frame = 0; frame < inputs.Length; frame++)
+            engine.AddInput(playerHandle, frame, inputs[frame]);
+        statuses[playerHandle] = new(false, inputs.Length - 1);
+    }
+
+    public bool TryGetSubmittedInput(int playerHandle, int frame, out TInput input)
+    {
+        if (!delays.ContainsKey(playerHandle))
+            throw new ArgumentException("Only the owning peer can export its submitted inputs.", nameof(playerHandle));
+        return engine.TryGetInput(playerHandle, frame, out input);
     }
 
     public void AddInputObserver(int peerId)
@@ -135,6 +175,7 @@ public sealed class P2PSession<TInput, TState>
         if (CurrentFrame != 0 || submittedFrame >= 0 || IsInputObserver)
             throw new InvalidOperationException("Register raw-input observers on playing machines before frame zero.");
         observers.Add(peerId, CreatePeer(peerId, localHandles.Length * wire.InputSize, 0));
+        remoteChecksums.Add(peerId, new());
     }
 
     public void AddSpectator(int peerId, int startFrame = 0)
@@ -204,6 +245,15 @@ public sealed class P2PSession<TInput, TState>
             SetPeerProgress(peer);
             peer.Poll(CurrentFrame, statuses);
             ReceiveEvents(peerId, peer, false);
+            if (remoteChecksums.TryGetValue(peerId, out var checksums))
+            {
+                while (peer.TryReceiveChecksum(out var checksum))
+                {
+                    checksums[checksum.Frame] = checksum.Checksum;
+                    while (checksums.Count > options.HistoryFrames)
+                        checksums.Remove(checksums.First().Key);
+                }
+            }
         }
         if (stopped)
             return;
@@ -597,13 +647,13 @@ public sealed class P2PSession<TInput, TState>
 
     private void CheckDesyncs()
     {
-        if (options.ChecksumInterval == 0)
-            return;
         int latest = ConfirmedFrame + 1;
-        int frame = latest - latest % options.ChecksumInterval;
+        int frame = options.ChecksumInterval == 0 ? -1 : latest - latest % options.ChecksumInterval;
+        if (requestedChecksumFrame <= latest)
+            frame = Math.Max(frame, requestedChecksumFrame);
         if (frame > lastChecksumFrame && engine.TryGetChecksum(frame, out ulong hash))
         {
-            foreach (var peer in peers.Values)
+            foreach (var peer in peers.Values.Concat(observers.Values))
                 if (peer.State == SessionState.Running)
                     peer.QueueChecksum(frame, hash);
             lastChecksumFrame = frame;
@@ -629,6 +679,14 @@ public sealed class P2PSession<TInput, TState>
                             $"Local {localHash:x16}; remote {remoteHash:x16}."
                         )
                     );
+                else
+                {
+                    verifiedStateFrames[peerId] = Math.Max(
+                        verifiedStateFrames.GetValueOrDefault(peerId, -1),
+                        remoteFrame
+                    );
+                    requestedChecksumFrame = Math.Max(requestedChecksumFrame, remoteFrame);
+                }
                 checksums.Remove(remoteFrame);
             }
         }

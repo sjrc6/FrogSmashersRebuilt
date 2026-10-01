@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="../Core/FrogSmashers.Core.csproj" />
+    <ProjectReference Include="../GGCS/GGCS.csproj" />
     <PackageReference Include="Steamworks.NET" Version="2024.8.0" />
     <None
       Include="Native/linux-x64/libsteam_api.so"

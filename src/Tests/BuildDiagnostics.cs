@@ -15,6 +15,7 @@ internal static class BuildDiagnostics
     {
         string core = Path.Combine(directory, "FrogSmashers.Core.dll");
         string network = Path.Combine(directory, "FrogSmashers.Network.dll");
+        string rollback = Path.Combine(directory, "GGCS.dll");
         string content = Path.Combine(directory, "Content", "content.json");
         Guid ModuleId(string file)
         {
@@ -27,19 +28,22 @@ internal static class BuildDiagnostics
         string Sha(string file) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(file)));
         Guid coreId = ModuleId(core);
         Guid networkId = ModuleId(network);
+        Guid rollbackId = ModuleId(rollback);
         string contentHash = GameContent.Load(content).ContentHash;
         Console.WriteLine(
             JsonSerializer.Serialize(
                 new
                 {
-                    Protocol = 2,
+                    NetworkBuild.Protocol,
                     CoreModuleId = coreId,
                     NetworkModuleId = networkId,
+                    RollbackModuleId = rollbackId,
                     CoreSha256 = Sha(core),
                     NetworkSha256 = Sha(network),
+                    RollbackSha256 = Sha(rollback),
                     ContentManifestSha256 = Sha(content),
                     ContentHash = contentHash,
-                    NetworkFingerprint = NetworkBuild.ContentFingerprint(contentHash, coreId, networkId),
+                    NetworkFingerprint = NetworkBuild.ContentFingerprint(contentHash, coreId, networkId, rollbackId),
                 },
                 new JsonSerializerOptions { WriteIndented = true }
             )

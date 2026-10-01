@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using FrogSmashers.Core;
 using FrogSmashers.Network;
 using static FrogSmashers.Tests.TestAssert;
 using static FrogSmashers.Tests.TestFixtures;
@@ -86,15 +87,37 @@ internal static class UdpProcessTests
                     [new(0, Spawned: true), new(1, Spawned: true)],
                     "test"
                 );
+        var lobbySimulation = new LobbySimulation(
+            new World(Map(), new GameRules { Lobby = true, PlayerCount = 8 }, 13),
+            lobby.Roster
+        );
+        lobby.AttachSimulation(lobbySimulation);
         var timer = Stopwatch.StartNew();
         while (!lobby.Ready && timer.Elapsed.TotalSeconds < 10)
         {
             lobby.Poll();
-            if (lobby.IsHost && !lobby.Starting && lobby.Roster.Count == 4)
+            if (
+                lobby.IsHost
+                && lobby.SimulationReady
+                && !lobby.Starting
+                && lobby.Roster.Count == 4
+                && lobbySimulation.World.TickNumber >= 90
+            )
                 lobby.StartMatch("{}");
             if (lobby.Error != null)
             {
                 throw new Exception(lobby.Error);
+            }
+
+            if (lobby.LobbySession is { } lobbySession)
+            {
+                lobbySession.TryAdvance(
+                    lobbySession
+                        .LocalSlots.Select(handle => new RollbackInput(Input(lobbySimulation.World.TickNumber, handle)))
+                        .ToArray()
+                );
+                if (lobbySession.Error != null)
+                    throw new Exception(lobbySession.Error);
             }
 
             Thread.Sleep(1);
@@ -102,16 +125,23 @@ internal static class UdpProcessTests
 
         if (!lobby.Ready)
         {
-            throw new Exception("UDP lobby did not start");
+            throw new Exception($"UDP lobby did not start: {lobby.Status}, tick {lobbySimulation.World.TickNumber}");
         }
 
         var w = MakeWorld(4);
         using var session = new NetworkSession(
             w,
-            new SessionConfig(lobby.PeerSlots, lobby.LocalPeer, "test", w),
+            new SessionConfig(
+                lobby.PeerSlots,
+                lobby.LocalPeer,
+                "test",
+                w,
+                lobby.SessionId,
+                activePeers: lobby.PeerIds.ToArray()
+            ),
             lobby.CreateTransport()
         );
-        while (timer.Elapsed.TotalSeconds < 15 && (w.TickNumber < 480 || session.ConfirmedFrame < 479))
+        while (timer.Elapsed.TotalSeconds < 15 && !session.AllPeersConfirmed(479))
         {
             session.Poll();
             if (session.Error != null)
@@ -127,7 +157,7 @@ internal static class UdpProcessTests
             Thread.Sleep(1);
         }
 
-        if (w.TickNumber != 480 || session.ConfirmedFrame != 479)
+        if (w.TickNumber != 480 || !session.AllPeersConfirmed(479))
         {
             throw new Exception("UDP session stalled");
         }

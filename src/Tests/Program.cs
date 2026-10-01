@@ -88,10 +88,15 @@ internal static class Program
             NetworkSessionTests.ClockDrift();
             NetworkSessionTests.RenderRateTraffic();
             NetworkSessionTests.TerminalBarrier();
+            NetworkSessionTests.CheckpointContinuation();
+            NetworkSessionTests.InputLatching();
+            NetworkSessionTests.HighLatencyThroughput();
             NetworkProtocolTests.PacketValidationAndDesync();
             NetworkProtocolTests.PacketStructure();
             LobbyRosterTests.Run();
+            LobbySimulationTests.Run();
             SpectatorNetworkTests.Run();
+            MeshWireTests.Run(!args.Contains("--no-sockets"));
             LobbyTests.Run(Check);
             if (!args.Contains("--no-sockets"))
             {

@@ -1,13 +1,14 @@
 namespace FrogSmashers.Network;
 
-internal sealed partial class RelayLobby
+internal sealed partial class MeshLobby
 {
     public bool SetPlayers(LobbyPlayer[] players)
     {
-        if (!Connected || Starting)
+        if (!Connected || Starting || checkpoint != null)
             return false;
         if (IsHost)
         {
+            RefreshSelections();
             if (!Roster.SetPlayers(0, players))
                 return false;
             Changed();
@@ -24,7 +25,7 @@ internal sealed partial class RelayLobby
 
     public bool EditSlot(int room, SlotType type)
     {
-        if (!IsHost || Starting || !Roster.Edit(room, type))
+        if (!IsHost || Starting || checkpoint != null || !Roster.Edit(room, type))
             return false;
         Changed();
         return true;
@@ -32,7 +33,7 @@ internal sealed partial class RelayLobby
 
     public bool ApplySlotType(SlotType type)
     {
-        if (!IsHost || Starting || !Enum.IsDefined(type))
+        if (!IsHost || Starting || checkpoint != null || !Enum.IsDefined(type))
             return false;
         Roster.ApplySlotType(type);
         Changed();
@@ -41,7 +42,7 @@ internal sealed partial class RelayLobby
 
     public bool RemovePlayer(int peer, int id)
     {
-        if (!Connected || Starting || !IsHost && peer != LocalPeer)
+        if (!Connected || Starting || checkpoint != null || !IsHost && peer != LocalPeer)
             return false;
         var player = Roster.Players(peer).FirstOrDefault(player => player.Id == id);
         if (player == null)
@@ -62,7 +63,7 @@ internal sealed partial class RelayLobby
 
     public bool SetSpectating(int peer, bool spectating)
     {
-        if (!Connected || Starting || !IsHost && peer != LocalPeer)
+        if (!Connected || Starting || checkpoint != null || !IsHost && peer != LocalPeer)
             return false;
         var validation = CopyRoster();
         if (!validation.SetSpectating(peer, spectating, IsHost ? AccessFor(peer) : localAccess))

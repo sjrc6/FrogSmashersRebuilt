@@ -8,6 +8,7 @@ internal static class CoreTests
     {
         DelayedInputsFillAndDropWithoutGaps();
         DelayedInputsRejectInvalidSubmissions();
+        DelayedInputsContinueFromCheckpoint();
         PredictionStopsAndRepairsAtTheBoundary();
         MatchingPredictionsNeedNoReplay();
         PredictionUsesAgeAndClearsEdges();
@@ -62,6 +63,25 @@ internal static class CoreTests
         Check.Throws<ArgumentOutOfRangeException>(() => queue.SetDelay(-1), "Negative delay rejected");
         Check.Throws<ArgumentOutOfRangeException>(() => queue.SetDelay(3), "Excess delay rejected");
         AssertInputs(queue.Submit(1, 2), (1, 2));
+    }
+
+    private static void DelayedInputsContinueFromCheckpoint()
+    {
+        var queue = new DelayedInputQueue<int>(2, 8);
+        queue.Seed([4, 7]);
+        AssertInputs(queue.Submit(0, 9), (2, 9));
+        AssertInputs(queue.Submit(1, 11), (3, 11));
+        queue.SetDelay(4);
+        AssertInputs(queue.Submit(2, 13), (4, 11), (5, 11), (6, 13));
+        Check.Throws<InvalidOperationException>(
+            () => queue.Seed([1, 2, 3, 4]),
+            "Cannot replace an active delay prefix"
+        );
+        var empty = new DelayedInputQueue<int>(2, 8);
+        Check.Throws<InvalidOperationException>(() => empty.Seed([1]), "Seed must fill the delay exactly");
+        empty.Seed([2, 6]);
+        empty.SetDelay(4);
+        AssertInputs(empty.Submit(0, 8), (2, 6), (3, 6), (4, 8));
     }
 
     private static void PredictionStopsAndRepairsAtTheBoundary()

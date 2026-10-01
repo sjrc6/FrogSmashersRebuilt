@@ -23,8 +23,10 @@ DEVELOPMENT_EXECUTABLES = (
 PROTOCOL_FIELDS = (
     "CoreModuleId",
     "NetworkModuleId",
+    "RollbackModuleId",
     "CoreSha256",
     "NetworkSha256",
+    "RollbackSha256",
     "ContentManifestSha256",
     "NetworkFingerprint",
 )

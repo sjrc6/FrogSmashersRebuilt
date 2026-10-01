@@ -125,6 +125,11 @@ internal sealed partial class MenuController
 
     private void RemoveSelectedPlayer()
     {
+        if (game.Lobby.RosterUpdating)
+        {
+            game.Toasts.Show("LOBBY UPDATING");
+            return;
+        }
         if (game.Lobby.Roster.Slots[SelectedSeat].Player is not { } player)
             return;
         if (player.Peer != game.Lobby.LocalPeer)

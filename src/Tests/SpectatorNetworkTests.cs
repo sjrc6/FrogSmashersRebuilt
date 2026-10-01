@@ -8,10 +8,35 @@ internal static class SpectatorNetworkTests
 {
     public static void Run()
     {
+        UnlinkedSpectatorsDoNotRemovePlayingPeers();
         Verify(false, false);
         Verify(true, false);
         Verify(false, true);
         Verify(false, false, 8);
+    }
+
+    private static void UnlinkedSpectatorsDoNotRemovePlayingPeers()
+    {
+        int[][] slots =
+        [
+            [0],
+            [1],
+            [],
+        ];
+        var wire = new SimulatedNetwork(3, 72, 1, 0, 0, 0);
+        var world = MakeWorld(2);
+        using var session = new NetworkSession(
+            world,
+            new SessionConfig(slots, 1, "removal", world, 1),
+            wire.Endpoint(1)
+        );
+        session.DisconnectPeer(2);
+        session.DisconnectPeer(3);
+        session.DisconnectPeer(1);
+        Check(
+            session.Error == null && session.PeerStats.Count == 1,
+            "Spectators, pending admissions and the local peer have no removable active mesh link"
+        );
     }
 
     private static void Verify(bool hostSpectates, bool absentObserver, int playerCount = 2)
@@ -41,7 +66,7 @@ internal static class SpectatorNetworkTests
                 var world = MakeWorld(playerCount);
                 return new NetworkSession(
                     world,
-                    new SessionConfig(slots, peer, "spectators", world),
+                    new SessionConfig(slots, peer, "spectators", world, 1),
                     wire.Endpoint(peer)
                 );
             })
@@ -55,7 +80,7 @@ internal static class SpectatorNetworkTests
             {
                 session.Poll();
                 Check(session.Error == null, session.Error ?? "Spectator network failure");
-                if (session.World.TickNumber < target && !session.ShouldWaitForPeers)
+                if (session.World.TickNumber < target)
                     session.TryAdvance(
                         session.LocalSlots.Select(slot => Input(session.World.TickNumber, slot)).ToArray()
                     );
@@ -74,7 +99,7 @@ internal static class SpectatorNetworkTests
         {
             Check(
                 session.World.TickNumber == target && session.AllPeersConfirmed(target - 1),
-                "Players and spectators reach the final barrier without waiting for absent observers"
+                $"Players and spectators reach the final barrier without waiting for absent observers: hostSpectates={hostSpectates}, absent={absentObserver}, peer={session.LocalPeer}, tick={session.World.TickNumber}, confirmed={session.ConfirmedFrame}, wait={session.WaitReason}"
             );
             Check(
                 session.World.HashState() == baseline.HashState(),

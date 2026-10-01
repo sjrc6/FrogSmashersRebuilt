@@ -15,6 +15,7 @@ internal sealed class SimulatedNetwork
     public bool Blackout { get; set; }
     public long PacketsSent { get; private set; }
     public long BytesSent { get; private set; }
+    public int MaximumPacketBytes { get; private set; }
 
     public SimulatedNetwork(
         int peers,
@@ -64,6 +65,7 @@ internal sealed class SimulatedNetwork
     {
         PacketsSent++;
         BytesSent += data.Length;
+        MaximumPacketBytes = Math.Max(MaximumPacketBytes, data.Length);
         if (Blackout || Next() % 100 < LossPercent)
         {
             return;

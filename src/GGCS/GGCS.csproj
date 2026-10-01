@@ -6,7 +6,7 @@
     <None
       Update="THIRD-PARTY-NOTICES.txt"
       CopyToOutputDirectory="PreserveNewest"
-      TargetPath="Notices/GGCS-THIRD-PARTY-NOTICES.txt"
+      TargetPath="licenses/GGCS-THIRD-PARTY-NOTICES.txt"
     />
     <InternalsVisibleTo Include="GGCS.Tests" />
   </ItemGroup>

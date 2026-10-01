@@ -24,6 +24,7 @@ internal sealed partial class MenuController
 
     private string? PlayerActionDisabledReason(LobbyPlayer player) =>
         ShowingMatch || game.Lobby.Online?.Starting == true ? "LOBBY ONLY"
+        : game.Lobby.RosterUpdating ? "LOBBY UPDATING"
         : !game.Lobby.CanManage(player) ? "HOST ONLY"
         : null;
 

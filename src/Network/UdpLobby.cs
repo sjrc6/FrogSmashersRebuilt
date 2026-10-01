@@ -5,7 +5,7 @@ namespace FrogSmashers.Network;
 
 public sealed class UdpLobby : GameLobby
 {
-    private readonly RelayLobby lobby;
+    private readonly MeshLobby lobby;
     protected override IGameLobby Active => lobby;
     public override bool IsHost => lobby.IsHost;
 
@@ -53,7 +53,7 @@ public sealed class UdpLobby : GameLobby
     {
         try
         {
-            lobby = new RelayLobby(wire, host, capacity, players, hash, settings, initialRooms);
+            lobby = new MeshLobby(wire, host, capacity, players, hash, settings, initialRooms);
         }
         catch
         {

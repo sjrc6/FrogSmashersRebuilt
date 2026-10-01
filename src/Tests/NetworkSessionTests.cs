@@ -19,7 +19,7 @@ internal static class NetworkSessionTests
             .Select(p =>
             {
                 var w = MakeWorld(players);
-                return new NetworkSession(w, new SessionConfig(slots, p, "test-content", w), network.Endpoint(p));
+                return new NetworkSession(w, new SessionConfig(slots, p, "test-content", w, 1), network.Endpoint(p));
             })
             .ToArray();
         const int target = 1200;
@@ -84,6 +84,7 @@ internal static class NetworkSessionTests
         }
 
         Check(stalls > 0, "Burst-loss test did not stall at rollback limit");
+        Check(network.MaximumPacketBytes + 15 <= 1200, "Rollback packets plus the mesh envelope fit one UDP fragment");
         Console.WriteLine(
             $"Rollback: {peers} peers/{players} players, {target} ticks, {sessions.Sum(s => s.RollbackCount)} rewinds, {stalls} stalls, {network.BytesSent / 1024} KiB"
         );
@@ -102,10 +103,11 @@ internal static class NetworkSessionTests
             .Select(p =>
             {
                 var w = MakeWorld(2);
-                return new NetworkSession(w, new SessionConfig(slots, p, "clock", w), network.Endpoint(p));
+                return new NetworkSession(w, new SessionConfig(slots, p, "clock", w, 1), network.Endpoint(p));
             })
             .ToArray();
-        int pauses = 0;
+        int slowdowns = 0;
+        double[] accumulator = new double[2];
         int maxLead = 0;
         for (int wall = 0; wall < 5000 && sessions.Any(s => s.World.TickNumber < 900 || s.ConfirmedFrame < 899); wall++)
         {
@@ -119,16 +121,18 @@ internal static class NetworkSessionTests
             {
                 var s = sessions[p];
                 Check(s.Error == null, s.Error ?? "Clock test error");
-                int attempts = p == 0 ? (wall % 17 == 0 ? 2 : 1) : (wall % 23 == 0 ? 0 : 1);
-                for (int n = 0; n < attempts && s.World.TickNumber < 900; n++)
+                accumulator[p] += p == 0 ? 1.025 : 0.975;
+                while (accumulator[p] >= s.FrameDurationMultiplier && s.World.TickNumber < 900)
                 {
-                    if (s.ShouldWaitForPeers)
+                    double duration = s.FrameDurationMultiplier;
+                    if (duration > 1)
+                        slowdowns++;
+                    if (!s.TryAdvance([Input(s.World.TickNumber, p)]))
                     {
-                        pauses++;
+                        accumulator[p] = Math.Min(accumulator[p], duration);
                         break;
                     }
-
-                    s.TryAdvance([Input(s.World.TickNumber, p)]);
+                    accumulator[p] -= duration;
                 }
             }
 
@@ -140,8 +144,8 @@ internal static class NetworkSessionTests
             "Clock drift pacing failed to converge"
         );
         Check(sessions[0].World.HashState() == sessions[1].World.HashState(), "Clock drift changed simulation");
-        Check(pauses > 0 && maxLead < 24, "Pacing did not bound clock lead");
-        Console.WriteLine($"Clock drift: bounded lead {maxLead} ticks, {pauses} pace waits");
+        Check(slowdowns > 0 && maxLead < 24, "Pacing did not bound clock lead");
+        Console.WriteLine($"Clock drift: bounded lead {maxLead} ticks, {slowdowns} paced ticks");
         foreach (var s in sessions)
         {
             s.Dispose();
@@ -150,49 +154,258 @@ internal static class NetworkSessionTests
 
     public static void RenderRateTraffic()
     {
-        const int peers = 8;
-        const int target = 240;
-        var network = new SimulatedNetwork(peers, 45, 1, 0, 0, 0);
-        var slots = Enumerable.Range(0, peers).Select(p => new[] { p }).ToArray();
-        var sessions = Enumerable
-            .Range(0, peers)
-            .Select(p =>
-            {
-                var w = MakeWorld(peers);
-                return new NetworkSession(w, new SessionConfig(slots, p, "fps", w), network.Endpoint(p));
-            })
-            .ToArray();
-        for (int tick = 0; tick < target; tick++)
+        long baseline = Run(1);
+        long highRate = Run(16);
+        Check(highRate <= baseline * 1.05, "Render polling multiplied network send rate");
+        Console.WriteLine($"Render-rate isolation: 1 poll {baseline} packets; 16 polls {highRate} packets");
+
+        static long Run(int polls)
         {
-            network.Advance();
-            for (int render = 0; render < 16; render++)
-            {
-                foreach (var s in sessions)
+            const int peers = 8;
+            var network = new SimulatedNetwork(peers, 45, 1, 0, 0, 0);
+            var slots = Enumerable.Range(0, peers).Select(peer => new[] { peer }).ToArray();
+            var sessions = Enumerable
+                .Range(0, peers)
+                .Select(peer =>
                 {
-                    s.Poll();
+                    var world = MakeWorld(peers);
+                    return new NetworkSession(
+                        world,
+                        new SessionConfig(slots, peer, "fps", world, 1),
+                        network.Endpoint(peer)
+                    );
+                })
+                .ToArray();
+            Synchronize(network, sessions);
+            long started = network.PacketsSent;
+            for (int tick = 0; tick < 240; tick++)
+            {
+                network.Advance();
+                for (int poll = 0; poll < polls; poll++)
+                    foreach (var session in sessions)
+                        session.Poll();
+                foreach (var session in sessions)
+                {
+                    Check(
+                        session.TryAdvance([Input(session.World.TickNumber, session.LocalPeer)]),
+                        "High-render-rate session stalled"
+                    );
+                    Check(session.Error == null, session.Error ?? "High-FPS network error");
                 }
             }
+            long packets = network.PacketsSent - started;
+            foreach (var session in sessions)
+                session.Dispose();
+            return packets;
+        }
+    }
 
-            foreach (var s in sessions)
+    internal static void Synchronize(SimulatedNetwork network, NetworkSession[] sessions)
+    {
+        for (int wall = 0; wall < 3000 && sessions.Any(session => session.State != GGCS.SessionState.Running); wall++)
+        {
+            network.Advance();
+            foreach (var session in sessions)
             {
-                checkAdvance(s);
+                session.Poll();
+                Check(session.Error == null, session.Error ?? "Session failed to synchronize");
             }
         }
+        Check(sessions.All(session => session.State == GGCS.SessionState.Running), "Mesh handshake did not complete");
+    }
 
-        void checkAdvance(NetworkSession s)
+    public static void CheckpointContinuation()
+    {
+        int[][] slots =
+        [
+            [0],
+            [1],
+        ];
+        var wire = new SimulatedNetwork(2, 713, 5, 3, 6, 2);
+        NetworkSession[] sessions = Enumerable
+            .Range(0, 2)
+            .Select(peer =>
+            {
+                var world = MakeWorld(2);
+                return new NetworkSession(
+                    world,
+                    new SessionConfig(slots, peer, "checkpoint", world, 10),
+                    wire.Endpoint(peer)
+                );
+            })
+            .ToArray();
+        const int boundary = 173;
+        foreach (var session in sessions)
+            session.StopAtTick(boundary);
+        RunUntil(boundary);
+        var checkpoints = new byte[2][];
+        var initialInputs = new Dictionary<int, RollbackInput[]>();
+        foreach (var session in sessions)
         {
-            Check(s.TryAdvance([Input(s.World.TickNumber, s.LocalPeer)]), "High-render-rate session stalled");
-            Check(s.Error == null, s.Error ?? "High-FPS network error");
+            Check(
+                session.TryGetConfirmedCheckpoint(boundary, out checkpoints[session.LocalPeer]),
+                "Confirmed checkpoint is available"
+            );
+            initialInputs.Add(session.LocalSlots[0], session.ExportPendingLocalInputs(boundary)[0]);
+            session.Dispose();
         }
+        Check(checkpoints[0].SequenceEqual(checkpoints[1]), "Checkpoint states agree at the boundary");
+        sessions = Enumerable
+            .Range(0, 2)
+            .Select(peer =>
+            {
+                var world = MakeWorld(2);
+                world.Restore(checkpoints[peer]);
+                return new NetworkSession(
+                    world,
+                    new SessionConfig(slots, peer, "checkpoint", world, 11, initialInputs: initialInputs),
+                    wire.Endpoint(peer)
+                );
+            })
+            .ToArray();
+        RunUntil(550);
+        var expected = MakeWorld(2);
+        for (int tick = 0; tick < 550; tick++)
+            expected.Tick([Input(tick - 2, 0), Input(tick - 2, 1)]);
+        foreach (var session in sessions)
+        {
+            Check(
+                session.World.HashState() == expected.HashState(),
+                "Checkpoint restart preserved delayed inputs and world tick"
+            );
+            session.Dispose();
+        }
+        Console.WriteLine("Checkpoint continuation: pending delayed inputs survive a fresh generation");
 
-        Check(network.PacketsSent <= peers * (peers - 1) * (target + 2), "Render polling multiplied network send rate");
-        Console.WriteLine(
-            $"Render-rate isolation: 16 polls/tick, {network.PacketsSent} packets for 8 peers/{target} ticks"
+        void RunUntil(int target)
+        {
+            for (int wall = 0; wall < 3000 && sessions.Any(session => !session.AllPeersConfirmed(target - 1)); wall++)
+            {
+                wire.Advance();
+                foreach (var session in sessions)
+                {
+                    session.Poll();
+                    Check(session.Error == null, session.Error ?? "Checkpoint session failed");
+                    if (session.World.TickNumber < target)
+                        session.TryAdvance([Input(session.World.TickNumber, session.LocalPeer)]);
+                }
+            }
+            Check(
+                sessions.All(session => session.World.TickNumber == target && session.AllPeersConfirmed(target - 1)),
+                "Checkpoint boundary confirmed"
+            );
+        }
+    }
+
+    public static void InputLatching()
+    {
+        int[][] slots =
+        [
+            [0],
+            [1],
+        ];
+        var wire = new SimulatedNetwork(2, 312, 1, 0, 0, 0);
+        var sessions = Enumerable
+            .Range(0, 2)
+            .Select(peer =>
+            {
+                var world = MakeWorld(2);
+                return new NetworkSession(
+                    world,
+                    new SessionConfig(slots, peer, "latching", world, 1),
+                    wire.Endpoint(peer)
+                );
+            })
+            .ToArray();
+        Synchronize(wire, sessions);
+        NetworkSession fast = sessions[0];
+        for (int tick = 0; tick < 40; tick++)
+        {
+            wire.Advance();
+            if (!fast.TryAdvance([Input(fast.World.TickNumber, 0)]))
+                break;
+        }
+        Check(fast.LocalInputSubmitted, "First stalled attempt submits its input");
+        long latchedTick = fast.World.TickNumber;
+        Check(fast.LastSubmittedTick == latchedTick, "Submission reports the stalled tick");
+        Check(
+            !fast.TryAdvance([new FrogSmashers.Core.InputFrame(1, 1, FrogSmashers.Core.InputButtons.Attack)]),
+            "Missing peer still limits prediction"
         );
-        foreach (var s in sessions)
+        Check(
+            !fast.LocalInputSubmitted && fast.LastSubmittedTick == latchedTick,
+            "Retry does not consume a second set of button edges"
+        );
+        for (int wall = 0; wall < 1000 && sessions.Any(session => !session.AllPeersConfirmed(199)); wall++)
         {
-            s.Dispose();
+            wire.Advance();
+            foreach (var session in sessions)
+            {
+                session.Poll();
+                if (session.World.TickNumber < 200)
+                    session.TryAdvance([Input(session.World.TickNumber, session.LocalPeer)]);
+                Check(session.Error == null, session.Error ?? "Latched input session failed");
+            }
         }
+        var expected = MakeWorld(2);
+        for (int tick = 0; tick < 200; tick++)
+            expected.Tick([Input(tick - 2, 0), Input(tick - 2, 1)]);
+        foreach (var session in sessions)
+        {
+            Check(
+                session.World.TickNumber == 200 && session.World.HashState() == expected.HashState(),
+                "Waiting retains the first input without losing or rewriting it"
+            );
+            session.Dispose();
+        }
+        Console.WriteLine("Input latching: edges are consumed once even when a frame must wait");
+    }
+
+    public static void HighLatencyThroughput()
+    {
+        const int peers = 8;
+        var wire = new SimulatedNetwork(peers, 8721, 18, 3, 2, 1);
+        var slots = Enumerable.Range(0, peers).Select(peer => new[] { peer }).ToArray();
+        var sessions = Enumerable
+            .Range(0, peers)
+            .Select(peer =>
+            {
+                var world = MakeWorld(peers);
+                return new NetworkSession(
+                    world,
+                    new SessionConfig(slots, peer, "high-latency", world, 1),
+                    wire.Endpoint(peer)
+                );
+            })
+            .ToArray();
+        Synchronize(wire, sessions);
+        double[] accumulators = new double[peers];
+        for (int tick = 0; tick < 1200; tick++)
+        {
+            wire.Advance();
+            foreach (var session in sessions)
+            {
+                session.Poll();
+                Check(session.Error == null, session.Error ?? "High latency failure");
+                int peer = session.LocalPeer;
+                accumulators[peer] += 1;
+                while (accumulators[peer] >= session.FrameDurationMultiplier)
+                {
+                    double duration = session.FrameDurationMultiplier;
+                    if (!session.TryAdvance([Input(session.World.TickNumber, peer)]))
+                    {
+                        accumulators[peer] = Math.Min(accumulators[peer], duration);
+                        break;
+                    }
+                    accumulators[peer] -= duration;
+                }
+            }
+        }
+        double minimumRate = sessions.Min(session => session.World.TickNumber) / 10.0;
+        Check(minimumRate >= 116, $"300 ms RTT reduced normal game speed to {minimumRate:F1} Hz");
+        foreach (var session in sessions)
+            session.Dispose();
+        Console.WriteLine($"Game adapter: 8 machines, 300 ms RTT, jitter/loss, slowest {minimumRate:F1} Hz");
     }
 
     public static void TerminalBarrier()
@@ -206,7 +419,7 @@ internal static class NetworkSessionTests
             .Select(p =>
             {
                 var w = MakeWorld(peers);
-                return new NetworkSession(w, new SessionConfig(slots, p, "terminal", w), network.Endpoint(p));
+                return new NetworkSession(w, new SessionConfig(slots, p, "terminal", w, 1), network.Endpoint(p));
             })
             .ToArray();
         int firstFinished = -1;

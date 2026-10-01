@@ -27,6 +27,7 @@ public enum SimulationEventKind
     FlySpawn,
     Footstep,
     Launch,
+    LobbyPreview,
 }
 
 public readonly record struct SimulationEvent(

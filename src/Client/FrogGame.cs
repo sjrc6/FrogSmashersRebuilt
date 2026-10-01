@@ -16,6 +16,10 @@ public class FrogGame : Game
     private ToastRenderer toastRenderer = null!;
     private int matchGeneration;
     private bool showDiagnostics;
+    private World? diagnosticWorld;
+    private long diagnosticTick;
+    private double diagnosticSeconds;
+    private double diagnosticTickRate;
     private bool contentLoaded;
     internal LaunchOptions Options { get; }
     internal ClientSettings Settings { get; } = ClientSettings.Load();
@@ -182,6 +186,7 @@ public class FrogGame : Game
         if (Controls.Press(Keys.F3))
         {
             showDiagnostics = !showDiagnostics;
+            diagnosticWorld = null;
         }
 
         if (Controls.Press(Keys.F4))
@@ -397,9 +402,13 @@ public class FrogGame : Game
         Renderer.BeginUi();
         menuRenderer.Draw();
         timing.RecordFrame(gameTime.ElapsedGameTime.TotalSeconds);
-        if (showDiagnostics && Match.World != null && !Match.IsMenuBackground)
+        var diagnosticScene =
+            Menus.ShowingLobby ? Lobby.World
+            : Match.IsMenuBackground ? null
+            : Match.World;
+        if (showDiagnostics && diagnosticScene != null)
         {
-            DrawDiagnostics();
+            DrawDiagnostics(diagnosticScene, gameTime.ElapsedGameTime.TotalSeconds);
         }
         toastRenderer.Draw();
         Renderer.EndUi();
@@ -449,29 +458,50 @@ public class FrogGame : Game
         }
     }
 
-    private void DrawDiagnostics()
+    private void DrawDiagnostics(World world, double elapsedSeconds)
     {
-        var world = Match.World!;
-        Renderer.Panel(new Rectangle(18, 52, 520, 98), new Color(14, 23, 29, 236));
-        Renderer.Text(
-            $"{timing.FramesPerSecond:F0} FPS | 120 HZ | TICK {world.TickNumber}",
-            30,
-            62,
-            new Color(255, 211, 86),
-            1
-        );
-        Renderer.Text($"HASH {world.HashState():x16}", 30, 89, Color.White);
-        if (Match.Network != null)
+        if (diagnosticWorld != world || world.TickNumber < diagnosticTick)
         {
-            var network = Match.Network;
-            Renderer.Text(
-                $"PRED {network.PredictionDepth} | ROLLBACKS {network.RollbackCount} | CONF {network.ConfirmedFrame}",
-                30,
-                116,
-                new Color(173, 190, 200),
-                1
-            );
+            diagnosticWorld = world;
+            diagnosticTick = world.TickNumber;
+            diagnosticSeconds = 0;
+            diagnosticTickRate = 0;
         }
+        diagnosticSeconds += elapsedSeconds;
+        if (diagnosticSeconds >= 0.5)
+        {
+            diagnosticTickRate = (world.TickNumber - diagnosticTick) / diagnosticSeconds;
+            diagnosticTick = world.TickNumber;
+            diagnosticSeconds = 0;
+        }
+        var network = Menus.ShowingLobby ? Online.Lobby?.LobbySession : Match.Network;
+        var lines = new List<string>
+        {
+            $"{timing.FramesPerSecond:F0} FPS | {diagnosticTickRate:F1}/{World.TickRate} HZ | TICK {world.TickNumber}",
+            $"HASH {world.HashState():x16}",
+        };
+        if (network != null)
+        {
+            string status =
+                Menus.ShowingLobby && Online.Lobby!.Transitioning ? Online.Lobby.Status : network.WaitReason;
+            lines.Add($"PEER {network.LocalPeer} | {network.State} | {status}");
+            lines.Add(
+                $"CONF {network.ConfirmedFrame} | PRED {network.PredictionDepth} | AHEAD {network.FramesAheadOfPeers}"
+            );
+            lines.Add(
+                $"ROLLBACKS {network.RollbackCount} | REPLAYED {network.ResimulatedTicks} | BUFFER {network.BufferedFrames}"
+            );
+            lines.Add($"PACE {network.FrameDurationMultiplier:F2} | REJECTED {network.RejectedPackets}");
+            foreach (var peer in network.PeerStats)
+                lines.Add(
+                    $"P{peer.PeerId} {peer.State} | RTT {peer.RoundTripMilliseconds:F0} MS | PENDING {peer.PendingInputFrames} | AHEAD {peer.FramesAhead:F1}"
+                );
+        }
+        else if (Menus.ShowingLobby && Online.Lobby != null)
+            lines.Add(Online.Lobby.Status);
+        Renderer.Panel(new Rectangle(18, 52, 790, 20 + lines.Count * 27), new Color(14, 23, 29, 236));
+        for (int row = 0; row < lines.Count; row++)
+            Renderer.Text(lines[row], 30, 62 + row * 27, row == 0 ? new Color(255, 211, 86) : Color.White);
     }
 
     protected override void OnExiting(object sender, ExitingEventArgs args)

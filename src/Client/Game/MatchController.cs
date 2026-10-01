@@ -106,7 +106,14 @@ internal sealed class MatchController : IDisposable
         CreateWorld(options);
         Network = new NetworkSession(
             World!,
-            new SessionConfig(lobby.PeerSlots, lobby.LocalPeer, content.ContentHash, World!),
+            new SessionConfig(
+                lobby.PeerSlots,
+                lobby.LocalPeer,
+                content.ContentHash,
+                World!,
+                lobby.SessionId,
+                activePeers: lobby.PeerIds.ToArray()
+            ),
             lobby.CreateTransport()
         );
         ResetPresentation();
@@ -175,8 +182,11 @@ internal sealed class MatchController : IDisposable
         }
 
         accumulator += elapsedSeconds;
-        for (int step = 0; step < 30 && accumulator + 1e-9 >= TickSeconds; step++)
+        for (int step = 0; step < 30; step++)
         {
+            double tickDuration = TickSeconds * (Network?.FrameDurationMultiplier ?? 1);
+            if (accumulator + 1e-9 < tickDuration)
+                break;
             if (
                 World.Phase == MatchPhase.MatchFinished
                 || World.TickNumber >= tickLimit
@@ -193,11 +203,11 @@ internal sealed class MatchController : IDisposable
             }
             else if (!AdvanceNetwork())
             {
-                accumulator = Math.Min(accumulator, TickSeconds);
+                accumulator = Math.Min(accumulator, tickDuration);
                 break;
             }
 
-            accumulator -= TickSeconds;
+            accumulator -= tickDuration;
         }
 
         if (ambientMap != World.Map.Id)
@@ -246,11 +256,6 @@ internal sealed class MatchController : IDisposable
     private bool AdvanceNetwork()
     {
         var network = Network!;
-        if (network.ShouldWaitForPeers)
-        {
-            return false;
-        }
-
         var inputs = new InputFrame[network.LocalSlots.Length];
         for (int index = 0; index < inputs.Length; index++)
         {
@@ -260,18 +265,18 @@ internal sealed class MatchController : IDisposable
                 : controls.Read(seats[index].Device, consume: false);
         }
 
-        if (!network.TryAdvance(inputs))
+        bool advanced = network.TryAdvance(inputs);
+        if (network.LocalInputSubmitted)
         {
-            return false;
-        }
-
-        foreach (var seat in seats)
-        {
-            if (seat.Device >= 0)
+            foreach (var seat in seats)
             {
-                controls.Read(seat.Device);
+                if (seat.Device >= 0)
+                    controls.Read(seat.Device);
             }
         }
+
+        if (!advanced)
+            return false;
 
         PreviousWorld!.Restore(network.PreviousSnapshot);
         Reconcile();

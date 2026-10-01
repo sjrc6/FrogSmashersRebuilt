@@ -8,24 +8,28 @@ namespace FrogSmashers.Client;
 internal sealed partial class LobbyController(FrogGame game)
 {
     private const double TickSeconds = 1.0 / World.TickRate;
-    private readonly (int Peer, int Id)?[] occupants = new (int, int)?[8];
-    private readonly LobbyPlayer?[] previewPlayers = new LobbyPlayer?[8];
-    private readonly LobbyBots bots = new();
-    private long previewSoundId = long.MinValue;
+    private readonly Dictionary<int, RollbackInput> commands = new();
     private string receivedSettings = "";
     private string? lastNotice;
     private bool onlineTeams;
-    public bool TeamMode => IsHost ? game.Setup.Preferences.TeamMode : onlineTeams;
     private double accumulator;
-    private double sendClock;
-    public World? World { get; private set; }
+    private long rollbackCount;
+    private long lastAudioTick = -1;
+    private long lastVisualTick = -1;
+    private NetworkSession? presentedSession;
+    public bool TeamMode => IsHost ? game.Setup.Preferences.TeamMode : onlineTeams;
+    public LobbySimulation? Simulation { get; private set; }
+    public World? World => Simulation?.World;
     public World? PreviousWorld { get; private set; }
-    public float Interpolation => (float)Math.Clamp(accumulator / (IsHost ? TickSeconds : 1.0 / 30), 0, 1);
+    public NetworkSession? Network => Online?.LobbySession;
+    public float Interpolation => (float)Math.Clamp(accumulator / TickSeconds, 0, 1);
     public IGameLobby? Online => game.Online.Lobby;
     public bool IsHost => Online == null || Online.IsHost;
     public int LocalPeer => Online?.LocalPeer ?? 0;
-    public LobbyRoster Roster => Online is { Connected: true } ? Online.Roster : game.Setup.Lobby.Roster;
+    public LobbyRoster Roster =>
+        Online is { LobbySession: null } online ? online.Roster : Simulation?.Roster ?? game.Setup.Lobby.Roster;
     public LobbyPlayer[] LocalPlayers => Roster.Players(Math.Max(0, LocalPeer));
+    public bool RosterUpdating => Online?.Transitioning == true;
 
     public void Open()
     {
@@ -36,14 +40,18 @@ internal sealed partial class LobbyController(FrogGame game)
             MapOrder = [0],
         };
         var data = game.Assets.Data;
-        World = new World([data.PresentationScenes["Lobby"]], rules, 1, data.CharacterParameters);
+        var world = new World([data.PresentationScenes["Lobby"]], rules, 1, data.CharacterParameters);
         PreviousWorld = new World([data.PresentationScenes["Lobby"]], rules, 1, data.CharacterParameters);
-        Array.Clear(occupants);
-        Array.Clear(previewPlayers);
-        bots.Reset();
-        accumulator = sendClock = 0;
+        Simulation = new LobbySimulation(world, Online?.Roster ?? game.Setup.Lobby.Roster);
+        Online?.AttachSimulation(Simulation);
+        commands.Clear();
+        accumulator = 0;
         receivedSettings = "";
         lastNotice = null;
+        presentedSession = null;
+        rollbackCount = 0;
+        lastAudioTick = lastVisualTick = -1;
+        game.Controls.ClearPendingEdges();
         game.Renderer.Reset();
         game.Audio.Reset();
     }
@@ -60,17 +68,30 @@ internal sealed partial class LobbyController(FrogGame game)
     {
         game.Setup.ResetPreferences();
         game.Setup.Lobby.Roster.Reset();
-        World = PreviousWorld = null;
-        Array.Clear(occupants);
-        Array.Clear(previewPlayers);
-        accumulator = sendClock = 0;
+        Simulation = null;
+        PreviousWorld = null;
+        commands.Clear();
+        accumulator = 0;
         receivedSettings = "";
         onlineTeams = false;
+        presentedSession = null;
         game.Renderer.SetLobbyPreviews(game.Setup.Lobby.Roster);
     }
 
     private bool SetPlayers(LobbyPlayer[] players) =>
-        Online is { Connected: true } ? Online.SetPlayers(players) : game.Setup.Lobby.Roster.SetPlayers(0, players);
+        Online != null ? Online.SetPlayers(players) : EditLocal(roster => roster.SetPlayers(0, players));
+
+    private bool EditLocal(Func<LobbyRoster, bool> edit)
+    {
+        var requested = new LobbyRoster(SlotType.Local);
+        requested.Replace(Roster.Slots, Roster.Spectators);
+        if (!edit(requested))
+            return false;
+        if (Simulation != null)
+            Simulation.ApplyRoster(requested);
+        game.Setup.Lobby.Roster.Replace((Simulation?.Roster ?? requested).Slots, requested.Spectators);
+        return true;
+    }
 
     public void JoinOrSpawn(int device)
     {
@@ -79,49 +100,59 @@ internal sealed partial class LobbyController(FrogGame game)
             game.Toasts.Show("JOIN FROM VIEW PLAYERS");
             return;
         }
-        var players = LocalPlayers;
+        var players = Online?.PendingLocalPlayers.ToArray() ?? LocalPlayers;
         var player = players.FirstOrDefault(player => player.Id == device);
         if (player != null)
         {
+            if (!LocalPlayers.Any(value => value.Id == device))
+            {
+                game.Toasts.Show("LOBBY UPDATING");
+                return;
+            }
             if (!player.Spawned)
-                SetPlayers(
-                    players.Select(value => value.Id == device ? value with { Spawned = true } : value).ToArray()
-                );
+                QueueCommand(device, new(default, (byte)LobbyInputActions.Spawn));
             return;
         }
-        var used = Roster.Slots.Select(slot => slot.Player?.Color).ToHashSet();
+        var used = Roster
+            .Slots.Select(slot => slot.Player?.Color)
+            .Concat(players.Select(player => (int?)player.Color))
+            .ToHashSet();
         var available = Enumerable.Range(0, 8).Where(value => !used.Contains(value)).ToArray();
         int color = available.Length == 0 ? -1 : available[Random.Shared.Next(available.Length)];
         if (
             color < 0
             || !SetPlayers([.. players, new LobbyPlayer(device, Math.Max(0, LocalPeer), players.Length % 2, color)])
         )
-            game.Toasts.Show("NO OPEN SLOTS");
+            game.Toasts.Show(RosterUpdating ? "LOBBY UPDATING" : "NO OPEN SLOTS");
     }
 
     public void Choose(int device, int horizontal, int vertical)
     {
-        if (horizontal == 0 && vertical == 0)
+        if (
+            horizontal == 0 && vertical == 0
+            || !LocalPlayers.Any(player => player.Id == device && (!player.Spawned || player.Cpu))
+        )
             return;
-        var players = LocalPlayers;
-        var player = players.FirstOrDefault(player => player.Id == device && (!player.Spawned || player.Cpu));
-        if (player == null)
-            return;
-        int color = player.Color;
-        if (horizontal != 0)
-        {
-            var used = Roster.Slots.Select(slot => slot.Player?.Color).ToHashSet();
-            var available = Enumerable.Range(0, 8).Where(value => !used.Contains(value)).ToArray();
-            if (available.Length > 0)
-                color = available[Random.Shared.Next(available.Length)];
-        }
-        var changed = player with { Color = color, Team = (player.Team + vertical + 8) % 8 };
-        SetPlayers(players.Select(value => value.Id == device ? changed : value).ToArray());
+        QueueCommand(
+            device,
+            new(default, ColorStep: (sbyte)Math.Sign(horizontal), TeamStep: (sbyte)Math.Sign(vertical))
+        );
+    }
+
+    private void QueueCommand(int device, RollbackInput input)
+    {
+        var previous = commands.GetValueOrDefault(device);
+        commands[device] = new(
+            default,
+            (byte)(previous.Actions | input.Actions),
+            input.ColorStep == 0 ? previous.ColorStep : input.ColorStep,
+            input.TeamStep == 0 ? previous.TeamStep : input.TeamStep
+        );
     }
 
     public void BackOut(int device)
     {
-        if (Online is { IsHost: false } && Roster.Humans(LocalPeer).Length == 1)
+        if (Online is { IsHost: false } && Online.PendingLocalPlayers.Count(player => !player.Cpu) == 1)
             Spectate(LocalPeer, true);
         else
             Remove(LocalPeer, device);
@@ -131,40 +162,56 @@ internal sealed partial class LobbyController(FrogGame game)
         World != null
         && Roster.Slots[room].Player is { Spawned: true, Cpu: false } player
         && player.Peer == LocalPeer
-        && LobbyLayout.OnStartingPlatform(World, room);
+        && LobbySimulation.OnStartingPlatform(World, room);
 
     public bool TryChooseAgain(int device)
     {
-        for (int room = 0; room < 8; room++)
+        for (int room = 0; room < LobbyRoster.MaxPlayers; room++)
         {
             if (Roster.Slots[room].Player?.Id != device || !CanChooseAgain(room))
                 continue;
-            return SetPlayers(
-                LocalPlayers.Select(player => player.Id == device ? player with { Spawned = false } : player).ToArray()
-            );
+            QueueCommand(device, new(default, (byte)LobbyInputActions.SelectColor));
+            return true;
         }
         return false;
     }
 
-    public bool Edit(int room, SlotType type) => Online != null ? Online.EditSlot(room, type) : Roster.Edit(room, type);
+    public bool Edit(int room, SlotType type)
+    {
+        if (RosterUpdating)
+        {
+            game.Toasts.Show("LOBBY UPDATING");
+            return false;
+        }
+        return Online != null ? Online.EditSlot(room, type) : EditLocal(roster => roster.Edit(room, type));
+    }
 
     public void ApplySlotType(SlotType type)
     {
+        if (RosterUpdating)
+        {
+            game.Toasts.Show("LOBBY UPDATING");
+            return;
+        }
         if (Online != null)
             Online.ApplySlotType(type);
         else
-            Roster.ApplySlotType(type);
+            EditLocal(roster =>
+            {
+                roster.ApplySlotType(type);
+                return true;
+            });
     }
 
     public void Update(double elapsed)
     {
-        if (World == null)
+        if (Simulation == null)
             Open();
         Online?.Poll();
-        if (Online?.Error != null)
+        if (Online?.Error != null || Network?.Error != null)
         {
             RememberParty();
-            game.Fail(Online.Error);
+            game.Fail(Online?.Error ?? Network!.Error!);
             return;
         }
         if (Online?.Notice != lastNotice)
@@ -181,94 +228,143 @@ internal sealed partial class LobbyController(FrogGame game)
         }
         if (Online is { Connected: false })
             return;
-        UpdatePreviews();
-        if (!IsHost)
+        if (!IsHost && Online!.MatchSettingsJson != receivedSettings)
         {
-            if (Online!.MatchSettingsJson != receivedSettings)
-            {
-                receivedSettings = Online.MatchSettingsJson;
-                onlineTeams = JsonSerializer.Deserialize<MatchOptions>(receivedSettings)?.Rules.TeamMode ?? false;
-            }
-            sendClock += elapsed;
-            if (sendClock >= 1.0 / 60)
-            {
-                Online!.SendLobbyInputs(ReadInputs());
-                sendClock = 0;
-            }
-            if (Online!.TakeSnapshot() is { } snapshot)
-            {
-                PreviousWorld!.Restore(World!.Capture());
-                World.Restore(snapshot);
-                accumulator = 0;
-            }
-            else
-                accumulator += elapsed;
+            receivedSettings = Online.MatchSettingsJson;
+            onlineTeams = JsonSerializer.Deserialize<MatchOptions>(receivedSettings)?.Rules.TeamMode ?? false;
+        }
+        if (Online != null && Network == null)
+        {
+            accumulator = 0;
+            game.Renderer.SetLobbyPreviews(Roster);
             return;
         }
+        UpdateSessionPresentation();
+        Reconcile();
         accumulator += elapsed;
-        for (int step = 0; step < 30 && accumulator + 1e-9 >= TickSeconds; step++)
+        double duration = TickSeconds * (Network?.FrameDurationMultiplier ?? 1);
+        for (int step = 0; step < 30 && accumulator + 1e-9 >= duration; step++)
         {
-            for (int room = 0; room < 8; room++)
+            bool advanced = Network == null ? AdvanceLocal() : AdvanceNetwork();
+            if (!advanced)
             {
-                var player = Roster.Slots[room].Player;
-                (int, int)? identity = player == null ? null : (player.Peer, player.Id);
-                if (occupants[room] != identity)
-                    World!.SetLobbySlot(room, false, player?.Color ?? room);
-                occupants[room] = identity;
-                World!.SetLobbySlot(room, player?.Spawned == true, player?.Color ?? room);
+                accumulator = Math.Min(accumulator, duration);
+                break;
             }
-            PreviousWorld!.Restore(World!.Capture());
-            World.Tick(ReadInputs());
-            bots.Observe(World, Roster);
-            game.Renderer.Consume(World.Events, World);
-            game.Audio.PlayEvents(World.Events);
-            if (World.TickNumber % 4 == 0)
-                Online?.SendSnapshot(World.Capture());
-            accumulator -= TickSeconds;
+            accumulator -= duration;
         }
+        game.Renderer.SetLobbyPreviews(Roster);
         game.Audio.UpdateFlights(World!, (float)elapsed);
     }
 
-    private void UpdatePreviews()
+    private bool AdvanceLocal()
     {
-        game.Renderer.SetLobbyPreviews(Roster);
-        for (int room = 0; room < 8; room++)
+        PreviousWorld!.Restore(World!.Capture());
+        int[] handles = Enumerable.Range(0, Simulation!.InputPlayers.Count).ToArray();
+        Simulation.Tick(ReadInputs(handles));
+        ConsumeInputs(handles);
+        game.Setup.Lobby.Roster.Replace(Simulation.Roster.Slots, Simulation.Roster.Spectators);
+        PresentVisuals(Simulation.Events);
+        PresentAudio(Simulation.Events);
+        return true;
+    }
+
+    private bool AdvanceNetwork()
+    {
+        var network = Network!;
+        bool advanced = network.TryAdvance(ReadInputs(network.LocalSlots));
+        if (network.LocalInputSubmitted)
+            ConsumeInputs(network.LocalSlots);
+        if (advanced)
+            PreviousWorld!.Restore(network.PreviousSnapshot);
+        Reconcile();
+        return advanced;
+    }
+
+    private RollbackInput[] ReadInputs(IReadOnlyList<int> handles)
+    {
+        var result = new RollbackInput[handles.Count];
+        for (int index = 0; index < handles.Count; index++)
         {
-            var player = Roster.Slots[room].Player;
-            var previous = previewPlayers[room];
-            if (
-                player is { Spawned: false }
-                && (
-                    previous == null
-                    || previous.Spawned
-                    || previous.Peer != player.Peer
-                    || previous.Id != player.Id
-                    || previous.Color != player.Color
-                    || previous.Team != player.Team
-                )
-            )
-            {
-                game.Renderer.LobbyColorEffect(World!.Map, room, player.Color, World.TickNumber);
-                var position = game.Renderer.LobbyPreviewPosition(World.Map, room);
-                game.Audio.PlayAt("CharacterSpawn", previewSoundId++, .3f, new Vector3(position, 0));
-            }
-            previewPlayers[room] = player;
+            if (Simulation!.InputPlayers.Count == 0)
+                continue;
+            var player = Simulation.InputPlayers[handles[index]];
+            var input = commands.GetValueOrDefault(player.Id);
+            if (!player.Cpu && player.Spawned && game.Menus.Screen == GameScreen.Seats)
+                input = input with { Gameplay = game.Controls.Read(player.Id, consume: false) };
+            result[index] = input;
+        }
+        return result;
+    }
+
+    private void ConsumeInputs(IReadOnlyList<int> handles)
+    {
+        foreach (int handle in handles)
+        {
+            if (Simulation!.InputPlayers.Count == 0)
+                continue;
+            var player = Simulation.InputPlayers[handle];
+            commands.Remove(player.Id);
+            if (!player.Cpu)
+                game.Controls.Read(player.Id);
         }
     }
 
-    private InputFrame[] ReadInputs()
+    private void UpdateSessionPresentation()
     {
-        var inputs = Online?.ReadLobbyInputs() ?? new InputFrame[8];
-        for (int room = 0; room < 8; room++)
+        if (ReferenceEquals(Network, presentedSession))
+            return;
+        presentedSession = Network;
+        var devices = LocalPlayers.Select(player => player.Id).ToHashSet();
+        foreach (int device in commands.Keys.Where(device => !devices.Contains(device)).ToArray())
+            commands.Remove(device);
+        rollbackCount = 0;
+        lastAudioTick = lastVisualTick = World!.TickNumber - 1;
+        PreviousWorld!.Restore(World.Capture());
+        game.Renderer.Rewind(World.TickNumber);
+    }
+
+    private void Reconcile()
+    {
+        var network = Network;
+        if (network == null)
+            return;
+        if (network.RollbackCount != rollbackCount)
         {
-            var player = Roster.Slots[room].Player;
-            if (player == null || !player.Spawned || player.Peer != LocalPeer)
-                continue;
-            inputs[room] =
-                player.Cpu ? bots.Read(World!, room)
-                : game.Menus.Screen != GameScreen.Seats ? default
-                : game.Controls.Read(player.Id);
+            rollbackCount = network.RollbackCount;
+            game.Renderer.Rewind(network.LastRollbackFromFrame);
+            lastVisualTick = Math.Min(lastVisualTick, network.LastRollbackFromFrame - 1);
+            PreviousWorld!.Restore(network.PreviousSnapshot);
         }
-        return inputs;
+        PresentVisuals(network.EventsSince(lastVisualTick + 1));
+        lastVisualTick = World!.TickNumber - 1;
+        PresentAudio(network.EventsSince(lastAudioTick + 1).Where(item => item.Tick <= network.ConfirmedFrame));
+        lastAudioTick = network.ConfirmedFrame;
+    }
+
+    private void PresentVisuals(IEnumerable<SimulationEvent> events)
+    {
+        foreach (var item in events)
+        {
+            float age = (float)Math.Max(0, (World!.TickNumber - 1 - item.Tick) * TickSeconds);
+            if (item.Kind == SimulationEventKind.LobbyPreview)
+                game.Renderer.LobbyColorEffect(World!.Map, item.Player, item.Other, item.Tick, age);
+            else
+                game.Renderer.Consume([item], World!, age);
+        }
+    }
+
+    private void PresentAudio(IEnumerable<SimulationEvent> events)
+    {
+        foreach (var item in events)
+        {
+            if (item.Kind == SimulationEventKind.LobbyPreview)
+            {
+                var position = game.Renderer.LobbyPreviewPosition(World!.Map, item.Player);
+                game.Audio.PlayAt("CharacterSpawn", item.Id << 3, .3f, new Vector3(position, 0));
+            }
+            else
+                game.Audio.PlayEvents([item]);
+        }
     }
 }

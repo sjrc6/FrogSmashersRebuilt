@@ -343,6 +343,11 @@ internal sealed partial class MenuController
 
     private void StartFromSeats()
     {
+        if (game.Lobby.RosterUpdating)
+        {
+            game.Toasts.Show("LOBBY UPDATING");
+            return;
+        }
         var players = game.Lobby.Roster.Slots.Where(slot => slot.Player != null).Select(slot => slot.Player!).ToArray();
         if (players.Length < 2 || players.Any(player => !player.Spawned))
         {

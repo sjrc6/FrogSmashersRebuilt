@@ -16,7 +16,55 @@ internal static class SessionTests
         LateSpectator();
         DisconnectAgreement();
         DesyncAndOldGeneration();
+        ExplicitConfirmationAtPausedBoundary();
         Lockstep();
+    }
+
+    private static void ExplicitConfirmationAtPausedBoundary()
+    {
+        var clock = new TestClock();
+        var wire = new SimulatedNetwork(clock) { Latency = 10, Loss = .2 };
+        Player[] players = [new(0, 0), new(1, 1)];
+        var options = new SessionOptions { ChecksumInterval = 0 };
+        var sessions = Enumerable
+            .Range(0, 2)
+            .Select(peer => new P2PSession<int, ulong>(
+                41,
+                peer,
+                players,
+                new TestGame(),
+                new IntCodec(),
+                wire.Endpoint(peer),
+                options,
+                clock
+            ))
+            .ToArray();
+        for (int tick = 0; tick < 2000 && sessions.Any(session => session.ConfirmedFrame < 82); tick++)
+        {
+            clock.NowMilliseconds += 8;
+            foreach (var session in sessions)
+            {
+                session.Poll();
+                if (session.CurrentFrame < 83)
+                    session.AdvanceFrame([session.CurrentFrame]);
+            }
+        }
+        Check.True(
+            sessions.All(session => session.CurrentFrame == 83 && session.ConfirmedFrame == 82),
+            "Both peers pause at the same confirmed state"
+        );
+        Check.True(!sessions[0].ConfirmState(83), "Local input confirmation is not a peer state hash acknowledgement");
+        for (int tick = 0; tick < 1000 && !sessions[0].ConfirmState(83); tick++)
+        {
+            clock.NowMilliseconds += 8;
+            foreach (var session in sessions)
+                session.Poll();
+        }
+        Check.True(
+            sessions[0].ConfirmState(83),
+            "Peer answers an explicit checksum request without advancing or periodic hashes"
+        );
+        Check.True(sessions[1].ConfirmState(83), "Both terminal hashes are verified");
     }
 
     private static void LocalAndDeterminism()

@@ -61,4 +61,9 @@ Membership remains fixed during a rollback generation. Joining players and chang
 
 ## Remaining scope
 
-These reference checks cover selected algorithms and known regressions. They do not replace GGCS's own high-latency, loss, jitter, backpressure, multi-local-player, spectator and malformed-packet tests. They also do not validate the future Steam adapter or the future lobby checkpoint protocol.
+These reference checks cover selected algorithms and known regressions. They do not replace GGCS's own high-latency, loss, jitter, backpressure, multi-local-player, spectator and malformed-packet tests. Steam connection establishment and lobby checkpoint coordination are application responsibilities, covered separately by the game tests in `src/Tests`. Live Steam behavior still requires testing with real accounts.
+
+
+### Application boundary regressions
+
+The normal C# suite also exercises integration rules that are outside the pinned Rust trace: seeding an input-delay prefix before a new generation, requesting a final checksum while paused with periodic checksums disabled, and obtaining observer backlog without making that observer part of player pacing. The game adapter suite verifies that a failed advancement consumes local button edges only on its first submission, and that a checkpoint restart retains inputs which were accepted before the pause but belong to later delayed frames.

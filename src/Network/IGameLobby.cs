@@ -15,6 +15,7 @@ public interface IGameLobby : IDisposable
     string? Notice { get; }
     int LocalPeer { get; }
     LobbyRoster Roster { get; }
+    IReadOnlyList<LobbyPlayer> PendingLocalPlayers { get; }
     LobbyAccess Access { get; }
     int[][] PeerSlots { get; }
     int[] PlayerTeams { get; }
@@ -29,9 +30,11 @@ public interface IGameLobby : IDisposable
     void SetMatchSettings(string settings);
     bool StartMatch(string settings);
     bool ReturnToLobby();
-    void SendLobbyInputs(InputFrame[] inputs);
-    InputFrame[] ReadLobbyInputs();
-    void SendSnapshot(byte[] snapshot);
-    byte[]? TakeSnapshot();
+    ulong SessionId { get; }
+    IReadOnlyList<int> PeerIds { get; }
+    NetworkSession? LobbySession { get; }
+    bool SimulationReady { get; }
+    bool Transitioning { get; }
+    void AttachSimulation(LobbySimulation simulation);
     IPeerTransport CreateTransport();
 }

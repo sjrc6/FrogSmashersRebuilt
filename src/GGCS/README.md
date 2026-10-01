@@ -3,7 +3,7 @@
 
 ## GGCS
 
-A C# rollback networking library based on GGRS and GGPO. It targets .NET 10 and has no package, native, Steam, MonoGame or Rust dependency. The game still uses its existing networking; GGCS is isolated until the mesh and lobby integration is ready.
+A C# rollback networking library based on GGRS and GGPO. It targets .NET 10 and has no package, native, Steam, MonoGame or Rust dependency. The game uses GGCS for both online lobbies and matches through the transport and simulation adapters in `src/Network`.
 
 ## What is implemented
 
@@ -58,7 +58,7 @@ Call `Poll()` regularly, including while paused, synchronizing or waiting for in
 
 At the fixed simulation cadence, call `AdvanceFrame(localInputs)`. Inputs must be in `LocalPlayerHandles` order. This method also polls. Its result explains whether a frame advanced or why it waited. Do not accumulate unlimited catch-up work during a network stall.
 
-The first attempt at a frame latches and sends its local inputs, even if that frame must wait. Repeated attempts at that same `CurrentFrame` keep those inputs unchanged. Buffer new button edges for a later simulation frame in the application. `SetInputDelay` takes effect on the next newly submitted frame; increasing delay fills the gap with the last input, and decreasing delay discards overlapping submissions.
+The first attempt at a frame latches and sends its local inputs, even if that frame must wait. Repeated attempts at that same `CurrentFrame` keep those inputs unchanged. Compare `LastSubmittedFrame` before and after the attempt to consume button edges exactly once; a successful simulation step alone is not the submission signal. Buffer new button edges for a later simulation frame in the application. `SetInputDelay` takes effect on the next newly submitted frame; increasing delay fills the gap with the last input, and decreasing delay discards overlapping submissions.
 
 `FramesAhead` is a smoothed estimate. `RecommendedFrameDurationMultiplier` suggests a 10% longer tick duration when ahead by at least three frames. Apply it to the local accumulator's tick duration; continue polling normally. The library never sleeps. This small slowdown follows the TF.EX integration approach; its exact scheduling is not a GGRS wire/API compatibility promise.
 
@@ -68,11 +68,21 @@ Missing inputs limit prediction. Global confirmation separately bounds retention
 
 `DisconnectPeer` removes an entire remote machine, including all its local players. The surviving peers briefly pause advancement and confirmation, exchange their frozen confirmation floors, and agree a cutoff at least as high as every floor. Each survivor acknowledges that cutoff before any publishes later frames. They then resimulate later frames as disconnected. This prevents stale receipt reports from invalidating already-published spectator inputs. `AdvanceStatus.DisconnectAgreement` identifies this wait. A machine explicitly excluded by another participant stops that generation. This is a rollback membership mechanism, not a consensus or host migration system; the game still coordinates recovery from partitions and roster changes.
 
+## Confirmed pauses and checkpoint continuation
+
+`TryGetConfirmedState(stateFrame, out state)` returns an immutable checkpoint after inputs through `stateFrame - 1` are globally confirmed. It does not prove that every peer has simulated that state. Before a coordinated pause or final departure, call `ConfirmState(stateFrame)` and continue polling until it returns true. This requests a checksum exchange at that exact boundary, including when automatic periodic checksums are disabled. Peers answer requests while paused. Disconnected playing peers are excluded only after their removal is agreed; spectators never delay confirmation.
+
+The application chooses a pause boundary at least as large as both `CurrentFrame` and `LastSubmittedFrame + 1` on every playing machine. The second condition matters when a frame has latched input but cannot yet advance. Stop new advancements at that boundary, continue polling and repairs, then transfer the agreed state.
+
+Input delay also contains already accepted inputs after the pause boundary. Preserve each surviving local handle's next `InputDelay` actual inputs with `TryGetSubmittedInput(handle, frame, out input)`. After creating the new generation, call `SeedLocalInputDelay(handle, inputs)` before its first advancement. The seed must contain exactly that handle's configured delay, in frame order. It occupies frames zero through `delay - 1`; newly sampled input starts at frame `delay`. Map seeds by stable player identity when handles change. A newly admitted player starts with neutral delay frames.
+
+Do not replay a pending button edge twice or silently discard it when restarting the session. The game adapter rejects exporting a prefix while the boundary still has an unconsumed latched submission.
+
 ## Spectators
 
 On the playing host, call `AddSpectator(spectatorPeerId)` before simulation begins. On that spectator, create `SpectatorSession<TInput,TState>` with the same roster, generation, options/schema and initial game state, pointing at the host.
 
-A spectator receives only confirmed inputs from the host. It never contributes to player pacing or confirmation. `AdvanceFrame()` consumes one available frame. `AdvanceAvailable()` consumes up to `SpectatorCatchUpFrames` and is suitable for catching up from an existing checkpoint. Both continue polling. The default buffering delay is zero. If `SpectatorBufferFrames` is set, use `drain: true` to consume the final buffered frames at a pause or match end.
+A spectator receives only confirmed inputs from the host. It never contributes to player pacing or confirmation. `AdvanceFrame()` consumes one available frame. `BufferedFrames` describes the available backlog. `AdvanceAvailable()` consumes up to `SpectatorCatchUpFrames` and is suitable for catching up from an existing checkpoint. Both continue polling. The default buffering delay is zero. If `SpectatorBufferFrames` is set, use `drain: true` to consume the final buffered frames at a pause or match end.
 
 A slow or absent observer cannot stall the players. Once its bounded input/history buffer is exhausted, it is disconnected with a diagnostic and needs a new checkpoint.
 
@@ -80,13 +90,13 @@ For a late spectator, transfer a state returned by `TryGetConfirmedState(startFr
 
 ### Host without a player
 
-Before frame zero, every playing machine calls `AddInputObserver(hostPeerId)`. Construct a `P2PSession` on the host with a local peer ID absent from the playing roster; `IsInputObserver` is then true. Advance it with an empty local input span and attach ordinary spectators to it with `AddSpectator`.
+Before frame zero, every playing machine calls `AddInputObserver(hostPeerId)`. Construct a `P2PSession` on the host with a local peer ID absent from the playing roster; `IsInputObserver` is then true. Advance it with an empty local input span and attach ordinary spectators to it with `AddSpectator`. `ConfirmedInputFramesAvailable` provides a bounded backlog count for catch-up scheduling. Observer checksum exchanges validate their simulation without adding them to the playing peers' wait conditions.
 
 The host collects each playing machine's raw input stream and receipt reports, advances confirmed frames, and sends the combined stream to spectators. Its raw observer links are excluded from player pacing/confirmation. If an observer link is lost, the host waits for a possible agreed removal from the active peers. Without that agreement it stops its observing generation after a bounded grace period; it cannot invent a disconnect of a still-playing frog. The application coordinates reconnection/checkpoint recovery.
 
 ## Diagnostics and determinism checks
 
-Drain `TryGetEvent` for synchronization, interruption, recovery, disconnection, exclusion, protocol errors, spectator backlog and checksum mismatches. Event queues and checksum histories are bounded. `GetNetworkStats` exposes RTT, frame advantage, pending/received/acknowledged frames, traffic counters and invalid/stale packets. Session diagnostics include prediction depth and total/largest resimulation.
+Drain `TryGetEvent` for synchronization, interruption, recovery, disconnection, exclusion, protocol errors, spectator backlog and checksum mismatches. Event queues and checksum histories are bounded. `GetNetworkStats` exposes RTT, frame advantage, pending/received/acknowledged frames, traffic counters and invalid/stale packets. `NetworkStats` returns the current list of active links, including observer links. Session diagnostics include prediction depth and total/largest resimulation.
 
 Use `SyncTestSession` during offline development with checksums enabled on every snapshot. It replays the recent history after every advancement and throws `DeterminismException` at the first changed state. This catches incomplete snapshots and nondeterministic game logic without involving a network.
 
@@ -100,7 +110,7 @@ dotnet build src/GGCS.Tests/GGCS.Tests.csproj -c Release -m:1 -nr:false
 dotnet .build/bin/GGCS.Tests/release/GGCS.Tests.dll
 ```
 
-The normal `scripts/test.sh` also runs GGCS. `--no-sockets` skips the loopback UDP test in restricted environments. The suite covers model-based randomized queues/repairs, packet bounds and fuzzing, impaired 2/4/8-machine meshes, multiple local inputs with changing delays, observer/spectator roles, disconnects, clock drift/render hitches, real frog world hashes and checkpoint restarts. It asserts recovery and simulation speed as well as eventual state agreement.
+The normal `scripts/test.sh` also runs GGCS. `--no-sockets` skips the loopback UDP test in restricted environments. The suite covers model-based randomized queues/repairs, packet bounds and fuzzing, impaired 2/4/8-machine meshes, multiple local inputs with changing delays, observer/spectator roles, disconnects, clock drift/render hitches, real frog world hashes, explicit paused-state confirmation, seeded input delays and checkpoint restarts. It asserts recovery and simulation speed as well as eventual state agreement.
 
 Selected input-delay, prediction/rollback and timing traces come from the pinned Rust implementation. They run as embedded fixtures in the C# tests. See [reference validation](../GGCS.Tests/Reference/REFERENCE.md) for optional Rust regeneration and the upstream test results. Normal builds do not invoke Rust.
 
@@ -125,4 +135,17 @@ Deliberate C# differences:
 - Observer buffers are bounded. A host with no local frog is supported explicitly.
 - Timing uses an injected monotonic clock; there are no spin waits, browser bindings or native code.
 
-Still outside this library: Steam/LAN connection establishment, authentication and admission, checkpoint serialization/transfer, coordinated lobby transitions, deterministic lobby commands, host policy, event reconciliation and game UI. These remain the next integration phase. Simulated-network and Linux loopback results do not substitute for live Steam testing or Windows validation.
+## Game integration
+
+The library stays independent of game content, transport APIs and UI. The application supplies these parts:
+
+- `NetworkSession` adapts GGCS frame numbers to persistent world ticks, captures/restores `IRollbackSimulation`, retains reversible events, and exposes diagnostics and confirmed checkpoints. Its `LocalInputSubmitted` flag tells the client when to consume pending button edges.
+- `RollbackInput` carries gameplay plus tick-stamped lobby spawn, selection, color and team commands. Its explicit codec validates every field. Prediction retains gameplay while clearing lobby command edges.
+- `LobbySimulation` snapshots the world, roster, cosmetic RNG, preview events and CPU retaliation state. Match simulation uses the regular world snapshot.
+- `MeshLobby` coordinates membership through a confirmed pause, snapshot transfer, direct-link readiness and a new session generation. Empty lobbies use a neutral host input stream to keep the simulation clock running without inventing a room occupant.
+- Steam playing machines use direct Steam Networking Sockets links. LAN/UDP uses direct datagrams; `DatagramReliability` supplies bounded, ordered reliable control messages independently from rollback input traffic. The host handles admission and sends spectators the combined confirmed stream.
+- Client accumulators apply GGCS's pacing multiplier to active players. Spectators and a spectating host catch up at twice the normal cadence while more than two confirmed frames are buffered. Polling continues during pauses and stalls.
+
+The game tests in `src/Tests` cover adapter input latching, checkpoint delay continuity, final confirmed-state barriers, deterministic lobby actions, mesh admission/cancellation, eight-machine latency/loss throughput, and separate-process UDP lobby-to-match transitions. Package identity includes the GGCS assembly as well as core, networking and content.
+
+Simulated-network and Linux loopback results do not substitute for live Steam testing or Windows validation.

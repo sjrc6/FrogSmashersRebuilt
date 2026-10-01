@@ -12,7 +12,7 @@ public sealed class SteamLobby : GameLobby
     private readonly string settings;
     private readonly List<IDisposable> callbacks = new();
     private readonly System.Diagnostics.Stopwatch startup = System.Diagnostics.Stopwatch.StartNew();
-    private RelayLobby? relay;
+    private MeshLobby? coordinator;
     private SteamWire? wire;
     private CSteamID lobbyId;
     private bool initialized;
@@ -22,10 +22,10 @@ public sealed class SteamLobby : GameLobby
     private string advertisedCapacity = "";
     public ulong LobbyCode => lobbyId.m_SteamID;
     public ulong RequestedLobby { get; private set; }
-    protected override IGameLobby? Active => relay;
+    protected override IGameLobby? Active => coordinator;
     public override bool IsHost => hosting;
-    public override string Status => relay?.Status ?? status;
-    public override string? Error => error ?? relay?.Error;
+    public override string Status => coordinator?.Status ?? status;
+    public override string? Error => error ?? coordinator?.Error;
 
     public static SteamLobby Host(
         int capacity,
@@ -145,10 +145,10 @@ public sealed class SteamLobby : GameLobby
 
         lobbyId = new CSteamID(c.m_ulSteamIDLobby);
         SteamMatchmaking.SetLobbyData(lobbyId, "game", "FrogSmashersRebuilt");
-        SteamMatchmaking.SetLobbyData(lobbyId, "protocol", "6");
+        SteamMatchmaking.SetLobbyData(lobbyId, "protocol", "7");
         SteamMatchmaking.SetLobbyData(lobbyId, "content", contentHash);
         SteamMatchmaking.SetLobbyData(lobbyId, "state", "forming");
-        StartRelay();
+        StartCoordinator();
     }
 
     private void OnEntered(LobbyEnter_t c)
@@ -167,7 +167,7 @@ public sealed class SteamLobby : GameLobby
         lobbyId = new CSteamID(c.m_ulSteamIDLobby);
         if (
             SteamMatchmaking.GetLobbyData(lobbyId, "game") != "FrogSmashersRebuilt"
-            || SteamMatchmaking.GetLobbyData(lobbyId, "protocol") != "6"
+            || SteamMatchmaking.GetLobbyData(lobbyId, "protocol") != "7"
             || SteamMatchmaking.GetLobbyData(lobbyId, "content") != contentHash
         )
         {
@@ -181,19 +181,19 @@ public sealed class SteamLobby : GameLobby
             return;
         }
 
-        StartRelay();
+        StartCoordinator();
     }
 
-    private void StartRelay()
+    private void StartCoordinator()
     {
-        if (relay != null)
+        if (coordinator != null)
         {
             return;
         }
 
         var owner = SteamMatchmaking.GetLobbyOwner(lobbyId);
         wire = new SteamWire(lobbyId, hosting, owner);
-        relay = new RelayLobby(
+        coordinator = new MeshLobby(
             wire,
             hosting ? null : owner.m_SteamID.ToString(),
             capacity,
@@ -207,11 +207,12 @@ public sealed class SteamLobby : GameLobby
                 && SteamFriends.GetFriendRelationship(new CSteamID(id))
                     == EFriendRelationship.k_EFriendRelationshipFriend
         );
+        AttachPendingSimulation();
     }
 
     private void OnMembershipChanged(LobbyChatUpdate_t c)
     {
-        if (c.m_ulSteamIDLobby != lobbyId.m_SteamID || relay == null)
+        if (c.m_ulSteamIDLobby != lobbyId.m_SteamID || coordinator == null)
         {
             return;
         }
@@ -229,7 +230,7 @@ public sealed class SteamLobby : GameLobby
             | EChatMemberStateChange.k_EChatMemberStateChangeBanned
         );
         if ((c.m_rgfChatMemberStateChange & leaving) != 0 && hosting)
-            relay.RemovePeer(c.m_ulSteamIDUserChanged.ToString());
+            coordinator.RemovePeer(c.m_ulSteamIDUserChanged.ToString());
     }
 
     public override void Poll()
@@ -240,16 +241,13 @@ public sealed class SteamLobby : GameLobby
         }
 
         SteamAPI.RunCallbacks();
-        if (relay != null && wire != null)
-            while (wire.TakeDisconnected(out string address))
-                relay.RemovePeer(address);
-        relay?.Poll();
-        if (relay == null && startup.Elapsed.TotalSeconds > 120)
+        coordinator?.Poll();
+        if (coordinator == null && startup.Elapsed.TotalSeconds > 120)
         {
             error = "Steam lobby setup timed out";
         }
 
-        if (hosting && relay != null)
+        if (hosting && coordinator != null)
         {
             int capacity = Roster.Capacity;
             int occupied = Roster.Count;
@@ -273,7 +271,7 @@ public sealed class SteamLobby : GameLobby
         }
 
         string state = Starting ? "started" : "forming";
-        if (hosting && relay != null && SteamMatchmaking.GetLobbyData(lobbyId, "state") != state)
+        if (hosting && coordinator != null && SteamMatchmaking.GetLobbyData(lobbyId, "state") != state)
         {
             SteamMatchmaking.SetLobbyJoinable(lobbyId, !Starting);
             SteamMatchmaking.SetLobbyData(lobbyId, "state", state);
@@ -299,13 +297,14 @@ public sealed class SteamLobby : GameLobby
     }
 
     public override IPeerTransport CreateTransport() =>
-        Ready
-            ? new SteamSessionTransport(this, relay!.CreateTransport())
-            : throw new InvalidOperationException("Lobby is not ready");
+        Connected
+            ? new SteamSessionTransport(this, coordinator!.CreateTransport())
+            : throw new InvalidOperationException("Lobby is not connected");
 
     private sealed class SteamSessionTransport(SteamLobby owner, IPeerTransport session) : IPeerTransport
     {
         public string? Error => owner.Error;
+        public long TimeMilliseconds => session.TimeMilliseconds;
 
         public void Poll() => owner.Poll();
 
@@ -324,7 +323,7 @@ public sealed class SteamLobby : GameLobby
         }
 
         disposed = true;
-        relay?.Dispose();
+        coordinator?.Dispose();
         wire?.Dispose();
         foreach (var callback in callbacks)
         {

@@ -16,6 +16,7 @@ public abstract class GameLobby : IGameLobby
     public string? Notice => Active?.Notice;
     public int LocalPeer => Active?.LocalPeer ?? -1;
     public LobbyRoster Roster => Active?.Roster ?? emptyRoster;
+    public IReadOnlyList<LobbyPlayer> PendingLocalPlayers => Active?.PendingLocalPlayers ?? [];
     public LobbyAccess Access => Active?.Access ?? default;
     public int[][] PeerSlots => Active?.PeerSlots ?? [];
     public int[] PlayerTeams => Active?.PlayerTeams ?? [];
@@ -40,13 +41,24 @@ public abstract class GameLobby : IGameLobby
 
     public bool ReturnToLobby() => Active?.ReturnToLobby() ?? false;
 
-    public void SendLobbyInputs(InputFrame[] inputs) => Active?.SendLobbyInputs(inputs);
+    public ulong SessionId => Active?.SessionId ?? 0;
+    public IReadOnlyList<int> PeerIds => Active?.PeerIds ?? [];
+    public NetworkSession? LobbySession => Active?.LobbySession;
+    public bool SimulationReady => Active?.SimulationReady ?? false;
+    public bool Transitioning => Active?.Transitioning ?? true;
+    private LobbySimulation? pendingSimulation;
 
-    public InputFrame[] ReadLobbyInputs() => Active?.ReadLobbyInputs() ?? new InputFrame[8];
+    public void AttachSimulation(LobbySimulation simulation)
+    {
+        pendingSimulation = simulation;
+        Active?.AttachSimulation(simulation);
+    }
 
-    public void SendSnapshot(byte[] snapshot) => Active?.SendSnapshot(snapshot);
-
-    public byte[]? TakeSnapshot() => Active?.TakeSnapshot();
+    protected void AttachPendingSimulation()
+    {
+        if (pendingSimulation != null && Active != null)
+            Active.AttachSimulation(pendingSimulation);
+    }
 
     public abstract void Poll();
     public abstract IPeerTransport CreateTransport();

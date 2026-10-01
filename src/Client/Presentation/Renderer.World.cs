@@ -201,7 +201,7 @@ public sealed partial class Renderer
             DrawCommandItem(command, world);
         }
 
-        if (showGameplayUi && ShowColliders)
+        if (ShowColliders)
         {
             canvas.Begin(0);
             foreach (var box in world.Map.Collision)

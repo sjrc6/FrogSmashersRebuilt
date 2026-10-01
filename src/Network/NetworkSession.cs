@@ -1,147 +1,201 @@
+using System.Security.Cryptography;
 using FrogSmashers.Core;
+using GGCS;
 
 namespace FrogSmashers.Network;
 
 public sealed class NetworkSession : IDisposable
 {
-    private const uint Magic = 0x46535242;
-    private const int Protocol = 3;
-    private const int BatchSize = 24;
     private readonly SessionConfig config;
     private readonly IPeerTransport transport;
-    private readonly SortedDictionary<long, InputFrame>[] receivedInputs;
-    private readonly Dictionary<long, InputFrame[]> simulatedInputs = new();
-    private readonly SortedDictionary<long, byte[]> snapshots = new();
-    private readonly Dictionary<long, ulong> hashes = new();
+    private readonly IRollbackSimulation simulation;
+    private readonly P2PSession<RollbackInput, byte[]>? playing;
+    private readonly SpectatorSession<RollbackInput, byte[]>? spectator;
     private readonly SortedDictionary<long, SimulationEvent[]> eventJournal = new();
-    private readonly Dictionary<(int Peer, long Frame), ulong> remoteHashes = new();
-    private readonly long[] lastReceivedFrames;
-    private readonly long[] lastAcknowledgedFrames;
-    private readonly long[] remoteSimulationTicks;
-    private readonly long[] remoteConfirmedFrames;
-    private readonly long[] verifiedStateFrames;
-    private readonly int[] estimatedOneWayTicks;
-    private long rollbackFrame = long.MaxValue;
-    private long lastBroadcastMilliseconds = long.MinValue;
-    public World World { get; }
+    private readonly long initialTick;
+    private long? stopAtTick;
+    private int unknownPackets;
+    private bool disposed;
+
+    public World World => simulation.World;
     public byte[] PreviousSnapshot { get; private set; }
     public string? Error { get; private set; }
     public bool IsTransportFailure { get; private set; }
-    public long ConfirmedFrame =>
-        Math.Min(World.TickNumber - 1, lastReceivedFrames.Where((_, peer) => IsPlayerPeer(peer)).Min());
-    public long RollbackCount { get; private set; }
-    public long LastRollbackFromFrame { get; private set; } = -1;
-
-    public IEnumerable<SimulationEvent> EventsSince(long frame) =>
-        eventJournal.Where(p => p.Key >= frame).SelectMany(p => p.Value);
-
-    public long ResimulatedTicks { get; private set; }
-    public int RejectedPackets { get; private set; }
     public int LocalPeer => config.LocalPeer;
-    public int[] LocalSlots => config.PeerSlots[config.LocalPeer];
-
-    private bool IsPlayerPeer(int peer) => config.PeerSlots[peer].Length > 0;
-
-    public long MinimumRemoteTick
-    {
-        get
-        {
-            long minimum = long.MaxValue;
-            for (int peer = 0; peer < remoteSimulationTicks.Length; peer++)
-            {
-                if (peer != LocalPeer && IsPlayerPeer(peer))
-                {
-                    minimum = Math.Min(minimum, remoteSimulationTicks[peer]);
-                }
-            }
-
-            return minimum == long.MaxValue ? World.TickNumber : minimum;
-        }
-    }
-
-    public int FramesAheadOfPeers
-    {
-        get
-        {
-            long lead = 0;
-            for (int peer = 0; peer < remoteSimulationTicks.Length; peer++)
-            {
-                if (peer != LocalPeer && IsPlayerPeer(peer))
-                {
-                    lead = Math.Max(lead, World.TickNumber - remoteSimulationTicks[peer] - estimatedOneWayTicks[peer]);
-                }
-            }
-
-            return (int)lead;
-        }
-    }
-
-    public bool ShouldWaitForPeers => FramesAheadOfPeers > 3;
-
-    public bool AllPeersConfirmed(long frame)
-    {
-        if (Error != null || ConfirmedFrame < frame)
-        {
-            return false;
-        }
-
-        for (int peer = 0; peer < remoteConfirmedFrames.Length; peer++)
-        {
-            if (
-                peer != LocalPeer
-                && IsPlayerPeer(peer)
-                && (remoteConfirmedFrames[peer] < frame || verifiedStateFrames[peer] < frame + 1)
-            )
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    public int PredictionDepth => (int)Math.Max(0, World.TickNumber - 1 - ConfirmedFrame);
+    public int[] LocalSlots => config.PeerSlots[LocalPeer];
+    public long ConfirmedFrame => initialTick + (playing?.ConfirmedFrame ?? spectator!.CurrentFrame - 1);
+    public int PredictionDepth => playing?.PredictionDepth ?? 0;
+    public long RollbackCount { get; private set; }
+    public long ResimulatedTicks { get; private set; }
+    public long LastRollbackFromFrame { get; private set; } = -1;
+    public int FramesAheadOfPeers => playing?.FramesAhead ?? 0;
+    public double FrameDurationMultiplier =>
+        playing is { IsInputObserver: false } ? playing.RecommendedFrameDurationMultiplier
+        : BufferedFrames > 2 ? 0.5
+        : 1;
+    public int BufferedFrames => playing?.ConfirmedInputFramesAvailable ?? spectator!.BufferedFrames;
+    public bool LocalInputSubmitted { get; private set; }
+    public long LastSubmittedTick => initialTick + (playing?.LastSubmittedFrame ?? -1);
+    public long StartTick => initialTick;
+    public string WaitReason { get; private set; } = "SYNCHRONIZING";
+    public SessionState State => playing?.State ?? spectator!.State;
+    public IReadOnlyList<PeerNetworkStats> PeerStats => playing?.NetworkStats ?? [spectator!.NetworkStats];
+    public int RejectedPackets => unknownPackets + (int)PeerStats.Sum(stats => stats.InvalidPackets);
 
     public NetworkSession(World world, SessionConfig config, IPeerTransport transport)
+        : this(new MatchSimulation(world), config, transport)
     {
-        World = world;
+        if (world.Players.Length != config.PlayerCount)
+            throw new ArgumentException("Match roster must own every frog");
+    }
+
+    public NetworkSession(IRollbackSimulation simulation, SessionConfig config, IPeerTransport transport)
+    {
+        this.simulation = simulation;
         this.config = config;
         this.transport = transport;
-        if (world.TickNumber != 0 || world.Players.Length != config.PlayerCount)
+        initialTick = World.TickNumber;
+        PreviousSnapshot = World.Capture();
+        var options = new SessionOptions
         {
-            throw new ArgumentException("Session needs matching fresh world");
-        }
-
-        receivedInputs = Enumerable
-            .Range(0, config.PlayerCount)
-            .Select(_ => new SortedDictionary<long, InputFrame>())
+            FramesPerSecond = World.TickRate,
+            InputDelay = config.InputDelay,
+            MaxInputDelay = 12,
+            MaxPredictionFrames = config.MaxPrediction,
+            HistoryFrames = config.HistoryFrames,
+            ChecksumInterval = 60,
+            MaxPacketBytes = 1185,
+        };
+        var players = config
+            .PeerSlots.SelectMany((slots, peer) => slots.Select(slot => new Player(slot, peer)))
+            .OrderBy(player => player.Handle)
             .ToArray();
-        lastReceivedFrames = Enumerable.Repeat((long)config.InputDelay - 1, config.PeerSlots.Length).ToArray();
-        remoteSimulationTicks = new long[config.PeerSlots.Length];
-        remoteConfirmedFrames = Enumerable.Repeat(-1L, config.PeerSlots.Length).ToArray();
-        verifiedStateFrames = new long[config.PeerSlots.Length];
-        estimatedOneWayTicks = new int[config.PeerSlots.Length];
-        lastAcknowledgedFrames = Enumerable.Repeat((long)config.InputDelay - 1, config.PeerSlots.Length).ToArray();
-        for (int slot = 0; slot < receivedInputs.Length; slot++)
+        var adapter = new TransportAdapter(this);
+        var game = new GameAdapter(this);
+        var codec = new RollbackInputCodec();
+        string schema =
+            Convert.ToHexString(config.Fingerprint) + Convert.ToHexString(SHA256.HashData(simulation.Capture()));
+        if (LocalSlots.Length > 0 || LocalPeer == 0)
         {
-            for (long frame = 0; frame < config.InputDelay; frame++)
-            {
-                receivedInputs[slot][frame] = default;
-            }
+            playing = new(
+                config.Generation,
+                LocalPeer,
+                players,
+                game,
+                codec,
+                adapter,
+                options,
+                adapter,
+                (input, _) => new(input.Gameplay),
+                schema
+            );
+            if (LocalPeer != 0 && config.PeerSlots[0].Length == 0)
+                playing.AddInputObserver(0);
+            if (LocalPeer == 0)
+                foreach (int peer in config.ActivePeers)
+                    if (peer != 0 && config.PeerSlots[peer].Length == 0)
+                        playing.AddSpectator(peer);
+            foreach (int handle in LocalSlots)
+                if (config.InitialInputs.TryGetValue(handle, out var inputs))
+                    playing.SeedLocalInputDelay(handle, inputs);
         }
+        else
+        {
+            spectator = new(config.Generation, 0, players, game, codec, adapter, options, adapter, inputSchema: schema);
+        }
+    }
 
-        PreviousSnapshot = world.Capture();
-        snapshots[0] = PreviousSnapshot;
-        hashes[0] = World.Hash(PreviousSnapshot);
+    public IEnumerable<SimulationEvent> EventsSince(long frame) =>
+        eventJournal.Where(pair => pair.Key >= frame).SelectMany(pair => pair.Value);
+
+    public void StopAtTick(long? stateTick)
+    {
+        if (stateTick < World.TickNumber)
+            throw new ArgumentOutOfRangeException(nameof(stateTick), "A pause boundary cannot be in the past");
+        stopAtTick = stateTick;
+    }
+
+    public bool TryGetConfirmedCheckpoint(long stateTick, out byte[] snapshot)
+    {
+        snapshot = [];
+        int frame = SessionFrame(stateTick);
+        if (frame == 0 && World.TickNumber == initialTick)
+        {
+            snapshot = simulation.Capture();
+            return true;
+        }
+        if (playing != null && playing.TryGetConfirmedState(frame, out var state))
+        {
+            snapshot = state.State.ToArray();
+            return true;
+        }
+        if (spectator != null && stateTick == World.TickNumber)
+        {
+            snapshot = simulation.Capture();
+            return true;
+        }
+        return false;
+    }
+
+    public RollbackInput[][] ExportPendingLocalInputs(long boundaryStateTick)
+    {
+        if (
+            World.TickNumber != boundaryStateTick
+            || ConfirmedFrame < boundaryStateTick - 1
+            || LocalSlots.Length > 0 && LastSubmittedTick >= boundaryStateTick
+        )
+            throw new InvalidOperationException("Export pending inputs at a confirmed pause boundary");
+        var result = new RollbackInput[LocalSlots.Length][];
+        for (int player = 0; player < LocalSlots.Length; player++)
+        {
+            result[player] = new RollbackInput[config.InputDelay];
+            for (int offset = 0; offset < config.InputDelay; offset++)
+                if (
+                    !playing!.TryGetSubmittedInput(
+                        LocalSlots[player],
+                        SessionFrame(boundaryStateTick) + offset,
+                        out result[player][offset]
+                    )
+                )
+                {
+                    if (boundaryStateTick != initialTick)
+                        throw new InvalidOperationException(
+                            "Pending local input is missing from the checkpoint boundary"
+                        );
+                    result[player][offset] = config.InitialInputs.TryGetValue(LocalSlots[player], out var seeded)
+                        ? seeded[offset]
+                        : default;
+                }
+        }
+        return result;
+    }
+
+    public bool AllPeersConfirmed(long inputTick)
+    {
+        if (Error != null || ConfirmedFrame < inputTick)
+            return false;
+        if (inputTick == initialTick - 1)
+            return true;
+        return playing?.ConfirmState(SessionFrame(inputTick + 1)) ?? true;
+    }
+
+    public void DisconnectPeer(int peer)
+    {
+        if (!PeerStats.Any(stats => stats.PeerId == peer))
+            return;
+        if (playing != null)
+            playing.DisconnectPeer(peer);
+        else if (peer == 0)
+        {
+            Error = "Host disconnected";
+            IsTransportFailure = true;
+        }
     }
 
     public void Poll()
     {
-        if (Error != null)
-        {
+        if (disposed || Error != null)
             return;
-        }
-
         transport.Poll();
         if (transport.Error != null)
         {
@@ -149,400 +203,148 @@ public sealed class NetworkSession : IDisposable
             IsTransportFailure = true;
             return;
         }
-
-        int count = 0;
-        while (count++ < 512 && transport.TryReceive(out var packet))
+        playing?.Poll();
+        spectator?.Poll();
+        DrainEvents();
+        if (stopAtTick.HasValue && World.TickNumber >= stopAtTick.Value)
         {
-            Receive(packet.Peer, packet.Data);
+            WaitReason = "PAUSED FOR LOBBY CHANGE";
+            playing?.ConfirmState(SessionFrame(stopAtTick.Value));
         }
-
-        Repair();
-        CheckHashes();
-        Broadcast(false);
+        if (World.Phase == MatchPhase.MatchFinished)
+            playing?.ConfirmState(SessionFrame(World.TickNumber));
     }
 
-    public bool TryAdvance(InputFrame[] localInputs)
+    public bool TryAdvance(InputFrame[] localInputs) =>
+        TryAdvance(localInputs.Select(input => new RollbackInput(input)).ToArray());
+
+    public bool TryAdvance(RollbackInput[] localInputs)
     {
         if (localInputs.Length != LocalSlots.Length)
-        {
-            throw new ArgumentException("Pass inputs in LocalSlots order");
-        }
-
-        if (Error != null || PredictionDepth >= config.MaxPrediction)
-        {
+            throw new ArgumentException("Pass inputs in LocalSlots order", nameof(localInputs));
+        LocalInputSubmitted = false;
+        Poll();
+        if (Error != null || stopAtTick.HasValue && World.TickNumber >= stopAtTick.Value)
             return false;
-        }
-
-        foreach (var input in localInputs)
+        int previousSubmission = playing?.LastSubmittedFrame ?? -1;
+        AdvanceStatus result = playing?.AdvanceFrame(localInputs) ?? spectator!.AdvanceFrame(drain: true);
+        LocalInputSubmitted =
+            LocalSlots.Length > 0 && playing != null && playing.LastSubmittedFrame != previousSubmission;
+        WaitReason = result switch
         {
-            _ = InputFrame.FromPacked(input.Packed);
-        }
-
-        var captureFrame = World.TickNumber + config.InputDelay;
-        for (int n = 0; n < LocalSlots.Length; n++)
-        {
-            receivedInputs[LocalSlots[n]].TryAdd(captureFrame, localInputs[n]);
-        }
-
-        AdvanceContiguous(config.LocalPeer);
-        Broadcast();
-        Step();
-        Prune();
-        CheckHashes();
-        return true;
+            AdvanceStatus.Advanced => "",
+            AdvanceStatus.Synchronizing => "SYNCHRONIZING",
+            AdvanceStatus.PredictionLimit => "WAITING FOR INPUT",
+            AdvanceStatus.WaitingForInput => "WAITING FOR HOST",
+            AdvanceStatus.InputBufferFull => "WAITING FOR ACKNOWLEDGEMENT",
+            AdvanceStatus.DisconnectAgreement => "AGREEING DISCONNECT",
+            _ => "DISCONNECTED",
+        };
+        DrainEvents();
+        return result == AdvanceStatus.Advanced && Error == null;
     }
 
-    private void Step()
+    private int SessionFrame(long tick) => checked((int)(tick - initialTick));
+
+    private void DrainEvents()
     {
-        long frame = World.TickNumber;
-        var inputs = new InputFrame[receivedInputs.Length];
-        for (int slot = 0; slot < inputs.Length; slot++)
+        while (TryGetEvent(out var item))
         {
-            if (!receivedInputs[slot].TryGetValue(frame, out inputs[slot]))
+            bool activeLink = item.PeerId == 0 || config.PeerSlots[item.PeerId].Length > 0;
+            switch (item.Kind)
             {
-                inputs[slot] =
-                    frame > 0 && simulatedInputs.TryGetValue(frame - 1, out var prior) ? prior[slot] : default;
+                case SessionEventKind.DesyncDetected:
+                    Error = $"Desync with peer {item.PeerId} at state {initialTick + item.Frame}: {item.Detail}";
+                    break;
+                case SessionEventKind.ProtocolError when activeLink:
+                    Error = item.Detail ?? "Invalid rollback protocol";
+                    break;
+                case SessionEventKind.Excluded:
+                    Error = item.Detail ?? "Connection lost";
+                    IsTransportFailure = true;
+                    break;
+                case SessionEventKind.Disconnected when spectator != null:
+                    Error = "Host disconnected";
+                    IsTransportFailure = true;
+                    break;
+                case SessionEventKind.Disconnected when activeLink:
+                    WaitReason = "AGREEING DISCONNECT";
+                    break;
+                case SessionEventKind.SpectatorTooFarBehind when spectator != null:
+                    Error = "Spectator needs a new checkpoint";
+                    IsTransportFailure = true;
+                    break;
             }
         }
-
-        simulatedInputs[frame] = inputs;
-        PreviousSnapshot = snapshots[frame];
-        World.Tick(inputs);
-        eventJournal[frame] = World.Events.ToArray();
-        snapshots[World.TickNumber] = World.Capture();
-        hashes[World.TickNumber] = World.Hash(snapshots[World.TickNumber]);
     }
 
-    private void Repair()
+    private bool TryGetEvent(out SessionEvent item) =>
+        playing != null ? playing.TryGetEvent(out item) : spectator!.TryGetEvent(out item);
+
+    private sealed class GameAdapter(NetworkSession owner) : IRollbackGame<RollbackInput, byte[]>
     {
-        if (rollbackFrame == long.MaxValue || Error != null)
+        public SavedState<byte[]> SaveState()
         {
-            return;
+            byte[] snapshot = owner.simulation.Capture();
+            return new(snapshot, World.Hash(snapshot));
         }
 
-        long target = World.TickNumber;
-        long rewind = rollbackFrame;
-        rollbackFrame = long.MaxValue;
-        if (!snapshots.TryGetValue(rewind, out var snapshot))
+        public void LoadState(byte[] state)
         {
-            Error = "Late input exceeded retained rollback history";
-            return;
+            owner.simulation.Restore(state);
+            owner.RollbackCount++;
+            owner.LastRollbackFromFrame = owner.World.TickNumber;
         }
 
-        World.Restore(snapshot);
-        RollbackCount++;
-        LastRollbackFromFrame = rewind;
-        while (World.TickNumber < target)
+        public void AdvanceFrame(int frame, ReadOnlySpan<PlayerInput<RollbackInput>> inputs, bool isResimulation)
         {
-            Step();
-            ResimulatedTicks++;
-        }
-    }
-
-    private void AdvanceContiguous(int peer)
-    {
-        if (!IsPlayerPeer(peer))
-            return;
-        while (HasInputsForEverySlot(peer, lastReceivedFrames[peer] + 1))
-        {
-            lastReceivedFrames[peer]++;
+            if (owner.World.TickNumber != owner.initialTick + frame)
+                throw new InvalidOperationException("Rollback frame and world tick disagree");
+            var commands = new RollbackInput[inputs.Length];
+            for (int index = 0; index < inputs.Length; index++)
+                commands[index] = inputs[index].Status == InputStatus.Disconnected ? default : inputs[index].Input;
+            owner.PreviousSnapshot = owner.World.Capture();
+            long tick = owner.World.TickNumber;
+            owner.simulation.Tick(commands);
+            owner.eventJournal[tick] = owner.simulation.Events.ToArray();
+            if (isResimulation)
+                owner.ResimulatedTicks++;
+            long floor = owner.World.TickNumber - owner.config.HistoryFrames;
+            foreach (long old in owner.eventJournal.Keys.TakeWhile(key => key < floor).ToArray())
+                owner.eventJournal.Remove(old);
         }
     }
 
-    private bool HasInputsForEverySlot(int peer, long frame)
+    private sealed class TransportAdapter(NetworkSession owner) : ITransport, IClock
     {
-        foreach (int slot in config.PeerSlots[peer])
+        public long NowMilliseconds => owner.transport.TimeMilliseconds;
+
+        public void Send(int peerId, ReadOnlySpan<byte> packet) => owner.transport.Send(peerId, packet);
+
+        public bool TryReceive(out GGCS.Datagram datagram)
         {
-            if (!receivedInputs[slot].ContainsKey(frame))
+            while (owner.transport.TryReceive(out var incoming))
             {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private void Broadcast(bool newInput = true)
-    {
-        if (Error != null)
-        {
-            return;
-        }
-
-        long now = transport.TimeMilliseconds;
-        if (!newInput && lastBroadcastMilliseconds != long.MinValue && now - lastBroadcastMilliseconds < 20)
-        {
-            return;
-        }
-
-        lastBroadcastMilliseconds = now;
-        for (int peer = 0; peer < config.PeerSlots.Length; peer++)
-        {
-            if (peer == config.LocalPeer)
-            {
-                continue;
-            }
-
-            long first = lastAcknowledgedFrames[peer] + 1;
-            first = Math.Max(first, Math.Max(config.InputDelay, World.TickNumber - config.HistoryFrames + 1));
-            long last = lastReceivedFrames[config.LocalPeer];
-            if (first > last)
-            {
-                first = Math.Max(config.InputDelay, last);
-            }
-
-            int count = (int)Math.Clamp(last - first + 1, 0, BatchSize);
-            using var stream = new MemoryStream(1024);
-            using var writer = new BinaryWriter(stream);
-            writer.Write(Magic);
-            writer.Write((byte)Protocol);
-            writer.Write(config.Fingerprint);
-            writer.Write((byte)config.LocalPeer);
-            long hashFrame = ConfirmedFrame + 1;
-            var header = new InputPacketHeader(
-                World.TickNumber,
-                lastReceivedFrames[peer],
-                ConfirmedFrame,
-                hashFrame,
-                hashes.GetValueOrDefault(hashFrame),
-                first,
-                (byte)count
-            );
-            header.Write(writer);
-            for (int n = 0; n < count; n++)
-            {
-                foreach (int slot in LocalSlots)
+                if (!owner.config.ActivePeers.Contains(incoming.Peer) || incoming.Peer == owner.LocalPeer)
                 {
-                    writer.Write(receivedInputs[slot][first + n].Packed);
-                }
-            }
-
-            transport.Send(peer, stream.ToArray());
-        }
-    }
-
-    private void Receive(int peer, byte[] data)
-    {
-        if (peer < 0 || peer >= config.PeerSlots.Length || peer == config.LocalPeer || data.Length is < 87 or > 1200)
-        {
-            RejectedPackets++;
-            return;
-        }
-
-        try
-        {
-            using var reader = new BinaryReader(new MemoryStream(data, false));
-            if (reader.ReadUInt32() != Magic || reader.ReadByte() != Protocol)
-            {
-                RejectedPackets++;
-                return;
-            }
-
-            if (!reader.ReadBytes(32).SequenceEqual(config.Fingerprint))
-            {
-                Error = "Peer build, content, rules or roster does not match";
-                return;
-            }
-
-            if (reader.ReadByte() != peer)
-            {
-                RejectedPackets++;
-                return;
-            }
-
-            var header = InputPacketHeader.Read(reader);
-            int slotCount = config.PeerSlots[peer].Length;
-            long payloadBytes = reader.BaseStream.Length - reader.BaseStream.Position;
-            if (!IsValidInputWindow(header, slotCount, payloadBytes))
-            {
-                RejectedPackets++;
-                return;
-            }
-            var inputs = ReadInputs(reader, header.InputCount, slotCount);
-            if (
-                !IsPlayerPeer(LocalPeer)
-                && slotCount > 0
-                && header.InputCount > 0
-                && header.FirstInputFrame > lastReceivedFrames[peer] + 1
-            )
-            {
-                Error = "Spectator fell behind retained input history";
-                return;
-            }
-            long floor = Math.Max(0, World.TickNumber - config.HistoryFrames + 1);
-            lastAcknowledgedFrames[peer] = Math.Max(lastAcknowledgedFrames[peer], header.LastReceivedFrame);
-            remoteConfirmedFrames[peer] = Math.Max(remoteConfirmedFrames[peer], header.ConfirmedFrame);
-            if (header.Tick >= remoteSimulationTicks[peer])
-            {
-                remoteSimulationTicks[peer] = header.Tick;
-                estimatedOneWayTicks[peer] = (int)
-                    Math.Clamp(
-                        (World.TickNumber + config.InputDelay - header.LastReceivedFrame) / 2,
-                        0,
-                        config.MaxPrediction
-                    );
-            }
-
-            if (IsPlayerPeer(peer) && header.HashFrame >= floor && header.HashFrame > 0)
-            {
-                remoteHashes[(peer, header.HashFrame)] = header.Hash;
-            }
-
-            for (int n = 0; n < header.InputCount; n++)
-            {
-                long frame = header.FirstInputFrame + n;
-                if (frame < floor)
-                {
+                    owner.unknownPackets++;
                     continue;
                 }
-
-                for (int p = 0; p < config.PeerSlots[peer].Length; p++)
-                {
-                    int slot = config.PeerSlots[peer][p];
-                    var input = inputs[n, p];
-                    if (receivedInputs[slot].TryGetValue(frame, out var old) && old != input)
-                    {
-                        Error = "Peer changed an already submitted input";
-                        return;
-                    }
-
-                    receivedInputs[slot][frame] = input;
-                    if (simulatedInputs.TryGetValue(frame, out var predicted) && predicted[slot] != input)
-                    {
-                        rollbackFrame = Math.Min(rollbackFrame, frame);
-                    }
-                }
+                datagram = new(incoming.Peer, incoming.Data);
+                return true;
             }
-
-            AdvanceContiguous(peer);
-        }
-        catch (EndOfStreamException)
-        {
-            RejectedPackets++;
-        }
-        catch (InvalidDataException)
-        {
-            RejectedPackets++;
-        }
-    }
-
-    private bool IsValidInputWindow(InputPacketHeader header, int slotCount, long payloadBytes)
-    {
-        long latestFrame = World.TickNumber + config.HistoryFrames;
-        if (
-            header.Tick < 0
-            || header.Tick > latestFrame
-            || header.LastReceivedFrame < -1
-            || header.LastReceivedFrame > lastReceivedFrames[LocalPeer]
-        )
-        {
+            datagram = default;
             return false;
         }
-        if (
-            header.ConfirmedFrame < -1
-            || header.ConfirmedFrame >= header.Tick
-            || header.HashFrame != header.ConfirmedFrame + 1
-            || header.HashFrame < 0
-            || header.HashFrame > header.Tick
-        )
-        {
-            return false;
-        }
-        if (
-            header.FirstInputFrame < 0
-            || header.FirstInputFrame > latestFrame
-            || header.InputCount > BatchSize
-            || header.FirstInputFrame + header.InputCount > latestFrame
-        )
-        {
-            return false;
-        }
-        return payloadBytes == header.InputCount * slotCount * sizeof(uint);
     }
 
-    private static InputFrame[,] ReadInputs(BinaryReader reader, int frameCount, int slotCount)
+    public void Dispose()
     {
-        var inputs = new InputFrame[frameCount, slotCount];
-        for (int frame = 0; frame < frameCount; frame++)
-        {
-            for (int slot = 0; slot < slotCount; slot++)
-            {
-                inputs[frame, slot] = InputFrame.FromPacked(reader.ReadUInt32());
-            }
-        }
-        return inputs;
+        if (disposed)
+            return;
+        disposed = true;
+        playing?.Close();
+        spectator?.Close();
+        transport.Dispose();
     }
-
-    private void CheckHashes()
-    {
-        foreach (var pair in remoteHashes.ToArray())
-        {
-            if (pair.Key.Frame > ConfirmedFrame + 1)
-            {
-                continue;
-            }
-
-            if (hashes.TryGetValue(pair.Key.Frame, out var local))
-            {
-                if (local != pair.Value)
-                {
-                    Error =
-                        $"Desync with peer {pair.Key.Peer} at state {pair.Key.Frame}: {local:x16} != {pair.Value:x16}";
-                }
-                else
-                {
-                    verifiedStateFrames[pair.Key.Peer] = Math.Max(verifiedStateFrames[pair.Key.Peer], pair.Key.Frame);
-                }
-            }
-
-            remoteHashes.Remove(pair.Key);
-        }
-    }
-
-    private void Prune()
-    {
-        long floor = Math.Max(0, World.TickNumber - config.HistoryFrames + 1);
-        foreach (var map in receivedInputs)
-        {
-            foreach (long k in map.Keys.TakeWhile(k => k < floor).ToArray())
-            {
-                map.Remove(k);
-            }
-        }
-
-        foreach (long k in snapshots.Keys.TakeWhile(k => k < floor).ToArray())
-        {
-            snapshots.Remove(k);
-        }
-
-        foreach (long k in eventJournal.Keys.TakeWhile(k => k < floor).ToArray())
-        {
-            eventJournal.Remove(k);
-        }
-
-        foreach (long k in simulatedInputs.Keys.Where(k => k < floor).ToArray())
-        {
-            simulatedInputs.Remove(k);
-        }
-
-        foreach (long k in hashes.Keys.Where(k => k < floor).ToArray())
-        {
-            hashes.Remove(k);
-        }
-
-        foreach (var k in remoteHashes.Keys.Where(k => k.Frame < floor).ToArray())
-        {
-            remoteHashes.Remove(k);
-        }
-
-        if (
-            IsPlayerPeer(LocalPeer)
-            && lastAcknowledgedFrames.Where((_, p) => p != config.LocalPeer && IsPlayerPeer(p)).Any(a => a + 1 < floor)
-        )
-        {
-            Error = "Peer stopped acknowledging inputs; connection cannot safely continue";
-        }
-    }
-
-    public void Dispose() => transport.Dispose();
 }

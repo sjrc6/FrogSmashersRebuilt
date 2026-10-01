@@ -24,6 +24,14 @@ internal sealed class DelayedInputQueue<TInput>
         this.delay = delay;
     }
 
+    public void Seed(ReadOnlySpan<TInput> inputs)
+    {
+        if (lastUserFrame != -1 || lastOutputFrame != -1 || inputs.Length != delay)
+            throw new InvalidOperationException("Seed exactly the input delay before submitting any frame.");
+        lastOutputFrame = inputs.Length - 1;
+        lastOutput = inputs.IsEmpty ? default : inputs[^1];
+    }
+
     public IReadOnlyList<NumberedInput<TInput>> Submit(int userFrame, TInput input)
     {
         if (userFrame != checked(lastUserFrame + 1))

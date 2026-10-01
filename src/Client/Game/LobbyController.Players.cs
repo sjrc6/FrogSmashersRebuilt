@@ -13,9 +13,15 @@ internal sealed partial class LobbyController
 
     public void Remove(int peer, int id)
     {
-        bool removed = Online != null ? Online.RemovePlayer(peer, id) : Roster.RemovePlayer(peer, id);
+        bool removed =
+            Online is { IsHost: false } && peer == LocalPeer
+                ? Online.SetPlayers(Online.PendingLocalPlayers.Where(player => player.Id != id).ToArray())
+            : Online != null ? Online.RemovePlayer(peer, id)
+            : EditLocal(roster => roster.RemovePlayer(peer, id));
         if (!removed)
-            game.Toasts.Show("CANNOT REMOVE PLAYER");
+            game.Toasts.Show(RosterUpdating ? "LOBBY UPDATING" : "CANNOT REMOVE PLAYER");
+        else if (peer == LocalPeer)
+            commands.Remove(id);
     }
 
     public void Spectate(int peer, bool spectating)
@@ -23,11 +29,11 @@ internal sealed partial class LobbyController
         if (Online?.SetSpectating(peer, spectating) == true)
             return;
         game.Toasts.Show(
-            spectating
-                ? Roster.Spectators.Count >= LobbyRoster.MaxSpectators
-                    ? "SPECTATORS FULL"
+            RosterUpdating ? "LOBBY UPDATING"
+            : spectating
+                ? Roster.Spectators.Count >= LobbyRoster.MaxSpectators ? "SPECTATORS FULL"
                     : "BACK OUT EXTRA PLAYERS FIRST"
-                : "NO OPEN SLOTS"
+            : "NO OPEN SLOTS"
         );
     }
 

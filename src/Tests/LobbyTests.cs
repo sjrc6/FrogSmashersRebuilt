@@ -1,7 +1,7 @@
 using System.Text;
-using System.Text.Json;
 using FrogSmashers.Core;
 using FrogSmashers.Network;
+using static FrogSmashers.Tests.TestAssert;
 
 namespace FrogSmashers.Tests;
 
@@ -9,533 +9,873 @@ internal static class LobbyTests
 {
     public static void Run(Action<bool, string> check)
     {
-        using var hostWire = new ManualWire();
-        using var clientWire = new ManualWire();
-        using var host = new RelayLobby(hostWire, null, 6, [new(0, Team: 2, Spawned: true)], "fingerprint", "{}");
-        using var client = new RelayLobby(
-            clientWire,
-            "host",
-            8,
-            [new(0, Team: 1), new(1, Team: 0, Spawned: true)],
-            "fingerprint",
-            ""
+        JoiningUsesConfirmedCheckpoints();
+        CommandsStayInTheInputStream();
+        PendingCommandsSurviveMembershipChanges();
+        MultiplePartyEditsBeforePolling();
+        MeshFailureCancelsAdmission();
+        LeavingKeepsPeerIdentityStable();
+        MatchStartAndReturn();
+        HostCanSpectate();
+        InvalidClientsAndPackets();
+        LateSimulationAndLatestSettings();
+        DisconnectDuringAdmission();
+        DelayedSpectatorDoesNotStopPlayers();
+        CheckpointsOverLossyDatagrams();
+        SpectatorLeavingDoesNotEndMatch();
+        LostKickCannotReadmitTheSameClient();
+        LeavingWhileEnteringSpectate();
+    }
+
+    private static void MultiplePartyEditsBeforePolling()
+    {
+        using var rig = new Rig();
+        var host = rig.Add("host", [new(0)]);
+        var guest = rig.Add("guest", [new(0)]);
+        rig.WaitFor(() => rig.Ready, "Party composition fixture did not synchronize");
+        foreach (var node in new[] { host, guest })
+        {
+            ulong previousSession = host.Lobby.SessionId;
+            for (int id = 1; id <= 2; id++)
+                Check(
+                    node.Lobby.SetPlayers([.. node.Lobby.PendingLocalPlayers, new(id, Color: id)]),
+                    "A second same-render join request was rejected"
+                );
+            Check(
+                node.Lobby.PendingLocalPlayers.Select(player => player.Id).SequenceEqual(new[] { 0, 1, 2 }),
+                "A same-render join replaced an earlier pending device"
+            );
+            Check(
+                node.Simulation.Roster.Humans(node.Lobby.LocalPeer).Length == 1,
+                "Pending party edits mutated the committed simulation before its checkpoint"
+            );
+            rig.WaitFor(
+                () => rig.Ready && host.Lobby.SessionId != previousSession,
+                "Same-render joins did not finish their checkpoint"
+            );
+            Check(
+                rig.Nodes.All(other =>
+                    other
+                        .Simulation.Roster.Humans(node.Lobby.LocalPeer)
+                        .Select(player => player.Id)
+                        .Order()
+                        .SequenceEqual(new[] { 0, 1, 2 })
+                ),
+                "A pending local device was lost during admission"
+            );
+        }
+        ulong joinedSession = host.Lobby.SessionId;
+        for (int id = 1; id <= 2; id++)
+            Check(
+                guest.Lobby.SetPlayers(guest.Lobby.PendingLocalPlayers.Where(player => player.Id != id).ToArray()),
+                "A second same-render back-out request was rejected"
+            );
+        Check(
+            guest.Lobby.PendingLocalPlayers.Select(player => player.Id).SequenceEqual(new[] { 0 }),
+            "A same-render back-out restored an earlier removed device"
         );
+        rig.WaitFor(
+            () => rig.Ready && host.Lobby.SessionId != joinedSession,
+            "Same-render back-outs did not finish their checkpoint"
+        );
+        Check(
+            rig.Nodes.All(node => node.Simulation.Roster.Humans(guest.Lobby.LocalPeer).Length == 1),
+            "The last party request was not committed on every machine"
+        );
+        rig.Steps(60);
+        rig.AssertConfirmedStates();
+    }
+
+    private static void JoiningUsesConfirmedCheckpoints()
+    {
+        using var rig = new Rig();
+        var host = rig.Add("host", [new(0, Spawned: true)]);
+        rig.Steps(80);
+        long beforeJoin = host.Simulation.World.TickNumber;
+        ulong firstSession = host.Lobby.SessionId;
+        var guest = rig.Add("guest", [new(0), new(1, Color: 1, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "First party admission did not complete");
+        Check(
+            host.Lobby.Roster.Count == 3 && guest.Lobby.Roster.Count == 3,
+            "Joining local party did not receive all rooms"
+        );
+        Check(host.Simulation.World.TickNumber >= beforeJoin, "Admission reset the incumbent world clock");
+        Check(
+            host.Lobby.SessionId != firstSession && host.Lobby.SessionId == guest.Lobby.SessionId,
+            "Admission did not replace the rollback generation"
+        );
+        rig.Steps(100);
+        rig.AssertConfirmedStates();
+    }
+
+    private static void CommandsStayInTheInputStream()
+    {
+        using var rig = new Rig
+        {
+            Delay = 45,
+            Jitter = 35,
+            Loss = 0.03,
+        };
+        var host = rig.Add("host", [new(0, Spawned: true)]);
+        var guest = rig.Add("guest", [new(0), new(1, Color: 1, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Two-peer lobby did not synchronize");
+        var third = rig.Add("third", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Third peer could not join a running lobby");
+        var fourth = rig.Add("fourth", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Fourth peer could not join a running lobby");
+        rig.Steps(80);
+        ulong session = host.Lobby.SessionId;
+        int generation = host.Lobby.Generation;
+        int room = Enumerable
+            .Range(0, 8)
+            .Single(index =>
+                guest.Simulation.Roster.Slots[index].Player is { } player
+                && player.Peer == guest.Lobby.LocalPeer
+                && player.Id == 0
+            );
+        int color = guest.Simulation.Roster.Slots[room].Player!.Color;
+        long colorTick = guest.Simulation.World.TickNumber + 4;
+        rig.Input = (node, handle) =>
+            node == guest
+            && node.Simulation.InputPlayers[handle].Id == 0
+            && node.Simulation.World.TickNumber == colorTick
+                ? new(default, ColorStep: 1, TeamStep: 1)
+                : default;
+        rig.Steps(100);
+        Check(
+            rig.Nodes.All(node =>
+                node.Simulation.Roster.Slots[room].Player is { Team: 1 } player && player.Color != color
+            ),
+            "Color and team commands did not converge through rollback"
+        );
+        long spawnTick = guest.Simulation.World.TickNumber + 4;
+        rig.Input = (node, handle) =>
+            node == guest
+            && node.Simulation.InputPlayers[handle].Id == 0
+            && node.Simulation.World.TickNumber == spawnTick
+                ? new(default, (byte)LobbyInputActions.Spawn)
+                : default;
+        rig.Steps(100);
+        Check(
+            rig.Nodes.All(node => node.Simulation.Roster.Slots[room].Player is { Spawned: true }),
+            "Spawn action did not converge through rollback"
+        );
+        Check(
+            host.Lobby.SessionId == session && host.Lobby.Generation == generation && !host.Lobby.Transitioning,
+            "Routine color/spawn actions restarted the lobby session"
+        );
+        Check(
+            rig.Sent.Any(packet => packet.Source == "guest" && packet.Destination == "third" && IsInput(packet)),
+            "Guest inputs never traveled directly to another guest"
+        );
+        Check(
+            rig.Sent.Where(IsInput)
+                .All(packet =>
+                    packet.Data[13] == rig.Nodes.Single(node => node.Wire.LocalAddress == packet.Source).Lobby.LocalPeer
+                ),
+            "A machine forwarded another active player's input stream"
+        );
+        rig.AssertConfirmedStates();
+        rig.Input = null;
+        Check(host.Lobby.EditSlot(7, SlotType.Closed), "Host could not close an unused room");
+        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId != session, "Capacity change checkpoint did not complete");
+        Check(
+            rig.Nodes.All(node =>
+                node.Lobby.Roster.Capacity == 7 && node.Simulation.Roster.Slots[7].Type == SlotType.Closed
+            ),
+            "Slot capacity did not propagate through the checkpoint"
+        );
+        rig.Steps(80);
+        rig.AssertConfirmedStates();
+        var old = rig.Sent.Last(packet =>
+            packet.Source == "guest"
+            && packet.Destination == "host"
+            && IsInput(packet)
+            && BitConverter.ToUInt64(packet.Data, 5) == session
+        );
+        int rejected = host.Lobby.LobbySession!.RejectedPackets;
+        host.Wire.Incoming.Enqueue(new("guest", old.Data));
+        host.Lobby.Poll();
+        Check(
+            host.Lobby.LobbySession.RejectedPackets == rejected,
+            "An old generation datagram reached the new rollback controller"
+        );
+        var forged = rig
+            .Sent.Last(packet => packet.Source == "third" && packet.Destination == "host" && IsInput(packet))
+            .Data.ToArray();
+        host.Wire.Incoming.Enqueue(new("guest", forged));
+        host.Lobby.Poll();
+        Check(
+            host.Lobby.LobbySession.RejectedPackets == rejected,
+            "A guest spoofed another peer's mesh input identity"
+        );
+    }
+
+    private static void PendingCommandsSurviveMembershipChanges()
+    {
+        using var rig = new Rig
+        {
+            Delay = 35,
+            Jitter = 25,
+            Loss = 0.02,
+        };
+        var host = rig.Add("host", [new(0)]);
+        rig.Input = (node, handle) => node == host ? new(default, TeamStep: 1) : default;
+        rig.Steps(80);
+        Check(
+            host.Simulation.Roster.Slots[0].Player!.Team == (host.Simulation.World.TickNumber - 2) % 8,
+            "Fixture did not establish the two-frame input delay"
+        );
+        rig.Add("guest", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Pending-command fixture admission failed");
+        rig.Steps(120);
+        Check(
+            host.Simulation.Roster.Slots[0].Player!.Team == (host.Simulation.World.TickNumber - 2) % 8,
+            "Checkpoint dropped or repeated a queued one-shot team command"
+        );
+        rig.Add("other", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Second pending-command fixture admission failed");
+        rig.Steps(120);
+        Check(
+            host.Simulation.Roster.Slots[0].Player!.Team == (host.Simulation.World.TickNumber - 2) % 8,
+            "Second checkpoint lost the original input-delay continuity"
+        );
+        rig.AssertConfirmedStates();
+    }
+
+    private static void MeshFailureCancelsAdmission()
+    {
+        using var rig = new Rig();
+        var host = rig.Add("host", [new(0, Spawned: true)]);
+        var existing = rig.Add("existing", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Initial mesh did not synchronize");
+        rig.Steps(80);
+        ulong generation = host.Lobby.SessionId;
+        rig.Blocked.Add(("existing", "blocked"));
+        rig.Blocked.Add(("blocked", "existing"));
+        var newcomer = rig.Add("blocked", [new(0, Spawned: true)]);
+        newcomer.AllowError = true;
+        rig.WaitFor(() => host.Lobby.Transitioning, "New admission never paused the lobby");
+        rig.WaitFor(
+            () => host.Lobby.SimulationReady && !host.Lobby.PeerIds.Contains(newcomer.Lobby.LocalPeer),
+            "Failed mesh admission did not resume the old lobby",
+            2400
+        );
+        long resumedTick = host.Simulation.World.TickNumber;
+        newcomer.Active = false;
+        rig.Steps(150);
+        Check(
+            host.Lobby.SessionId == generation && existing.Lobby.SessionId == generation,
+            "Cancelled admission replaced the existing generation"
+        );
+        Check(
+            host.Simulation.World.TickNumber > resumedTick + 80,
+            "Existing lobby did not recover promptly after cancellation"
+        );
+        Check(
+            host.Lobby.Roster.Count == 2 && existing.Lobby.Roster.Count == 2,
+            "Cancelled admission retained an unconnected player"
+        );
+        rig.AssertConfirmedStates();
+    }
+
+    private static void LeavingKeepsPeerIdentityStable()
+    {
+        using var rig = new Rig();
+        var host = rig.Add("host", [new(0, Spawned: true)]);
+        var first = rig.Add("first", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "First guest failed to synchronize");
+        var second = rig.Add("second", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Second guest failed to synchronize");
+        rig.Steps(80);
+        int survivingId = second.Lobby.LocalPeer;
+        ulong oldSession = host.Lobby.SessionId;
+        first.Lobby.Dispose();
+        first.Active = false;
+        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId != oldSession, "Leave checkpoint failed");
+        Check(
+            second.Lobby.LocalPeer == survivingId && host.Lobby.PeerIds.SequenceEqual(new[] { 0, survivingId }),
+            "Leaving a peer renumbered the surviving connection"
+        );
+        rig.Steps(100);
+        rig.AssertConfirmedStates();
+        Check(host.Lobby.EditSlot(7, SlotType.Cpu), "Host could not create a CPU");
+        oldSession = host.Lobby.SessionId;
+        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId != oldSession, "CPU checkpoint failed");
+        rig.Steps(80);
+        Check(
+            host.Simulation.Roster.Slots[7].Player is { Cpu: true }
+                && host.Simulation.World.Players[7].PreviousInput == default,
+            "New lobby CPU was missing or attacked without provocation"
+        );
+        rig.AssertConfirmedStates();
+    }
+
+    private static void MatchStartAndReturn()
+    {
+        using var rig = new Rig();
+        var host = rig.Add("host", [new(0, Spawned: true)]);
+        var guest = rig.Add("guest", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Match fixture did not synchronize");
+        rig.Steps(80);
+        Check(
+            !guest.Lobby.StartMatch("{}") && host.Lobby.StartMatch("{\"seed\":9}"),
+            "Match start authority was not enforced"
+        );
+        rig.WaitFor(() => host.Lobby.Ready && guest.Lobby.Ready, "Match start checkpoint did not complete");
+        Check(
+            host.Lobby.PeerSlots.Length == 2 && host.Lobby.PeerSlots.All(slots => slots.Length == 1),
+            "Frozen match input ownership was incorrect"
+        );
+        Check(
+            host.Lobby.MatchSettingsJson == guest.Lobby.MatchSettingsJson
+                && host.Lobby.PlayerColors.SequenceEqual(guest.Lobby.PlayerColors),
+            "Match configuration differed across peers"
+        );
+        Check(!host.Lobby.EditSlot(7, SlotType.Closed), "Match accepted a roster edit");
+        var late = rig.Add("late", [new(0)]);
+        late.AllowError = true;
+        rig.WaitFor(() => late.Lobby.Error != null, "Match did not close joining");
+        Check(!late.Lobby.Connected && host.Lobby.Roster.Count == 2, "Late join changed the match roster");
+        late.Active = false;
+        int previousGeneration = host.Lobby.Generation;
+        Check(
+            !guest.Lobby.ReturnToLobby() && host.Lobby.ReturnToLobby(),
+            "Only the host should return the whole match to lobby"
+        );
+        rig.WaitFor(() => guest.Lobby.Generation > previousGeneration, "Return-to-lobby state was not broadcast");
+        foreach (var node in rig.Nodes.Where(node => node.Active))
+        {
+            node.Simulation = new LobbySimulation(
+                new World(TestFixtures.Map(), new GameRules { Lobby = true, PlayerCount = 8 }, 13),
+                node.Lobby.Roster,
+                71
+            );
+            node.Lobby.AttachSimulation(node.Simulation);
+        }
+        rig.WaitFor(() => rig.Ready, "Returned lobby did not create a new rollback session");
+        rig.Steps(80);
+        rig.AssertConfirmedStates();
+    }
+
+    private static void HostCanSpectate()
+    {
+        using var rig = new Rig();
+        var host = rig.Add("host", [new(0, Spawned: true)]);
+        var guest = rig.Add("guest", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Spectator fixture did not synchronize");
+        var other = rig.Add("other", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Third spectator fixture peer did not synchronize");
+        rig.Steps(80);
+        ulong session = host.Lobby.SessionId;
+        Check(host.Lobby.SetSpectating(0, true), "Host could not select spectating");
+        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId != session, "Spectating host checkpoint failed");
+        Check(
+            host.Lobby.LobbySession!.LocalSlots.Length == 0 && host.Lobby.Roster.Spectator(0) != null,
+            "Spectating host retained an active input slot"
+        );
+        rig.Steps(180);
+        rig.AssertConfirmedStates();
+        session = host.Lobby.SessionId;
+        Check(other.Lobby.SetSpectating(other.Lobby.LocalPeer, true), "Guest could not spectate");
+        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId != session, "Guest spectator checkpoint failed");
+        rig.Steps(180);
+        Check(other.Lobby.LobbySession!.LocalSlots.Length == 0, "Spectator retained an active input slot");
+        Check(
+            rig.Sent.Where(packet =>
+                    IsInput(packet)
+                    && packet.Destination == "other"
+                    && BitConverter.ToUInt64(packet.Data, 5) == host.Lobby.SessionId
+                )
+                .All(packet => packet.Source == "host"),
+            "Spectator stream was sent by a nonhost player"
+        );
+        Check(
+            other.Simulation.World.TickNumber > other.Lobby.LobbySession.StartTick + 60,
+            "Host-fed spectator did not advance"
+        );
+        session = host.Lobby.SessionId;
+        Check(
+            other.Lobby.SetSpectating(other.Lobby.LocalPeer, false),
+            "Spectator could not return to a free player slot"
+        );
+        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId != session, "Unspectating checkpoint failed");
+        rig.Steps(100);
+        rig.AssertConfirmedStates();
+    }
+
+    private static void InvalidClientsAndPackets()
+    {
+        using var rig = new Rig();
+        var host = rig.Add("host", [new(0, Spawned: true)]);
         foreach (
-            string malformed in new[]
+            string json in new[]
             {
                 "null",
                 "{",
                 "[]",
                 "{\"Kind\":null}",
                 "{\"Nonce\":null}",
-                "{\"Slots\":null}",
-                "{\"Players\":null}",
+                "{\"Peers\":[null]}",
                 "{\"Players\":[null]}",
-                "{\"Settings\":null}",
-                "{\"Hash\":null}",
-                "{\"ClientNonce\":null}",
-                "{\"Slots\":{}}",
+                "{\"Inputs\":[null]}",
             }
         )
         {
-            hostWire.Incoming.Enqueue(new("stranger", Packet(malformed)));
-            host.Poll();
-            check(
-                host.Error == null && !host.Ready && host.Roster.Count == 1,
-                "Malformed lobby control changed host state"
-            );
+            byte[] body = Encoding.UTF8.GetBytes(json);
+            byte[] packet = new byte[body.Length + 5];
+            BitConverter.TryWriteBytes(packet, 0x46534D31u);
+            packet[4] = 1;
+            body.CopyTo(packet, 5);
+            host.Wire.Incoming.Enqueue(new("stranger", packet));
         }
-        void Pump()
+        rig.Steps(4);
+        Check(host.Lobby.Error == null && host.Lobby.Roster.Count == 1, "Malformed control altered the host roster");
+        var wrong = rig.Add("wrong", [new(0)], "other-content");
+        wrong.AllowError = true;
+        rig.WaitFor(() => wrong.Lobby.Error != null, "Mismatched content was not rejected");
+        Check(
+            !wrong.Lobby.Connected && host.Lobby.PeerIds.SequenceEqual(new[] { 0 }),
+            "Mismatched build joined the mesh"
+        );
+    }
+
+    private static void LateSimulationAndLatestSettings()
+    {
+        using var rig = new Rig();
+        var host = rig.Add("host", [new(0, Spawned: true)]);
+        rig.Steps(80);
+        ulong original = host.Lobby.SessionId;
+        var guest = rig.Add("late-simulation", [new(0, Spawned: true)], attach: false);
+        rig.Steps(180);
+        Check(
+            host.Lobby.Transitioning && guest.Lobby.Connected && guest.Lobby.LobbySession == null,
+            "Late simulation fixture did not defer checkpoint installation"
+        );
+        host.Lobby.SetMatchSettings("{\"latest\":1}");
+        long paused = host.Simulation.World.TickNumber;
+        rig.Steps(80);
+        Check(host.Simulation.World.TickNumber == paused, "Host continued simulation while a new player was loading");
+        guest.Lobby.AttachSimulation(guest.Simulation);
+        rig.WaitFor(() => rig.Ready, "A client attaching after all snapshot chunks could not finish admission");
+        Check(
+            host.Lobby.SessionId != original
+                && host.Lobby.MatchSettingsJson == "{\"latest\":1}"
+                && guest.Lobby.MatchSettingsJson == host.Lobby.MatchSettingsJson,
+            "Settings edited during admission were lost on checkpoint commit"
+        );
+        ulong current = host.Lobby.SessionId;
+        host.Lobby.SetMatchSettings("{\"latest\":2}");
+        rig.Steps(100);
+        Check(
+            host.Lobby.SessionId == current && guest.Lobby.MatchSettingsJson == "{\"latest\":2}",
+            "Settings-only edits restarted rollback or failed to propagate"
+        );
+        rig.AssertConfirmedStates();
+    }
+
+    private static void DisconnectDuringAdmission()
+    {
+        using var rig = new Rig();
+        var host = rig.Add("host", [new(0, Spawned: true)]);
+        var existing = rig.Add("existing", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Disconnect fixture initial synchronization failed");
+        var leaving = rig.Add("leaving", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Disconnect fixture third peer failed");
+        rig.Steps(80);
+        rig.Blocked.Add(("existing", "newcomer"));
+        rig.Blocked.Add(("newcomer", "existing"));
+        var newcomer = rig.Add("newcomer", [new(0, Spawned: true)]);
+        newcomer.AllowError = true;
+        rig.WaitFor(() => host.Lobby.Transitioning && newcomer.Lobby.Connected, "Admission fixture did not pause");
+        leaving.Lobby.Dispose();
+        leaving.Active = false;
+        rig.WaitFor(() => newcomer.Lobby.Error != null, "Disconnect did not cancel the pending newcomer");
+        newcomer.Active = false;
+        rig.WaitFor(
+            () => rig.Ready,
+            "Surviving clients could not drain their old session after another peer left during admission"
+        );
+        Check(
+            host.Lobby.PeerIds.SequenceEqual(new[] { 0, existing.Lobby.LocalPeer }) && host.Lobby.Roster.Count == 2,
+            "Cancelled admission/disconnect retained stale roster members"
+        );
+        rig.Steps(100);
+        rig.AssertConfirmedStates();
+    }
+
+    private static void DelayedSpectatorDoesNotStopPlayers()
+    {
+        using var rig = new Rig();
+        var host = rig.Add("host", [new(0, Spawned: true)]);
+        var player = rig.Add("player", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Spectator delay fixture did not synchronize");
+        var observer = rig.Add("observer", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Observer admission failed");
+        ulong original = host.Lobby.SessionId;
+        Check(observer.Lobby.SetSpectating(observer.Lobby.LocalPeer, true), "Observer could not select spectating");
+        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId != original, "Observer transition failed");
+        rig.Steps(80);
+        original = host.Lobby.SessionId;
+        rig.DeliveryDelay["observer"] = 2000;
+        Check(host.Lobby.EditSlot(7, SlotType.Closed), "Host could not trigger spectator delay fixture checkpoint");
+        rig.WaitFor(
+            () =>
+                host.Lobby.SimulationReady
+                && player.Lobby.SimulationReady
+                && host.Lobby.SessionId != original
+                && player.Lobby.SessionId == host.Lobby.SessionId
+                && host.Lobby.LobbySession?.State == GGCS.SessionState.Running
+                && player.Lobby.LobbySession?.State == GGCS.SessionState.Running,
+            "Delayed spectator blocked active players' checkpoint"
+        );
+        Check(observer.Lobby.SessionId == original, "Spectator delay fixture did not delay installation");
+        long before = host.Simulation.World.TickNumber;
+        rig.Steps(100);
+        Check(
+            host.Simulation.World.TickNumber > before + 80,
+            "Active players waited for spectator checkpoint delivery: " + rig.Describe() + $" (before={before})"
+        );
+        rig.DeliveryDelay.Clear();
+        rig.WaitFor(() => rig.Ready, "Delayed spectator did not install the new session");
+        rig.Steps(240);
+        Check(
+            observer.Simulation.World.TickNumber > observer.Lobby.LobbySession!.StartTick + 100,
+            "Delayed spectator did not resume its confirmed stream"
+        );
+    }
+
+    private static void CheckpointsOverLossyDatagrams()
+    {
+        using var rig = new Rig
         {
-            for (int i = 0; i < 8; i++)
+            DatagramMode = true,
+            Delay = 40,
+            Jitter = 50,
+            Loss = 0.12,
+        };
+        var host = rig.Add("host", [new(0, Spawned: true)]);
+        rig.Steps(80);
+        rig.Add("first", [new(0, Spawned: true), new(1, Color: 1, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Lossy reliable UDP could not admit a local party");
+        rig.Add("second", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Lossy reliable UDP could not establish a full mesh");
+        rig.Steps(250);
+        rig.AssertConfirmedStates();
+        Check(
+            rig.Sent.Max(packet => packet.Data.Length) <= 1232,
+            "Integrated checkpoint exceeded the UDP datagram budget"
+        );
+    }
+
+    private static void SpectatorLeavingDoesNotEndMatch()
+    {
+        using var rig = new Rig();
+        var host = rig.Add("host", [new(0, Spawned: true)]);
+        var player = rig.Add("player", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Spectator leave fixture did not synchronize");
+        var observer = rig.Add("observer", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Spectator leave fixture admission failed");
+        ulong oldSession = host.Lobby.SessionId;
+        Check(observer.Lobby.SetSpectating(observer.Lobby.LocalPeer, true), "Observer could not enter spectate");
+        rig.WaitFor(
+            () => rig.Ready && host.Lobby.SessionId != oldSession,
+            "Observer could not finish entering spectate"
+        );
+        rig.Steps(80);
+        Check(host.Lobby.StartMatch("{}"), "Spectator leave fixture could not start a match");
+        rig.WaitFor(
+            () => rig.Nodes.All(node => node.Lobby.Ready),
+            "Spectator leave fixture did not finish match setup"
+        );
+        ulong matchSession = host.Lobby.SessionId;
+        int generation = host.Lobby.Generation;
+        observer.Lobby.Dispose();
+        observer.Active = false;
+        rig.Steps(100);
+        Check(
+            host.Lobby.Starting && host.Lobby.Ready && player.Lobby.Starting && player.Lobby.Ready,
+            "A spectator leaving returned active players to the lobby"
+        );
+        Check(
+            host.Lobby.SessionId == matchSession && host.Lobby.Generation == generation && host.Lobby.Roster.Count == 2,
+            "Spectator departure changed the active match generation or player roster"
+        );
+        Check(
+            !host.Lobby.PeerIds.Contains(observer.Lobby.LocalPeer),
+            "Departed spectator remained in the connection roster"
+        );
+    }
+
+    private static void LostKickCannotReadmitTheSameClient()
+    {
+        using var rig = new Rig();
+        var host = rig.Add("host", [new(0, Spawned: true)]);
+        var kicked = rig.Add("kicked", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Kick fixture did not synchronize");
+        rig.Steps(80);
+        Check(host.Lobby.EditSlot(7, SlotType.Closed), "Kick fixture could not begin a roster change");
+        rig.WaitFor(() => host.Lobby.Transitioning, "Kick fixture did not enter its barrier");
+        rig.Blocked.Add(("host", "kicked"));
+        host.Lobby.Kick(kicked.Lobby.LocalPeer, false);
+        rig.WaitFor(
+            () => host.Lobby.SimulationReady && host.Lobby.PeerIds.Count == 1,
+            "Kicking during a roster change did not recover the host"
+        );
+        long before = host.Simulation.World.TickNumber;
+        rig.Steps(240);
+        Check(kicked.Lobby.Error == null, "Kick-loss fixture unexpectedly delivered the rejection");
+        Check(
+            host.Lobby.PeerIds.SequenceEqual(new[] { 0 }) && host.Lobby.Roster.Count == 1 && !host.Lobby.Transitioning,
+            "Periodic hello from a removed client automatically rejoined the lobby"
+        );
+        Check(
+            host.Simulation.World.TickNumber > before + 180,
+            "Removed client's retries repeatedly paused the surviving lobby"
+        );
+        kicked.Lobby.Dispose();
+        kicked.Active = false;
+        rig.Blocked.Remove(("host", "kicked"));
+        var fresh = rig.Add("kicked", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "A fresh explicit join was rejected after an ordinary kick");
+        Check(fresh.Lobby.Connected && host.Lobby.Roster.Count == 2, "Ordinary kick permanently banned the address");
+        rig.Steps(80);
+        rig.AssertConfirmedStates();
+    }
+
+    private static void LeavingWhileEnteringSpectate()
+    {
+        using var rig = new Rig();
+        var host = rig.Add("host", [new(0, Spawned: true)]);
+        var survivor = rig.Add("survivor", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Spectate-disconnect fixture failed to synchronize");
+        var leaving = rig.Add("leaving", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Spectate-disconnect fixture failed to admit its third peer");
+        rig.Steps(80);
+        Check(host.Lobby.SetSpectating(leaving.Lobby.LocalPeer, true), "Host could not begin the spectate transition");
+        rig.WaitFor(() => host.Lobby.Transitioning, "Spectate transition did not pause the active session");
+        leaving.Lobby.Dispose();
+        leaving.Active = false;
+        rig.WaitFor(
+            () => rig.Ready && host.Lobby.PeerIds.Count == 2,
+            "Leaving during spectate transition retained the departed active input owner"
+        );
+        rig.Steps(100);
+        Check(
+            host.Lobby.PeerIds.SequenceEqual(new[] { 0, survivor.Lobby.LocalPeer }) && host.Lobby.Roster.Count == 2,
+            "Spectate transition departure retained a player or spectator"
+        );
+        rig.AssertConfirmedStates();
+    }
+
+    private static bool IsInput(Packet packet) => packet.Data.Length >= 15 && packet.Data[4] == 2;
+
+    private sealed class Rig : IDisposable
+    {
+        private readonly Random random = new(723);
+        private readonly List<Packet> pending = new();
+        private readonly Dictionary<(string, string), long> reliableDue = new();
+        public readonly List<Node> Nodes = new();
+        public readonly List<Packet> Sent = new();
+        public readonly HashSet<(string, string)> Blocked = new();
+        public int Frame;
+        public long Now => Frame * 1000L / 120;
+        public int Delay = 16;
+        public int Jitter;
+        public double Loss;
+        public bool DatagramMode;
+        public readonly Dictionary<string, int> DeliveryDelay = new();
+        public Func<Node, int, RollbackInput>? Input;
+        public bool Ready =>
+            Nodes
+                .Where(node => node.Active)
+                .All(node =>
+                    node.Lobby.SimulationReady
+                    && node.Lobby.LobbySession?.State == GGCS.SessionState.Running
+                    && node.Lobby.SessionId == Nodes[0].Lobby.SessionId
+                );
+
+        public Node Add(string address, LobbyPlayer[] players, string hash = "mesh-fixture", bool attach = true)
+        {
+            var wire = new ManualWire(this, address);
+            var lobby = new MeshLobby(
+                wire,
+                Nodes.Count == 0 ? null : Nodes[0].Wire.LocalAddress,
+                8,
+                players,
+                hash,
+                "{}"
+            );
+            var simulation = new LobbySimulation(
+                new World(TestFixtures.Map(), new GameRules { Lobby = true, PlayerCount = 8 }, 13),
+                lobby.Roster,
+                71
+            );
+            var node = new Node(wire, lobby, simulation);
+            Nodes.Add(node);
+            if (attach)
+                lobby.AttachSimulation(simulation);
+            return node;
+        }
+
+        public void Steps(int count)
+        {
+            for (int i = 0; i < count; i++)
+                Step();
+        }
+
+        public void WaitFor(Func<bool> condition, string failure, int maximumFrames = 2400)
+        {
+            for (int i = 0; i < maximumFrames && !condition(); i++)
+                Step();
+            Check(condition(), failure + " " + Describe());
+        }
+
+        public string Describe() =>
+            string.Join(
+                "; ",
+                Nodes.Select(node =>
+                    $"{node.Wire.LocalAddress}:peer{node.Lobby.LocalPeer},tick{node.Simulation.World.TickNumber},session{node.Lobby.SessionId},status={node.Lobby.Status},wait={node.Lobby.LobbySession?.WaitReason},error={node.Lobby.Error ?? node.Lobby.LobbySession?.Error}"
+                )
+            );
+
+        private void Step()
+        {
+            Frame++;
+            foreach (var packet in pending.Where(packet => packet.Due <= Now).OrderBy(packet => packet.Due).ToArray())
             {
-                client.Poll();
-                Route(clientWire, hostWire, "client");
-                host.Poll();
-                Route(hostWire, clientWire, "host");
+                pending.Remove(packet);
+                var destination = Nodes.FirstOrDefault(node =>
+                    node.Active && node.Wire.LocalAddress == packet.Destination
+                );
+                if (destination != null && !Blocked.Contains((packet.Source, packet.Destination)))
+                    destination.Wire.Incoming.Enqueue(new(packet.Source, packet.Data));
             }
-        }
-        Pump();
-        check(
-            client.Connected && host.Roster.Count == 3 && client.Roster.Count == 3,
-            "Mixed local party did not join the forming lobby"
-        );
-        check(!host.Starting && !client.Ready, "Lobby started without host action");
-        check(
-            host.Roster.Slots.Where(slot => slot.Player != null).Select(slot => slot.Player!.Color).Distinct().Count()
-                == 3,
-            "Joining party reused occupied colors"
-        );
-        check(host.EditSlot(5, SlotType.Closed), "Capacity edit rejected");
-        Pump();
-        check(client.Roster.Capacity == 5, "Capacity change was not rebroadcast");
-        check(host.EditSlot(4, SlotType.Closed), "Slot close rejected");
-        Pump();
-        check(
-            client.Roster.Capacity == 4 && !client.Roster.Slots[4].Open,
-            "Slot edits did not update advertised capacity"
-        );
-        check(host.EditSlot(4, SlotType.Open), "Slot reopen rejected");
-        Pump();
-        check(client.Roster.Capacity == 5, "Reopened slot capacity was not rebroadcast");
-        var choosing = client.Roster.Players(client.LocalPeer);
-        check(
-            client.SetPlayers(choosing.Select(p => p.Id == 0 ? p with { Color = 6 } : p).ToArray()),
-            "Color choice was rejected"
-        );
-        Pump();
-        check(
-            host.Roster.Players(client.LocalPeer).Any(p => p.Id == 0 && p.Color == 6 && !p.Spawned),
-            "Pending frog color did not reach the host"
-        );
-        check(!host.StartMatch("{}"), "Unspawned player was allowed into match");
-        var players = client.Roster.Players(client.LocalPeer);
-        check(
-            client.SetPlayers(players.Select(player => player with { Spawned = true }).ToArray()),
-            "Player confirmation rejected"
-        );
-        Pump();
-        check(host.Roster.Players(1).All(player => player.Spawned), "Confirmation did not reach host");
-        var inputs = new InputFrame[8];
-        inputs[0] = new(1, 0, InputButtons.Attack);
-        inputs[1] = new(-1, 1, InputButtons.Jump);
-        client.SendLobbyInputs(inputs);
-        Pump();
-        check(
-            host.ReadLobbyInputs()[0] == default && host.ReadLobbyInputs()[1] == inputs[1],
-            "Lobby input escaped slot ownership"
-        );
-        host.SendSnapshot([1, 2, 3]);
-        Pump();
-        check(client.TakeSnapshot()!.SequenceEqual(new byte[] { 1, 2, 3 }), "Lobby snapshot was not delivered");
-        check(host.StartMatch("{\"seed\":9}"), "Host could not start ready roster");
-        Pump();
-        check(host.Ready && client.Ready, "Manual lobby start barrier failed");
-        check(!host.EditSlot(7, SlotType.Open) && !client.SetPlayers([]), "Frozen match accepted roster changes");
-        check(
-            host.PeerSlots.Length == 2
-                && host.PeerSlots[0].SequenceEqual(new[] { 0 })
-                && host.PeerSlots[1].SequenceEqual(new[] { 1, 2 }),
-            "Mixed local match roster incorrect"
-        );
-        check(
-            host.PlayerTeams.SequenceEqual(new[] { 2, 1, 0 }) && client.PlayerTeams.SequenceEqual(host.PlayerTeams),
-            "Teams were not negotiated"
-        );
-        check(
-            client.PlayerColors.SequenceEqual(host.PlayerColors) && client.MatchSettingsJson == "{\"seed\":9}",
-            "Match settings or colors differ"
-        );
-        client.Send(0, [1, 2, 3]);
-        Pump();
-        check(
-            host.TryReceive(out var received)
-                && received.Peer == 1
-                && received.Data.SequenceEqual(new byte[] { 1, 2, 3 }),
-            "Match transport routing failed"
-        );
-        client.Send(0, [4, 5]);
-        var stale = clientWire.Sent.Last().Data.ToArray();
-        stale[5] ^= 0xff;
-        clientWire.Sent.Clear();
-        hostWire.Incoming.Enqueue(new("client", stale));
-        host.Poll();
-        check(!host.TryReceive(out _), "Old session nonce accepted");
-        using var lateWire = new ManualWire();
-        using var late = new RelayLobby(lateWire, "host", 8, [new(0)], "fingerprint", "");
-        late.Poll();
-        Route(lateWire, hostWire, "late");
-        host.Poll();
-        Route(hostWire, lateWire, "host");
-        late.Poll();
-        check(late.Error != null && !late.Connected, "Joining remained open after host started");
-        TestReturnToLobby(host, client, hostWire, clientWire, Pump, check);
-        TestRoomEdits(check);
-        TestPlayerRemoval(check);
-        TestSpectators(check);
-        TestAdmission(check);
-        TestTwelveConnections(check);
-        var rooms = new LobbyRoster();
-        rooms.Edit(4, SlotType.Cpu);
-        using var roomWire = new ManualWire();
-        using var roomHost = new RelayLobby(roomWire, null, 6, rooms.Players(0), "fingerprint", "{}", rooms.Slots);
-        check(
-            roomHost.Roster.Slots[4].Player?.Cpu == true && roomHost.Roster.Slots[0].Player == null,
-            "Opening online moved the existing local room assignments"
-        );
-        roomHost.EditSlot(0, SlotType.Cpu);
-        check(
-            roomHost.Roster.Players(0).Select(player => player.Id).Distinct().Count() == 2,
-            "Adding a CPU reused another room's device identity"
-        );
-        Console.WriteLine(
-            "Lobby joining, capacity broadcasts, room edits, input ownership and manual start checks passed"
-        );
-    }
-
-    private static void TestReturnToLobby(
-        RelayLobby host,
-        RelayLobby client,
-        ManualWire hostWire,
-        ManualWire clientWire,
-        Action pump,
-        Action<bool, string> check
-    )
-    {
-        var rooms = host.Roster.Slots.ToArray();
-        for (int round = 1; round <= 3; round++)
-        {
-            using var oldHostTransport = host.CreateTransport();
-            using var oldClientTransport = client.CreateTransport();
-            client.Send(0, [42]);
-            byte[] oldPacket = clientWire.Sent.Last(packet => packet.Data[4] == 2).Data.ToArray();
-            clientWire.Sent.Clear();
-            check(!client.ReturnToLobby(), "guest cannot return everyone to lobby");
-            check(host.ReturnToLobby(), "host can return from match");
-            oldHostTransport.Dispose();
-            oldClientTransport.Dispose();
-            pump();
-            check(host.Generation == round && client.Generation == round, "return reaches the client");
-            check(
-                host.Connected && client.Connected && !host.Starting && !client.Starting,
-                "return preserves connections and unlocks lobby"
-            );
-            check(
-                host.Roster.Slots.SequenceEqual(rooms) && client.Roster.Slots.SequenceEqual(rooms),
-                "return preserves rooms, local party, colors, teams and capacity"
-            );
-            if (round == 1)
+            foreach (var node in Nodes.Where(node => node.Active))
+                node.Lobby.Poll();
+            foreach (var node in Nodes.Where(node => node.Active))
             {
-                using var joinWire = new ManualWire();
-                using var joining = new RelayLobby(joinWire, "host", 8, [new(0, Spawned: true)], "fingerprint", "");
-                joining.Poll();
-                Route(joinWire, hostWire, "new guest");
-                host.Poll();
-                Route(hostWire, joinWire, "host");
-                joining.Poll();
-                check(joining.Connected && host.Roster.Count == 4, "return reopens joining for a new party");
-                joining.Dispose();
-                Route(joinWire, hostWire, "new guest");
-                pump();
-                check(host.Roster.Count == 3 && host.Error == null, "guest can leave forming lobby cleanly");
-            }
-            hostWire.Incoming.Enqueue(new("client", oldPacket));
-            host.Poll();
-            check(!host.TryReceive(out _), "old match packet is rejected in lobby");
-            var lobbyInput = new InputFrame[8];
-            lobbyInput[1] = new(-1, 0, InputButtons.Jump);
-            client.SendLobbyInputs(lobbyInput);
-            pump();
-            check(host.ReadLobbyInputs()[1] == lobbyInput[1], "lobby input works after return");
-            host.SendSnapshot([9, 8, 7]);
-            pump();
-            check(
-                client.TakeSnapshot()!.SequenceEqual(new byte[] { 9, 8, 7 }),
-                "snapshot sequence restarts after return"
-            );
-            check(host.StartMatch("{}"), "host can start another match");
-            pump();
-            check(host.Ready && client.Ready, "second start barrier completes");
-            hostWire.Incoming.Enqueue(new("client", oldPacket));
-            oldClientTransport.Send(0, [99]);
-            pump();
-            check(!host.TryReceive(out _), "old packet and old transport cannot affect next match");
-            using var current = client.CreateTransport();
-            current.Send(0, [7]);
-            pump();
-            check(
-                host.TryReceive(out var packet) && packet.Data.SequenceEqual(new byte[] { 7 }),
-                "new match transport sends normally"
-            );
-        }
-        client.Dispose();
-        pump();
-        check(
-            host.Error == null && host.Connected && !host.Starting && host.Roster.Count == 1,
-            "guest quitting a match preserves the host lobby and removes their party"
-        );
-        check(host.Notice == "PLAYER LEFT", "guest departure supplies a concise notice");
-    }
-
-    private static void TestRoomEdits(Action<bool, string> check)
-    {
-        var roster = new LobbyRoster();
-        roster.SetCapacity(3);
-        roster.SetPlayers(0, [new(0, Color: 2)]);
-        roster.Edit(1, SlotType.Local);
-        check(
-            !roster.SetPlayers(1, [new(0), new(1)]) && roster.Count == 1,
-            "Partial party was admitted when only one remote slot was free"
-        );
-        check(roster.SetPlayers(1, [new(0)]), "Single remote player could not join open slot");
-        check(
-            roster.Slots[1].Player == null && roster.Slots[2].Player?.Peer == 1,
-            "Remote player occupied local-only slot"
-        );
-        check(!roster.SetCapacity(1) && roster.Capacity == 3, "Capacity removed an occupied slot");
-        check(
-            roster.Edit(1, SlotType.Cpu) && roster.Slots[1].Player is { Cpu: true, Spawned: true, Peer: 0 },
-            "CPU was not assigned to the selected room"
-        );
-        check(roster.RemovePlayer(1, 0) && roster.SetPlayers(2, [new(0)]), "Removed slot did not reopen");
-        check(
-            roster.Edit(1, SlotType.Closed) && roster.Slots[1].Player == null && roster.Capacity == 2,
-            "Changing CPU to Closed did not remove the bot and close its room"
-        );
-        check(
-            roster.Edit(1, SlotType.Cpu) && roster.Slots[1].Player?.Cpu == true && roster.Capacity == 3,
-            "Choosing CPU in a closed room did not open it"
-        );
-        check(
-            roster.Edit(1, SlotType.Local) && roster.Slots[1].Player == null,
-            "Changing CPU to Local did not remove the bot"
-        );
-        check(!roster.Edit(0, SlotType.Closed), "Changing a human-occupied room type was accepted");
-        check(!roster.SetPlayers(2, [new(0), new(0)]), "Duplicate input device claimed multiple slots");
-    }
-
-    private static void TestPlayerRemoval(Action<bool, string> check)
-    {
-        using var hostWire = new ManualWire();
-        using var clientWire = new ManualWire();
-        using var host = new RelayLobby(
-            hostWire,
-            null,
-            8,
-            [new(0, Spawned: true), new(1, Spawned: true)],
-            "hash",
-            "{}"
-        );
-        using var client = new RelayLobby(clientWire, "host", 8, [new(0), new(1)], "hash", "");
-        void Pump()
-        {
-            for (int i = 0; i < 8; i++)
-            {
-                client.Poll();
-                Route(clientWire, hostWire, "client");
-                host.Poll();
-                Route(hostWire, clientWire, "host");
-            }
-        }
-        Pump();
-        check(host.RemovePlayer(client.LocalPeer, 0), "Remote player removal failed");
-        Pump();
-        check(
-            client.Error == null && client.Roster.Players(client.LocalPeer) is [{ Id: 1 }],
-            "Removing one remote player removed their whole local party or restored the removed player"
-        );
-        check(host.RemovePlayer(client.LocalPeer, 1), "Closing the last remote slot failed");
-        Pump();
-        check(
-            client.Error != null && host.Roster.Count == 2 && host.StartMatch("{}"),
-            "A connection with no remaining players prevented match start after a kick"
-        );
-    }
-
-    private static void TestSpectators(Action<bool, string> check)
-    {
-        using var hostWire = new ManualWire();
-        using var clientWire = new ManualWire();
-        using var host = new RelayLobby(
-            hostWire,
-            null,
-            8,
-            [new(0, Spawned: true), new(1, Spawned: true)],
-            "spectators",
-            "{}"
-        );
-        using var client = new RelayLobby(
-            clientWire,
-            "host",
-            8,
-            [new(0, Spawned: true), new(1, Spawned: true)],
-            "spectators",
-            ""
-        );
-        void Pump()
-        {
-            for (int i = 0; i < 8; i++)
-            {
-                client.Poll();
-                Route(clientWire, hostWire, "client");
-                host.Poll();
-                Route(hostWire, clientWire, "host");
-            }
-        }
-        Pump();
-        check(!client.SetPlayers([]), "Guest cannot vacate every player without spectating");
-        check(
-            !client.SetSpectating(client.LocalPeer, true) && !host.SetSpectating(0, true),
-            "Both host and guest must back out extra humans before spectating"
-        );
-        check(
-            !client.EditSlot(7, SlotType.Cpu) && !client.ApplySlotType(SlotType.Cpu),
-            "Guests cannot create or edit CPUs"
-        );
-        check(client.RemovePlayer(client.LocalPeer, 0), "Guest can back out an extra local player");
-        Pump();
-        check(client.SetSpectating(client.LocalPeer, true), "Last guest can spectate");
-        Pump();
-        check(
-            host.Roster.Count == 2 && client.Roster.Spectator(client.LocalPeer)?.Id == 1,
-            "Spectating frees the room and broadcasts the spectator identity"
-        );
-        host.ApplySlotType(SlotType.Closed);
-        Pump();
-        check(!client.SetSpectating(client.LocalPeer, false), "Cannot unspectate into a full lobby");
-        host.EditSlot(2, SlotType.Open);
-        Pump();
-        check(client.SetSpectating(client.LocalPeer, false), "Spectator can reclaim an eligible room");
-        Pump();
-        check(
-            host.Roster.Slots[2].Player is { Id: 1, Spawned: false },
-            "Unspectating restores the same device in color selection"
-        );
-        check(host.SetSpectating(client.LocalPeer, true), "Host can force the remaining guest to spectate");
-        Pump();
-        check(client.Roster.Spectator(client.LocalPeer) != null, "Host role change supersedes client requests");
-        check(host.StartMatch("{}"), "Match can start with a spectator connection");
-        Pump();
-        check(
-            host.Ready && client.Ready && host.PeerSlots[1].Length == 0,
-            "Spectator takes part in the match without owning a frog"
-        );
-        check(
-            !client.SetSpectating(client.LocalPeer, false) && !host.RemovePlayer(0, 0),
-            "Role and player edits are frozen throughout a match"
-        );
-        client.Dispose();
-        Pump();
-        check(
-            host.Starting && host.Ready && host.Roster.Spectators.Count == 0,
-            "Spectator departure does not return players to the lobby"
-        );
-        check(host.ReturnToLobby(), "Host can return after spectator departure");
-
-        using var emptyWire = new ManualWire();
-        bool refusedEmpty = false;
-        try
-        {
-            using var invalid = new RelayLobby(emptyWire, "host", 8, [], "spectators", "");
-        }
-        catch (ArgumentException)
-        {
-            refusedEmpty = true;
-        }
-        check(refusedEmpty, "An arriving guest must reserve a player slot");
-    }
-
-    private static void TestAdmission(Action<bool, string> check)
-    {
-        foreach (var type in new[] { SlotType.Private, SlotType.Friend })
-        foreach (bool invited in new[] { false, true })
-        foreach (bool friend in new[] { false, true })
-        {
-            var rooms = new LobbyRoster();
-            rooms.SetPlayers(0, [new(0)]);
-            rooms.ConfigureEmpty(type, 2);
-            using var hostWire = new ManualWire();
-            using var clientWire = new ManualWire();
-            using var host = new RelayLobby(
-                hostWire,
-                null,
-                2,
-                rooms.Players(0),
-                "policy",
-                "{}",
-                rooms.Slots,
-                isFriend: source => source == "client" && friend
-            );
-            using var client = new RelayLobby(clientWire, "host", 8, [new(0)], "policy", "", invited: invited);
-            for (int i = 0; i < 8; i++)
-            {
-                client.Poll();
-                Route(clientWire, hostWire, "client");
-                host.Poll();
-                Route(hostWire, clientWire, "host");
-            }
-            bool allowed = type == SlotType.Private ? invited : friend;
-            check(
-                client.Connected == allowed && (client.Error == null) == allowed,
-                $"Host verifies {type} admission, invited={invited}, friend={friend}"
-            );
-        }
-    }
-
-    private static void TestTwelveConnections(Action<bool, string> check)
-    {
-        using var hostWire = new ManualWire();
-        using var host = new RelayLobby(hostWire, null, 8, [new(0, Spawned: true)], "twelve", "{}");
-        var guests = new Dictionary<string, (ManualWire Wire, RelayLobby Lobby)>();
-        void Pump()
-        {
-            for (int step = 0; step < 10; step++)
-            {
-                foreach (var (name, guest) in guests)
+                if (node.Lobby.Error != null)
                 {
-                    guest.Lobby.Poll();
-                    Route(guest.Wire, hostWire, name);
+                    if (!node.AllowError)
+                        throw new InvalidOperationException(Describe());
+                    continue;
                 }
-                host.Poll();
-                foreach (var message in hostWire.Sent)
-                    guests[message.Address].Wire.Incoming.Enqueue(new("host", message.Data));
-                hostWire.Sent.Clear();
+                if (node.Lobby.LobbySession is not { } session)
+                    continue;
+                session.TryAdvance(
+                    session.LocalSlots.Select(handle => Input?.Invoke(node, handle) ?? default).ToArray()
+                );
+                if (session.Error != null)
+                    throw new InvalidOperationException(Describe());
             }
         }
-        for (int peer = 1; peer < 12; peer++)
+
+        public void AssertConfirmedStates()
         {
-            var wire = new ManualWire();
-            var lobby = new RelayLobby(wire, "host", 8, [new(0, Spawned: true)], "twelve", "");
-            guests.Add(peer.ToString(), (wire, lobby));
-            Pump();
-            check(lobby.Connected, $"Connection {peer} joins beside existing spectators");
-            if (peer <= 4)
+            var live = Nodes.Where(node => node.Active && node.Lobby.Error == null).ToArray();
+            long stateTick = live.Min(node => node.Lobby.LobbySession!.ConfirmedFrame) + 1;
+            byte[]? expected = null;
+            foreach (var node in live)
             {
-                check(lobby.SetSpectating(lobby.LocalPeer, true), "Reserve one of four spectator connections");
-                Pump();
+                Check(
+                    node.Lobby.LobbySession!.TryGetConfirmedCheckpoint(stateTick, out var state),
+                    "Confirmed lobby snapshot unavailable: " + Describe()
+                );
+                if (expected != null)
+                    Check(
+                        expected.SequenceEqual(state),
+                        "Peers disagree on a confirmed lobby checkpoint: " + Describe()
+                    );
+                expected = state;
             }
         }
-        check(host.Roster.Count == 8 && host.Roster.Spectators.Count == 4, "Eight players plus four spectators fit");
-        check(host.StartMatch("{}"), "Full lobby can start");
-        Pump();
-        check(host.Ready && guests.Values.All(guest => guest.Lobby.Ready), "All twelve connections receive the match");
-        check(
-            host.PeerSlots.Length == 12 && host.PeerSlots.Count(slots => slots.Length == 0) == 4,
-            "Spectators have separate empty input ownership"
-        );
-        foreach (var guest in guests.Values)
-            guest.Lobby.Dispose();
+
+        public void Send(string source, string destination, byte[] data, bool reliable)
+        {
+            long due = Now + Delay + random.Next(Jitter + 1) + DeliveryDelay.GetValueOrDefault(destination);
+            if (reliable)
+            {
+                due = Math.Max(due, reliableDue.GetValueOrDefault((source, destination)) + 1);
+                reliableDue[(source, destination)] = due;
+            }
+            var packet = new Packet(source, destination, data.ToArray(), reliable, due);
+            Sent.Add(packet);
+            if (reliable || random.NextDouble() >= Loss)
+                pending.Add(packet);
+        }
+
+        public void Dispose()
+        {
+            foreach (var node in Nodes)
+                node.Lobby.Dispose();
+        }
     }
 
-    private static byte[] Packet(string json)
+    private sealed class Node(ManualWire wire, MeshLobby lobby, LobbySimulation simulation)
     {
-        var bytes = Encoding.UTF8.GetBytes(json);
-        var packet = new byte[bytes.Length + 5];
-        BitConverter.TryWriteBytes(packet, 0x46534C33u);
-        packet[4] = 1;
-        bytes.CopyTo(packet, 5);
-        return packet;
-    }
-
-    private static void Route(ManualWire from, ManualWire to, string source)
-    {
-        foreach (var packet in from.Sent)
-            to.Incoming.Enqueue(new(source, packet.Data));
-        from.Sent.Clear();
+        public ManualWire Wire = wire;
+        public MeshLobby Lobby = lobby;
+        public LobbySimulation Simulation = simulation;
+        public bool Active = true;
+        public bool AllowError;
     }
 
     private sealed class ManualWire : IWire
     {
-        public Queue<WireMessage> Incoming { get; } = new();
-        public List<(string Address, byte[] Data)> Sent { get; } = new();
+        private readonly Rig rig;
+        private readonly DatagramReliability? reliability;
+        public readonly Queue<WireMessage> Incoming = new();
         public string? Error => null;
+        public string LocalAddress { get; }
+        public long TimeMilliseconds => rig.Now;
 
-        public void Poll() { }
+        public ManualWire(Rig rig, string address)
+        {
+            this.rig = rig;
+            LocalAddress = address;
+            if (rig.DatagramMode)
+                reliability = new DatagramReliability(
+                    (destination, data) => rig.Send(address, destination, data, false),
+                    () => rig.Now
+                );
+        }
 
-        public void Send(string address, byte[] data, bool reliable) => Sent.Add((address, data));
+        public void SetPeers(IReadOnlyCollection<string> addresses) => reliability?.SetPeers(addresses);
 
-        public bool Receive(out WireMessage message) => Incoming.TryDequeue(out message);
+        public bool IsConnected(string destination) =>
+            rig.Nodes.Any(node => node.Active && node.Wire.LocalAddress == destination)
+            && !rig.Blocked.Contains((LocalAddress, destination))
+            && (reliability?.IsConnected(destination) ?? true);
+
+        public bool TakeDisconnected(out string address)
+        {
+            address = "";
+            return reliability?.TakeDisconnected(out address) ?? false;
+        }
+
+        public void Poll()
+        {
+            if (reliability == null)
+                return;
+            while (Incoming.TryDequeue(out var packet))
+                reliability.Process(packet.Source, packet.Data);
+            reliability.Poll();
+        }
+
+        public void Send(string destination, byte[] data, bool reliable)
+        {
+            if (reliability != null)
+                reliability.Send(destination, data, reliable);
+            else
+                rig.Send(LocalAddress, destination, data, reliable);
+        }
+
+        public bool Receive(out WireMessage message) =>
+            reliability != null ? reliability.Receive(out message) : Incoming.TryDequeue(out message);
 
         public void Dispose() { }
     }
+
+    private readonly record struct Packet(string Source, string Destination, byte[] Data, bool Reliable, long Due);
 }
