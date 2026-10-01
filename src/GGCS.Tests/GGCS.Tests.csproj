@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../GGCS/GGCS.csproj" />
+    <ProjectReference Include="../Core/FrogSmashers.Core.csproj" />
+    <EmbeddedResource Include="Reference/ggrs-traces.json" />
+  </ItemGroup>
+</Project>

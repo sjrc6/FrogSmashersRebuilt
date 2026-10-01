@@ -1,4 +1,6 @@
 <Solution>
+  <Project Path="src/GGCS/GGCS.csproj" />
+  <Project Path="src/GGCS.Tests/GGCS.Tests.csproj" />
   <Project Path="src/Core/FrogSmashers.Core.csproj" />
   <Project Path="src/Network/FrogSmashers.Network.csproj" />
   <Project Path="src/Client/FrogSmashers.Client.csproj" />

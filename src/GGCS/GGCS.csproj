@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Transport-independent rollback networking for deterministic games.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <None
+      Update="THIRD-PARTY-NOTICES.txt"
+      CopyToOutputDirectory="PreserveNewest"
+      TargetPath="Notices/GGCS-THIRD-PARTY-NOTICES.txt"
+    />
+    <InternalsVisibleTo Include="GGCS.Tests" />
+  </ItemGroup>
+</Project>
