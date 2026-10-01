@@ -6,6 +6,7 @@ import json
 import os
 import socket
 import subprocess
+from PIL import Image, ImageChops
 
 root = Path(__file__).resolve().parents[1]
 out = root / ".build/checks/client-checks"
@@ -56,6 +57,14 @@ def verify_render_cadence():
     assert len(set(hashes)) == 1, hashes
 
 
+def verify_paused_pixels(first, second):
+    with Image.open(out / first) as a, Image.open(out / second) as b:
+        difference = ImageChops.difference(a.convert("RGB"), b.convert("RGB"))
+        for left, right in ((440, 472), (808, 840)):
+            difference.paste((0, 0, 0), (left, 252, right, 296))
+        assert difference.getbbox() is None, "Presentation changes outside the animated pause arrows"
+
+
 def verify_pause():
     pause_script = out / "pause-input.json"
     pause_script.write_text(
@@ -93,9 +102,7 @@ def verify_pause():
         pause_results[0]["Hash"] == pause_results[1]["Hash"]
         and pause_results[0]["TickNumber"] == pause_results[1]["TickNumber"]
     )
-    assert (out / "pause-start.png").read_bytes() == (
-        out / "pause-held.png"
-    ).read_bytes(), "Presentation changes during local pause/settings"
+    verify_paused_pixels("pause-start.png", "pause-held.png")
     assert pause_results[2]["TickNumber"] > pause_results[1]["TickNumber"]
     return pause_script
 
@@ -118,9 +125,7 @@ def verify_smoke_pause(pause_script):
                 str(out / (name + ".png")),
             ],
         )
-    assert (out / "smoke-pause-start.png").read_bytes() == (
-        out / "smoke-pause-held.png"
-    ).read_bytes(), "Skyline smoke moves or changes size during pause"
+    verify_paused_pixels("smoke-pause-start.png", "smoke-pause-held.png")
 
 
 def verify_title_menu():
@@ -273,7 +278,7 @@ def verify_lobby_menus():
     assert personal["Page"] == "Settings" and abs(personal["Volume"] - .70) < .001, personal
     assert not any("TEAMS" in row or "WIN SCORE" in row or "MACHINES" in row for row in personal["MenuItems"]), personal
     # Mouse actions still work, and returning from personal settings preserves the party.
-    returned = capture("return-to-lobby", settings + [click(37, 640, 518), key(39, "Escape")], 50)
+    returned = capture("return-to-lobby", settings + [click(37, 640, 490), key(39, "Escape")], 50)
     assert returned["Page"] == "Seats" and returned["LocalDevices"] == [0, 1], returned
 
     cpu = [key(1, "Enter"), key(3, "Space"), key(5, "Space"), key(7, "Escape")]

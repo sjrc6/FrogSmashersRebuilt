@@ -640,7 +640,9 @@ public sealed partial class Renderer : IDisposable
 
     public void Panel(Rectangle rect, Color color) => Batch.Draw(assets.White, rect, color);
 
-    internal void MenuPanel(Rectangle rect) => menuPanel.Draw(Batch, rect);
+    internal void MenuPanel(Rectangle rect) => menuPanel.Draw(Batch, rect, horizontalPadding: 2);
+
+    internal void ToastPanel(Rectangle rect) => menuPanel.Draw(Batch, rect, alignRight: true);
 
     private float ImagePixelScale(Rectangle source, float maxWidth)
     {

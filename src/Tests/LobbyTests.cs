@@ -149,6 +149,7 @@ internal static class LobbyTests
         Route(hostWire, lateWire, "host");
         late.Poll();
         check(late.Error != null && !late.Connected, "Joining remained open after host started");
+        TestReturnToLobby(host, client, hostWire, clientWire, Pump, check);
         TestRoomEdits(check);
         TestPlayerRemoval(check);
         var rooms = new LobbyRoster();
@@ -167,6 +168,90 @@ internal static class LobbyTests
         Console.WriteLine(
             "Lobby joining, capacity broadcasts, room edits, input ownership and manual start checks passed"
         );
+    }
+
+    private static void TestReturnToLobby(
+        RelayLobby host,
+        RelayLobby client,
+        ManualWire hostWire,
+        ManualWire clientWire,
+        Action pump,
+        Action<bool, string> check
+    )
+    {
+        var rooms = host.Roster.Slots.ToArray();
+        for (int round = 1; round <= 3; round++)
+        {
+            using var oldHostTransport = host.CreateTransport();
+            using var oldClientTransport = client.CreateTransport();
+            client.Send(0, [42]);
+            byte[] oldPacket = clientWire.Sent.Last(packet => packet.Data[4] == 2).Data.ToArray();
+            clientWire.Sent.Clear();
+            check(!client.ReturnToLobby(), "guest cannot return everyone to lobby");
+            check(host.ReturnToLobby(), "host can return from match");
+            oldHostTransport.Dispose();
+            oldClientTransport.Dispose();
+            pump();
+            check(host.Generation == round && client.Generation == round, "return reaches the client");
+            check(
+                host.Connected && client.Connected && !host.Starting && !client.Starting,
+                "return preserves connections and unlocks lobby"
+            );
+            check(
+                host.Roster.Slots.SequenceEqual(rooms) && client.Roster.Slots.SequenceEqual(rooms),
+                "return preserves rooms, local party, colors, teams and capacity"
+            );
+            if (round == 1)
+            {
+                using var joinWire = new ManualWire();
+                using var joining = new RelayLobby(joinWire, "host", 8, [new(0, Spawned: true)], "fingerprint", "");
+                joining.Poll();
+                Route(joinWire, hostWire, "new guest");
+                host.Poll();
+                Route(hostWire, joinWire, "host");
+                joining.Poll();
+                check(joining.Connected && host.Roster.Count == 4, "return reopens joining for a new party");
+                joining.Dispose();
+                Route(joinWire, hostWire, "new guest");
+                pump();
+                check(host.Roster.Count == 3 && host.Error == null, "guest can leave forming lobby cleanly");
+            }
+            hostWire.Incoming.Enqueue(new("client", oldPacket));
+            host.Poll();
+            check(!host.TryReceive(out _), "old match packet is rejected in lobby");
+            var lobbyInput = new InputFrame[8];
+            lobbyInput[1] = new(-1, 0, InputButtons.Jump);
+            client.SendLobbyInputs(lobbyInput);
+            pump();
+            check(host.ReadLobbyInputs()[1] == lobbyInput[1], "lobby input works after return");
+            host.SendSnapshot([9, 8, 7]);
+            pump();
+            check(
+                client.TakeSnapshot()!.SequenceEqual(new byte[] { 9, 8, 7 }),
+                "snapshot sequence restarts after return"
+            );
+            check(host.StartMatch("{}"), "host can start another match");
+            pump();
+            check(host.Ready && client.Ready, "second start barrier completes");
+            hostWire.Incoming.Enqueue(new("client", oldPacket));
+            oldClientTransport.Send(0, [99]);
+            pump();
+            check(!host.TryReceive(out _), "old packet and old transport cannot affect next match");
+            using var current = client.CreateTransport();
+            current.Send(0, [7]);
+            pump();
+            check(
+                host.TryReceive(out var packet) && packet.Data.SequenceEqual(new byte[] { 7 }),
+                "new match transport sends normally"
+            );
+        }
+        client.Dispose();
+        pump();
+        check(
+            host.Error == null && host.Connected && !host.Starting && host.Roster.Count == 1,
+            "guest quitting a match preserves the host lobby and removes their party"
+        );
+        check(host.Notice == "PLAYER LEFT", "guest departure supplies a concise notice");
     }
 
     private static void TestRoomEdits(Action<bool, string> check)

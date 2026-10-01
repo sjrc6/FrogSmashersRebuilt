@@ -95,9 +95,7 @@ internal sealed class MatchController : IDisposable
         options.Rules.Teams = lobby.PlayerTeams.Concat(Enumerable.Repeat(0, 8 - lobby.PlayerTeams.Length)).ToArray();
         if (options.Rules.TeamMode && lobby.PlayerTeams.Distinct().Count() < 2)
         {
-            throw new InvalidDataException(
-                "A team match needs two different teams. Choose AUTO or different teams in the seat lobby."
-            );
+            throw new InvalidDataException("CHOOSE TWO TEAMS");
         }
 
         options.Rules.Colors = lobby.PlayerColors.Concat(Enumerable.Repeat(0, 8 - lobby.PlayerColors.Length)).ToArray();

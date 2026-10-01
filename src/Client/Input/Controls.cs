@@ -7,7 +7,6 @@ public sealed class Controls
 {
     private const int KeyboardCount = 2;
     private const int ControllerCount = 8;
-    private const float StickDeadZone = 0.3f;
     private readonly ClientSettings settings;
     public KeyboardState KeysNow { get; private set; }
     public KeyboardState KeysBefore { get; private set; }
@@ -19,6 +18,7 @@ public sealed class Controls
     private readonly InputButtons[] edges = new InputButtons[KeyboardCount + ControllerCount];
     public Func<KeyboardState>? KeyboardSource { get; set; }
     public Func<int, GamePadState>? GamePadSource { get; set; }
+    public Func<int, string>? GamePadNameSource { get; set; }
     public Func<MouseState>? MouseSource { get; set; }
     public MouseState MouseNow { get; private set; }
     private MouseState mouseBefore;
@@ -26,6 +26,8 @@ public sealed class Controls
     public bool MouseMoved => !mouseHoverSuspended && MouseNow.Position != mouseBefore.Position;
     public bool MousePressed =>
         MouseNow.LeftButton == ButtonState.Pressed && mouseBefore.LeftButton == ButtonState.Released;
+    public bool MouseRightPressed =>
+        MouseNow.RightButton == ButtonState.Pressed && mouseBefore.RightButton == ButtonState.Released;
 
     public Controls(ClientSettings settings) => this.settings = settings;
 
@@ -70,6 +72,20 @@ public sealed class Controls
     public bool Press(Keys key) => KeysNow.IsKeyDown(key) && KeysBefore.IsKeyUp(key);
 
     public bool PadPress(int i, Buttons button) => Pads[i].IsButtonDown(button) && beforePads[i].IsButtonUp(button);
+
+    internal bool BindingPress(int pad, Buttons binding) =>
+        PadBindings.IsDown(Pads[pad], binding) && !PadBindings.IsDown(beforePads[pad], binding);
+
+    internal int[] BindingDevices() =>
+        [0, 1, .. Enumerable.Range(0, ControllerCount).Where(pad => Pads[pad].IsConnected).Select(pad => pad + 2)];
+
+    internal string DeviceName(int device)
+    {
+        if (device < 2)
+            return $"KEYBOARD {device + 1}";
+        string? name = GamePadNameSource?.Invoke(device - 2) ?? GamePad.GetCapabilities(device - 2).DisplayName;
+        return string.IsNullOrWhiteSpace(name) ? $"CONTROLLER {device - 1}" : name.ToUpperInvariant();
+    }
 
     public bool AnyPad(Buttons button)
     {
@@ -168,12 +184,13 @@ public sealed class Controls
         else
         {
             var p = Pads[device - KeyboardCount];
-            up = p.DPad.Up == ButtonState.Pressed || p.ThumbSticks.Left.Y > StickDeadZone;
-            down = p.DPad.Down == ButtonState.Pressed || p.ThumbSticks.Left.Y < -StickDeadZone;
-            jump = p.IsButtonDown(Buttons.A);
-            attack = p.IsButtonDown(Buttons.X);
-            tongue = p.IsButtonDown(Buttons.B);
-            strafe = p.IsButtonDown(Buttons.LeftShoulder);
+            var bindings = settings.Controllers[device - KeyboardCount];
+            up = PadBindings.IsDown(p, bindings.Up);
+            down = PadBindings.IsDown(p, bindings.Down);
+            jump = PadBindings.IsDown(p, bindings.Jump);
+            attack = PadBindings.IsDown(p, bindings.Attack);
+            tongue = PadBindings.IsDown(p, bindings.Tongue);
+            strafe = PadBindings.IsDown(p, bindings.Strafe);
         }
 
         return new(
@@ -194,10 +211,8 @@ public sealed class Controls
             return (KeysNow.IsKeyDown(bindings.Left), KeysNow.IsKeyDown(bindings.Right));
         }
         var pad = Pads[device - KeyboardCount];
-        return (
-            pad.DPad.Left == ButtonState.Pressed || pad.ThumbSticks.Left.X < -StickDeadZone,
-            pad.DPad.Right == ButtonState.Pressed || pad.ThumbSticks.Left.X > StickDeadZone
-        );
+        var padBindings = settings.Controllers[device - KeyboardCount];
+        return (PadBindings.IsDown(pad, padBindings.Left), PadBindings.IsDown(pad, padBindings.Right));
     }
 
     private struct HorizontalInput

@@ -11,6 +11,7 @@ public sealed class ClientSettings
     public float Volume { get; set; } = .65f;
     public bool ScreenShake { get; set; } = true;
     public MatchPreferences MatchDefaults { get; set; } = new();
+    public PadBindings[] Controllers { get; set; } = Enumerable.Range(0, 8).Select(_ => new PadBindings()).ToArray();
     public KeyBindings[] Keyboard { get; set; } =
     [
         new(),
@@ -73,6 +74,10 @@ public sealed class ClientSettings
         }
 
         value.MatchDefaults ??= new();
+        if (value.Controllers == null || value.Controllers.Length != 8 || value.Controllers.Any(pad => pad == null))
+            value.Controllers = new ClientSettings().Controllers;
+        foreach (var pad in value.Controllers)
+            pad.Normalize();
         value.MatchDefaults.Normalize();
         var defaults = new ClientSettings().Keyboard;
         for (int i = 0; i < 2; i++)

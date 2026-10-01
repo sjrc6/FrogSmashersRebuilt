@@ -9,7 +9,7 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
     private readonly IWire wire;
     private readonly string? host;
     private readonly string contentHash;
-    private readonly string nonce = Guid.NewGuid().ToString("N");
+    private string nonce = Guid.NewGuid().ToString("N");
     private readonly Dictionary<string, int> addresses = new();
     private readonly Dictionary<int, string> clientNonces = new();
     private readonly Dictionary<int, int> versions = new();
@@ -40,6 +40,7 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
     public bool Connected => LocalPeer >= 0;
     public bool Starting { get; private set; }
     public bool Ready { get; private set; }
+    public int Generation { get; private set; }
     public string Status =>
         Ready ? "Connected"
         : Starting ? "Starting match"
@@ -159,8 +160,8 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
             return;
         if (Starting)
         {
-            Error = "A player disconnected while starting the match";
-            return;
+            ReturnToLobby();
+            Notice = "PLAYER LEFT";
         }
         Roster.SetPlayers(peer, []);
         clientNonces.Remove(peer);
@@ -185,12 +186,12 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
             return false;
         if (Roster.Slots.Any(slot => slot.Player is { Spawned: false }))
         {
-            Notice = "WAIT FOR EVERY PLAYER TO SPAWN";
+            Notice = "SPAWN ALL PLAYERS";
             return false;
         }
         if (Enumerable.Prepend(addresses.Values, 0).Any(peer => Roster.Players(peer).Length == 0))
         {
-            Notice = "EACH CONNECTED MACHINE NEEDS A JOINED PLAYER";
+            Notice = "JOIN A PLAYER ON EACH PC";
             return false;
         }
         MatchSettingsJson = settings;
@@ -229,6 +230,40 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
         return true;
     }
 
+    public bool ReturnToLobby()
+    {
+        if (!IsHost || !Starting || Error != null)
+            return false;
+        Generation++;
+        nonce = Guid.NewGuid().ToString("N");
+        ResetMatch();
+        foreach (int peer in addresses.Values)
+        {
+            epochs[peer]++;
+            lastSeen[peer] = clock.ElapsedMilliseconds;
+        }
+        Changed();
+        return true;
+    }
+
+    private void ResetMatch()
+    {
+        Starting = Ready = startSent = false;
+        acknowledged.Clear();
+        started.Clear();
+        incoming.Clear();
+        PeerSlots = [];
+        PlayerTeams = PlayerColors = [];
+        Array.Clear(lobbyInputs);
+        Array.Clear(inputTimes);
+        inputSequences.Clear();
+        inputSequence = snapshotSequence = 0;
+        receivedSnapshot = -1;
+        latestSnapshot = null;
+        Notice = null;
+        lastSend = -1000;
+    }
+
     public void Poll()
     {
         if (disposed || Error != null)
@@ -261,6 +296,7 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
                         Version = requestVersion,
                         Epoch = requestEpoch,
                         Revision = receivedRevision,
+                        Generation = Generation,
                     }
                 );
             else
@@ -271,7 +307,7 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
         {
             if (clock.ElapsedMilliseconds - seen.Value <= 15000)
                 continue;
-            if (IsHost && !Starting)
+            if (IsHost)
                 RemovePeer(addresses.First(pair => pair.Value == seen.Key).Key);
             else
                 Error = "A connection timed out";
@@ -292,6 +328,7 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
             Settings = MatchSettingsJson,
             Starting = Starting,
             Revision = revision,
+            Generation = Generation,
             Version = versions[peer],
             Epoch = epochs[peer],
             Notice = Notice ?? "",
@@ -361,7 +398,8 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
         && control.Players.All(player => player != null)
         && control.Slots.Length <= 8
         && control.Version >= 0
-        && control.Epoch >= 0;
+        && control.Epoch >= 0
+        && control.Generation >= 0;
 
     private void HandleControl(string source, Control control)
     {
@@ -369,7 +407,11 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
         {
             if (control.Kind == "hello")
                 HandleHello(source, control);
-            else if (addresses.TryGetValue(source, out int peer) && control.Nonce == nonce)
+            else if (
+                addresses.TryGetValue(source, out int peer)
+                && control.Nonce == nonce
+                && control.Generation == Generation
+            )
             {
                 lastSeen[peer] = clock.ElapsedMilliseconds;
                 if (control.Kind == "leave")
@@ -403,10 +445,16 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
             || !Guid.TryParseExact(control.Nonce, "N", out _)
             || control.Peer is < 1 or > 7
             || control.Revision < receivedRevision
+            || control.Generation < Generation
         )
             return;
-        if (Connected && control.Nonce != acceptedNonce)
+        if (Connected && control.Generation == Generation && control.Nonce != acceptedNonce)
             return;
+        if (control.Generation > Generation)
+        {
+            ResetMatch();
+            Generation = control.Generation;
+        }
         if (Starting && (!control.Starting || control.Revision != receivedRevision))
         {
             Error = "Host changed the agreed match configuration";
@@ -466,11 +514,16 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
         if (clientNonces[peer] != control.Nonce)
             return;
         lastSeen[peer] = clock.ElapsedMilliseconds;
+        if (control.Generation != Generation)
+        {
+            SendControl(source, State(peer));
+            return;
+        }
         if (!Starting && control.Version > versions[peer])
         {
             if (control.Epoch == epochs[peer])
             {
-                Notice = Roster.SetPlayers(peer, control.Players) ? null : "NO OPEN SLOT FOR THAT PLAYER";
+                Notice = Roster.SetPlayers(peer, control.Players) ? null : "NO OPEN SLOTS";
                 Changed();
             }
             versions[peer] = control.Version;
@@ -534,7 +587,29 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
         return data;
     }
 
-    public IPeerTransport CreateTransport() => Ready ? this : throw new InvalidOperationException("Lobby is not ready");
+    public IPeerTransport CreateTransport() =>
+        Ready ? new SessionTransport(this, Generation) : throw new InvalidOperationException("Lobby is not ready");
+
+    private sealed class SessionTransport(RelayLobby lobby, int generation) : IPeerTransport
+    {
+        public string? Error => lobby.Error;
+
+        public void Poll() => lobby.Poll();
+
+        public void Send(int peer, ReadOnlySpan<byte> data)
+        {
+            if (generation == lobby.Generation)
+                lobby.Send(peer, data);
+        }
+
+        public bool TryReceive(out Datagram datagram)
+        {
+            datagram = default;
+            return generation == lobby.Generation && lobby.TryReceive(out datagram);
+        }
+
+        public void Dispose() { }
+    }
 
     public void Send(int peer, ReadOnlySpan<byte> data)
     {
@@ -620,8 +695,16 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
     {
         if (disposed)
             return;
-        if (!IsHost && Connected && !Starting)
-            SendControl(host!, new Control { Kind = "leave", Nonce = acceptedNonce });
+        if (!IsHost && Connected)
+            SendControl(
+                host!,
+                new Control
+                {
+                    Kind = "leave",
+                    Nonce = acceptedNonce,
+                    Generation = Generation,
+                }
+            );
         disposed = true;
         wire.Dispose();
     }
@@ -638,6 +721,7 @@ internal sealed class RelayLobby : IGameLobby, IPeerTransport
         public int Version { get; set; }
         public int Epoch { get; set; }
         public int Revision { get; set; }
+        public int Generation { get; set; }
         public bool Starting { get; set; }
         public string Settings { get; set; } = "";
         public string Notice { get; set; } = "";

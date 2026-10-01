@@ -17,6 +17,7 @@ public sealed class ScriptedInput
         public int? MouseX { get; set; }
         public int? MouseY { get; set; }
         public bool MouseDown { get; set; }
+        public bool MouseRightDown { get; set; }
     }
 
     private readonly Range[] ranges;
@@ -52,13 +53,14 @@ public sealed class ScriptedInput
     {
         var position = ranges.LastOrDefault(r => frame >= r.From && r.MouseX.HasValue);
         bool down = ranges.Any(r => frame >= r.From && frame < r.To && r.MouseDown);
+        bool rightDown = ranges.Any(r => frame >= r.From && frame < r.To && r.MouseRightDown);
         return new MouseState(
             position?.MouseX ?? 0,
             position?.MouseY ?? 0,
             0,
             down ? ButtonState.Pressed : ButtonState.Released,
             ButtonState.Released,
-            ButtonState.Released,
+            rightDown ? ButtonState.Pressed : ButtonState.Released,
             ButtonState.Released,
             ButtonState.Released
         );

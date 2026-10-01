@@ -15,6 +15,7 @@ internal sealed partial class MenuController
     private readonly Stack<(GameScreen Screen, int Selected)> history = new();
     private GameScreen context = GameScreen.Main;
     private bool menuSoundPending;
+    public double AnimationTime { get; private set; }
     public GameScreen Screen { get; set; } = GameScreen.Intro;
     public int Selected { get; set; }
     public int SelectedSeat { get; private set; }
@@ -22,15 +23,14 @@ internal sealed partial class MenuController
     public int HintDevice { get; private set; }
     public int BindingDevice { get; private set; }
     public bool AllowLan { get; private set; }
-    public bool ShowingLobby => context == GameScreen.Seats && Screen != GameScreen.Error;
+    public bool ShowingLobby => context == GameScreen.Seats;
     public bool EditingAddress { get; set; }
     public bool WaitingForBinding { get; private set; }
-    public string Status { get; set; } = "";
     public string JoinAddress { get; private set; } = "127.0.0.1";
     public string SteamCode { get; private set; } = "";
     public bool ShowingCinematic => Screen is GameScreen.Intro or GameScreen.Title or GameScreen.Outro;
-    public bool ShowingMenuBackground => !ShowingCinematic && context == GameScreen.Main && Screen != GameScreen.Error;
-    public bool ShowingMatch => !ShowingCinematic && context == GameScreen.Playing && Screen != GameScreen.Error;
+    public bool ShowingMenuBackground => !ShowingCinematic && context == GameScreen.Main;
+    public bool ShowingMatch => !ShowingCinematic && context == GameScreen.Playing;
     public bool LocalPresentationPaused => ShowingMatch && game.Match.Network == null && game.Match.Paused;
     private bool KeyboardAllowed => Owner == null || Owner < 2;
     private MatchPreferences Rules => game.Setup.Preferences;
@@ -64,6 +64,9 @@ internal sealed partial class MenuController
 
     public void Update(double elapsedSeconds)
     {
+        AnimationTime += elapsedSeconds;
+        if (Screen == GameScreen.Bindings)
+            RefreshBindingDevice();
         var input = MenuInput.Read(game.Controls, Owner);
         if (Owner.HasValue)
             HintDevice = Owner.Value;
@@ -114,13 +117,15 @@ internal sealed partial class MenuController
             case GameScreen.SlotEditor:
                 UpdateRoomSelection(input);
                 break;
-            case GameScreen.Error:
-                UpdateRows(input);
-                break;
             case GameScreen.Outro:
                 game.Match.Network?.Poll();
                 if (game.Match.Network?.Error != null && !game.Match.Network.IsTransportFailure)
                     game.Fail(game.Match.Network.Error);
+                else if (game.Online.Lobby is { IsHost: false })
+                {
+                    if (input.Back)
+                        game.MainMenu();
+                }
                 else if (input.Back || input.Accept || game.Cinematics.Finished)
                 {
                     game.ReturnToLobby();
@@ -128,7 +133,10 @@ internal sealed partial class MenuController
                 }
                 break;
             case GameScreen.Bindings when WaitingForBinding:
-                CaptureBinding(input);
+                CaptureBinding();
+                break;
+            case GameScreen.Bindings:
+                UpdateBindings(input);
                 break;
             case GameScreen.JoinSteam or GameScreen.JoinUdp when EditingAddress:
                 UpdateAddress(input);
@@ -190,10 +198,9 @@ internal sealed partial class MenuController
             return;
         if (input.Horizontal != 0)
         {
-            if (entries[Selected].Change is { } change)
+            if (entries[Selected].Change != null)
             {
-                change(input.Horizontal);
-                menuSoundPending = true;
+                ChangeEntry(entries[Selected], input.Horizontal);
             }
         }
         else if (input.Accept)
@@ -208,7 +215,19 @@ internal sealed partial class MenuController
 
     private void ActivateEntry(MenuEntry entry)
     {
-        entry.Select();
+        if (entry.DisabledReason is { } reason)
+            game.Toasts.Show(reason);
+        else
+            entry.Select();
+        menuSoundPending = true;
+    }
+
+    private void ChangeEntry(MenuEntry entry, int amount)
+    {
+        if (entry.DisabledReason is { } reason)
+            game.Toasts.Show(reason);
+        else
+            entry.Change?.Invoke(amount);
         menuSoundPending = true;
     }
 
@@ -216,7 +235,7 @@ internal sealed partial class MenuController
     {
         if (
             !KeyboardAllowed
-            || !(game.Controls.MousePressed || game.Controls.MouseMoved)
+            || !(game.Controls.MousePressed || game.Controls.MouseRightPressed || game.Controls.MouseMoved)
             || Pointer() is not Point point
         )
             return false;
@@ -227,7 +246,11 @@ internal sealed partial class MenuController
             SelectRow(i);
             if (game.Controls.MousePressed)
                 ActivateEntry(entries[i]);
-            return game.Controls.MousePressed;
+            else if (game.Controls.MouseRightPressed && entries[i].Change != null)
+            {
+                ChangeEntry(entries[i], -1);
+            }
+            return game.Controls.MousePressed || game.Controls.MouseRightPressed;
         }
         return false;
     }
@@ -253,6 +276,8 @@ internal sealed partial class MenuController
     {
         for (int device = 0; device < 10; device++)
         {
+            if (Screen == GameScreen.Bindings && (device == BindingDevice || BindingDevice < 2 && device < 2))
+                continue;
             if (menuOpen && Owner is int owner && (owner == device || owner < 2 && device < 2))
                 continue;
             bool start =
@@ -279,7 +304,7 @@ internal sealed partial class MenuController
                 bool backOut =
                     device < 2
                         ? game.Controls.Press(game.Settings.Keyboard[device].Attack)
-                        : game.Controls.PadPress(device - 2, Buttons.X);
+                        : game.Controls.BindingPress(device - 2, game.Settings.Controllers[device - 2].Attack);
                 if (backOut)
                 {
                     game.Lobby.BackOut(device);
@@ -291,7 +316,7 @@ internal sealed partial class MenuController
                     (
                         device < 2
                             ? game.Controls.Press(game.Settings.Keyboard[device].Tongue)
-                            : game.Controls.PadPress(device - 2, Buttons.B)
+                            : game.Controls.BindingPress(device - 2, game.Settings.Controllers[device - 2].Tongue)
                     )
                         ? 1
                         : 0,
@@ -306,18 +331,18 @@ internal sealed partial class MenuController
         var players = game.Lobby.Roster.Slots.Where(slot => slot.Player != null).Select(slot => slot.Player!).ToArray();
         if (players.Length < 2 || players.Any(player => !player.Spawned))
         {
-            Status = "SPAWN AT LEAST TWO PLAYERS; ALL JOINED PLAYERS MUST BE READY";
+            game.Toasts.Show(players.Length < 2 ? "NEED TWO PLAYERS" : "SPAWN ALL PLAYERS");
             return;
         }
         if (Rules.TeamMode && players.Select(player => player.Team).Distinct().Count() < 2)
         {
-            Status = "CHOOSE AT LEAST TWO DIFFERENT TEAMS";
+            game.Toasts.Show("CHOOSE TWO TEAMS");
             return;
         }
         if (game.Online.Lobby is { } online)
         {
             if (!online.StartMatch(JsonSerializer.Serialize(game.Setup.CreateOptions(game.Options.MapOrder))))
-                Status = online.Notice ?? "THE HOST STARTS THE MATCH";
+                game.Toasts.Show(online.Notice ?? "HOST ONLY");
         }
         else
             game.StartLocal();
@@ -335,7 +360,10 @@ internal sealed partial class MenuController
         if (Screen != GameScreen.Connecting)
             return;
         if (game.Online.Lobby?.Connected == true)
+        {
             ShowSeats();
+            game.Toasts.Show("LOBBY READY");
+        }
     }
 
     private void UpdateRoomSelection(MenuInput input)
@@ -394,7 +422,7 @@ internal sealed partial class MenuController
     private void EditRoom(SlotType type, bool open, bool remove = false)
     {
         if (!game.Lobby.Edit(SelectedSeat, type, open, remove))
-            Status = "COULD NOT EDIT SLOT";
+            game.Toasts.Show("CANNOT EDIT SLOT");
     }
 
     private void ReturnFromLobbyMenu()
@@ -433,70 +461,10 @@ internal sealed partial class MenuController
         }
     }
 
-    private void OpenBindings(int device)
+    private void BeginAddressEdit()
     {
-        BindingDevice = device;
-        WaitingForBinding = false;
-        Open(GameScreen.Bindings);
-    }
-
-    public Keys[] BindingKeys()
-    {
-        var keys = game.Settings.Keyboard[BindingDevice];
-        return [keys.Left, keys.Right, keys.Up, keys.Down, keys.Jump, keys.Attack, keys.Tongue, keys.Strafe];
-    }
-
-    private void CaptureBinding(MenuInput input)
-    {
-        if (input.Back)
-        {
-            WaitingForBinding = false;
-            menuSoundPending = true;
-            return;
-        }
-        if (!KeyboardAllowed)
-            return;
-        var pressed = game.Controls.KeysNow.GetPressedKeys().Where(game.Controls.Press).ToArray();
-        if (pressed.Length == 0)
-            return;
-        var key = pressed[0];
-        if (key == Keys.Escape)
-        {
-            WaitingForBinding = false;
-            menuSoundPending = true;
-            return;
-        }
-        var keys = game.Settings.Keyboard[BindingDevice];
-        switch (Selected)
-        {
-            case 0:
-                keys.Left = key;
-                break;
-            case 1:
-                keys.Right = key;
-                break;
-            case 2:
-                keys.Up = key;
-                break;
-            case 3:
-                keys.Down = key;
-                break;
-            case 4:
-                keys.Jump = key;
-                break;
-            case 5:
-                keys.Attack = key;
-                break;
-            case 6:
-                keys.Tongue = key;
-                break;
-            case 7:
-                keys.Strafe = key;
-                break;
-        }
-        WaitingForBinding = false;
-        game.Controls.ClearPendingEdges();
-        menuSoundPending = true;
+        EditingAddress = true;
+        game.Toasts.Show(Screen == GameScreen.JoinSteam ? "ENTER LOBBY ID" : "ENTER ADDRESS");
     }
 
     private void Open(GameScreen screen)
@@ -504,7 +472,6 @@ internal sealed partial class MenuController
         history.Push((Screen, Selected));
         Screen = screen;
         Selected = 0;
-        Status = "";
     }
 
     private void OpenOwned(GameScreen screen, int device)
@@ -517,8 +484,7 @@ internal sealed partial class MenuController
 
     private void Back()
     {
-        menuSoundPending |=
-            Screen is GameScreen.Playing or GameScreen.Connecting or GameScreen.Error || history.Count > 0;
+        menuSoundPending |= Screen is GameScreen.Playing or GameScreen.Connecting || history.Count > 0;
         EditingAddress = WaitingForBinding = false;
         if (Screen is GameScreen.Settings or GameScreen.MatchSettings or GameScreen.Bindings)
             game.SaveSettings();
@@ -529,19 +495,13 @@ internal sealed partial class MenuController
         }
         if (Screen == GameScreen.Connecting)
         {
-            game.ReturnToLobby();
-            return;
-        }
-        if (Screen == GameScreen.Error)
-        {
-            game.MainMenu();
+            game.LeaveOnlineLobby();
             return;
         }
         if (!history.TryPop(out var previous))
             return;
         Screen = previous.Screen;
         Selected = previous.Selected;
-        Status = "";
         if (Screen == GameScreen.Seats)
             Owner = null;
         game.Controls.ClearPendingEdges();
@@ -561,7 +521,6 @@ internal sealed partial class MenuController
         Selected = 0;
         Owner = null;
         EditingAddress = WaitingForBinding = false;
-        Status = "";
         game.Controls.ClearPendingEdges();
     }
 
@@ -606,7 +565,8 @@ internal sealed partial class MenuController
             when (exception is Win32Exception or IOException or UnauthorizedAccessException or InvalidOperationException
             )
         {
-            game.Fail($"Could not open CREDITS.txt. You can open it from the game folder.\n{exception.Message}");
+            Console.Error.WriteLine(exception);
+            game.Toasts.Show("CANNOT OPEN CREDITS");
         }
     }
 

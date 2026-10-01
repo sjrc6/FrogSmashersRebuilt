@@ -9,6 +9,7 @@ public abstract class GameLobby : IGameLobby
     public bool Connected => Active?.Connected ?? false;
     public bool Starting => Active?.Starting ?? false;
     public bool Ready => Active?.Ready ?? false;
+    public int Generation => Active?.Generation ?? 0;
     public abstract bool IsHost { get; }
     public virtual string Status => Active?.Status ?? "Connecting";
     public virtual string? Error => Active?.Error;
@@ -30,6 +31,8 @@ public abstract class GameLobby : IGameLobby
     public void SetMatchSettings(string settings) => Active?.SetMatchSettings(settings);
 
     public bool StartMatch(string settings) => Active?.StartMatch(settings) ?? false;
+
+    public bool ReturnToLobby() => Active?.ReturnToLobby() ?? false;
 
     public void SendLobbyInputs(InputFrame[] inputs) => Active?.SendLobbyInputs(inputs);
 

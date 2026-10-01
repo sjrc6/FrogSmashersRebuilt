@@ -12,6 +12,8 @@ public class FrogGame : Game
     private readonly FrameTiming timing = new();
     private WindowsWindowIcons? windowIcons;
     private MenuRenderer menuRenderer = null!;
+    private ToastRenderer toastRenderer = null!;
+    private int matchGeneration;
     private bool showDiagnostics;
     private bool contentLoaded;
     internal LaunchOptions Options { get; }
@@ -26,6 +28,8 @@ public class FrogGame : Game
     internal MatchController Match { get; private set; } = null!;
     internal OnlineController Online { get; private set; } = null!;
     internal MenuController Menus { get; private set; } = null!;
+    internal ToastController Toasts { get; } = new();
+    internal string? LastError { get; private set; }
     internal int RenderedFrames { get; private set; }
     internal bool Fullscreen => graphics.IsFullScreen;
     internal bool HardwareModeSwitch => graphics.HardwareModeSwitch;
@@ -72,6 +76,7 @@ public class FrogGame : Game
         Lobby = new LobbyController(this);
         Menus = new MenuController(this);
         menuRenderer = new MenuRenderer(this, Menus);
+        toastRenderer = new ToastRenderer(this);
         ConfigureLaunch();
         contentLoaded = true;
     }
@@ -128,6 +133,8 @@ public class FrogGame : Game
     {
         Controls.Poll();
         double elapsedSeconds = ElapsedSeconds(gameTime);
+        Toasts.Update(elapsedSeconds);
+        CheckLobbyReturn();
         HandleGlobalInput();
         Renderer.Update(Menus.LocalPresentationPaused ? 0 : (float)elapsedSeconds);
         Audio.SetPaused(Menus.LocalPresentationPaused);
@@ -208,11 +215,12 @@ public class FrogGame : Game
 
     internal void StartLocal()
     {
+        LastError = null;
         var options = Setup.CreateOptions(Options.MapOrder);
         if (options.Rules.TeamMode && options.Rules.Teams.Take(Setup.Seats.Count).Distinct().Count() < 2)
         {
             Menus.ShowSeats();
-            Menus.Status = "CHOOSE AT LEAST TWO DIFFERENT TEAMS";
+            Toasts.Show("CHOOSE TWO TEAMS");
             return;
         }
 
@@ -222,6 +230,21 @@ public class FrogGame : Game
 
     internal void BeginLobby(string target, bool host)
     {
+        if (
+            !host
+            && target.StartsWith("steam:", StringComparison.Ordinal)
+            && (!ulong.TryParse(target[6..], out ulong id) || id == 0)
+        )
+        {
+            Toasts.Show("ENTER A VALID LOBBY ID");
+            return;
+        }
+        if (!host && target.StartsWith("udp:", StringComparison.Ordinal) && string.IsNullOrWhiteSpace(target[4..]))
+        {
+            Toasts.Show("ENTER AN ADDRESS");
+            return;
+        }
+        LastError = null;
         try
         {
             if (Online.Lobby?.Connected == true)
@@ -236,10 +259,11 @@ public class FrogGame : Game
             );
             Lobby.Open();
             Menus.ShowConnecting();
+            Toasts.Show(host ? "OPENING LOBBY" : "CONNECTING");
         }
         catch (Exception exception)
         {
-            Fail(exception.Message);
+            Fail(exception.Message, host ? "CANNOT HOST LOBBY" : "CANNOT JOIN LOBBY");
         }
     }
 
@@ -248,6 +272,7 @@ public class FrogGame : Game
         try
         {
             Match.StartNetwork(Online.Lobby!, Setup.Seats);
+            matchGeneration = Online.Lobby!.Generation;
             Console.WriteLine(
                 $"Connected peer {Online.Lobby!.LocalPeer}; players {Match.World!.Players.Length}; initial hash {Match.World.HashState():x16}"
             );
@@ -266,6 +291,41 @@ public class FrogGame : Game
     }
 
     internal void ReturnToLobby()
+    {
+        if (Online.Lobby is { } online)
+        {
+            if (!online.IsHost)
+            {
+                Toasts.Show("HOST ONLY");
+                return;
+            }
+            if (!online.ReturnToLobby())
+                return;
+        }
+        OpenCurrentLobby();
+    }
+
+    private void CheckLobbyReturn()
+    {
+        if (Match.Network == null || Online.Lobby is not { } online)
+            return;
+        online.Poll();
+        if (online.Generation != matchGeneration)
+        {
+            OpenCurrentLobby();
+            Toasts.Show("BACK IN LOBBY");
+        }
+    }
+
+    private void OpenCurrentLobby()
+    {
+        Match.Close();
+        Cinematics.Stop();
+        Lobby.Open();
+        Menus.ShowSeats();
+    }
+
+    internal void LeaveOnlineLobby()
     {
         if (Online.Lobby?.Connected == true)
             Lobby.RememberParty();
@@ -287,6 +347,7 @@ public class FrogGame : Game
 
     internal void MainMenu()
     {
+        LastError = null;
         Cinematics.Stop();
         Online.CloseLobby();
         Lobby.Close();
@@ -294,13 +355,11 @@ public class FrogGame : Game
         Menus.ShowMain();
     }
 
-    internal void Fail(string message)
+    internal void Fail(string message, string? toast = null)
     {
-        Match.Close();
-        Online.CloseLobby();
-        Menus.Status = message;
-        Menus.Screen = GameScreen.Error;
-        Cinematics.Stop();
+        LeaveOnlineLobby();
+        LastError = message;
+        Toasts.Show(toast ?? UserMessages.ConnectionError(message));
         Console.Error.WriteLine(message);
         if (Options.Host != null || Options.Join != null)
         {
@@ -340,7 +399,7 @@ public class FrogGame : Game
         {
             DrawDiagnostics();
         }
-
+        toastRenderer.Draw();
         Renderer.EndUi();
         Renderer.Present();
         RenderedFrames++;

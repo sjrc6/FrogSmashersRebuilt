@@ -67,15 +67,6 @@ def validate_packages(targets):
                 )
 
 
-def write_file_hashes(folder):
-    files = sorted(path for path in folder.rglob("*") if path.is_file() and path.name != "FILES.sha256")
-    hashes = [
-        f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(folder).as_posix()}\n"
-        for path in files
-    ]
-    (folder / "FILES.sha256").write_text("".join(hashes), encoding="utf-8", newline="\n")
-
-
 def create_zip(folder, files, epoch):
     archive = RELEASES / f"{folder.name}.zip"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as output:
@@ -111,7 +102,6 @@ def create_tar(folder, files, epoch):
 
 def package(target, epoch):
     folder = RELEASES / f"FrogSmashersRebuilt-{target}"
-    write_file_hashes(folder)
     files = sorted(path for path in folder.rglob("*") if path.is_file())
     archive = create_zip(folder, files, epoch) if target.startswith("win") else create_tar(folder, files, epoch)
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()

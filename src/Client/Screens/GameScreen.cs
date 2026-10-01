@@ -21,6 +21,5 @@ internal enum GameScreen
     JoinUdp,
     Extras,
     Bindings,
-    Error,
     Outro,
 }

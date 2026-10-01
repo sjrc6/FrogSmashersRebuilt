@@ -23,7 +23,7 @@ for rid in "${targets[@]}"; do
   printf '480\n' > "$out_dir/steam_appid.txt"
   mkdir -p "$out_dir/licenses"
   cp src/Notices/* "$out_dir/licenses/"
-  cp README.md LICENSE.md "$out_dir/"
+  cp LICENSE.md "$out_dir/"
   mkdir -p "$out_dir/docs"
   cp docs/*.md "$out_dir/docs/"
   build_dir="$repo_dir/.build/bin/FrogSmashers.Client/release_$rid"

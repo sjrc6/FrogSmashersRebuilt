@@ -8,13 +8,13 @@ internal static class MenuLayout
     {
         int width = screen switch
         {
-            GameScreen.Main => 368,
-            GameScreen.LobbyMenu => 474,
-            GameScreen.Playing or GameScreen.Connecting => 484,
-            GameScreen.Error => 1040,
-            _ => 544,
+            GameScreen.Main => 240,
+            GameScreen.Bindings => 440,
+            _ => 400,
         };
-        int height = RowsOffset(screen) + count * RowSpacing(screen) + 80;
+        int extra = ExpandedRow(screen) >= 0 ? 24 : 0;
+        int footer = screen == GameScreen.Main ? 64 : 96;
+        int height = RowsOffset(screen) + count * RowSpacing(screen) + extra + footer;
         int top = screen == GameScreen.Main ? 324 : (Renderer.Height - height) / 2;
         return new((Renderer.Width - width) / 2, top, width, height);
     }
@@ -25,8 +25,19 @@ internal static class MenuLayout
             return SlotRow(room, index);
         var panel = Panel(screen, count);
         int spacing = RowSpacing(screen);
-        return new(panel.X + 12, panel.Y + RowsOffset(screen) + index * spacing, panel.Width - 24, spacing - 4);
+        int expanded = ExpandedRow(screen);
+        int offset = expanded >= 0 && index > expanded ? 24 : 0;
+        int height = spacing - 4 + (index == expanded ? 24 : 0);
+        return new(panel.X + 12, panel.Y + RowsOffset(screen) + index * spacing + offset, panel.Width - 24, height);
     }
+
+    private static int ExpandedRow(GameScreen screen) =>
+        screen switch
+        {
+            GameScreen.MatchSettings => 3,
+            GameScreen.JoinSteam or GameScreen.JoinUdp => 0,
+            _ => -1,
+        };
 
     private static int RowSpacing(GameScreen screen) => screen == GameScreen.LobbyMenu ? 44 : 48;
 
@@ -34,10 +45,12 @@ internal static class MenuLayout
         screen switch
         {
             GameScreen.Main => 20,
-            GameScreen.Connecting => 152,
-            GameScreen.Error => 296,
-            _ => 56,
+            GameScreen.Bindings => 96,
+            _ => 72,
         };
+
+    public static Rectangle BindingPageButton(Rectangle panel, int direction) =>
+        new(direction < 0 ? panel.Left + 12 : panel.Right - 48, panel.Top + 12, 36, 64);
 
     private static Rectangle SlotRow(int room, int index)
     {

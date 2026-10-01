@@ -898,7 +898,8 @@
     "UI/menu-panel.xnb": "d4bbd93fe8dadb4278c592418874b9cd2e96b88d0560159f64ae230b80fd4fa8",
     "UI/retroville.json": "acfcca94d7465514196d7e7c8832f51010a0aef1f0ee4273f6e6d1d3fd30c4a3",
     "UI/retroville.xnb": "adfe51ea6cb97b29722244a4a4e1572036908f6be02daf009dc0ab148ed4cb6c",
-    "UI/white.xnb": "1d1def8c9ea3d55945ab366c426d85b15f1ba76525c84b8733f6f29ad5fd55f8"
+    "UI/white.xnb": "1d1def8c9ea3d55945ab366c426d85b15f1ba76525c84b8733f6f29ad5fd55f8",
+    "UI/whitearrow.xnb": "70602b7106067013428bc1fcc8f64325dd98744764742f0da1cfcbd8c45e20e4"
   },
   "CharacterOffsetX": 0,
   "CharacterOffsetY": 1.39,
@@ -961,7 +962,7 @@
     "smokeRingDistance": 7.5,
     "trailDelay": 0.01
   },
-  "ContentHash": "1e16f8211d1c5b0d31483e1523d98bc3f0da84f996c0b340ea83f738c9c433a9",
+  "ContentHash": "884f12cc09be570540e528e42ae73a4401e34fb06b2b48bdeff679f9096b4aca",
   "Effects": {
     "BackgroundEscapeShip": {
       "Animations": {

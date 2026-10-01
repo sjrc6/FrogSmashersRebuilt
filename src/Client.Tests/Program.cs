@@ -43,7 +43,9 @@ internal static class Program
             bool backend = args.Contains("--audio");
             AudioTests.Run(backend, Check);
             InputTests.Run(Check);
+            ControllerBindingTests.Run(Check);
             MenuSetupTests.Run(root!, Check);
+            ToastTests.Run(Check);
             LobbyTests.Run(root!, Check);
             if (!args.Contains("--skip-compatibility"))
             {

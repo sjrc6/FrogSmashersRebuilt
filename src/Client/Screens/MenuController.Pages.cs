@@ -38,12 +38,12 @@ internal sealed partial class MenuController
             case GameScreen.Seats:
                 return [];
             case GameScreen.LobbyMenu:
-                var lobbyRows = new List<MenuEntry> { new("RETURN TO LOBBY", ReturnFromLobbyMenu) };
+                var lobbyRows = new List<MenuEntry> { new("RESUME", ReturnFromLobbyMenu) };
                 if (game.Lobby.IsHost)
                 {
                     lobbyRows.Add(new("START MATCH", StartFromSeats));
                     lobbyRows.Add(Link("MATCH SETTINGS", GameScreen.MatchSettings));
-                    lobbyRows.Add(Link("EDIT SLOTS", GameScreen.SlotEditor));
+                    lobbyRows.Add(Link("PLAYER SLOTS", GameScreen.SlotEditor));
                 }
                 lobbyRows.Add(Link("SETTINGS", GameScreen.Settings));
                 foreach (
@@ -70,7 +70,7 @@ internal sealed partial class MenuController
                 if (game.Online.Lobby == null)
                     lobbyRows.Add(new("ONLINE OPTIONS", OpenOnline));
                 else
-                    lobbyRows.Add(new("LEAVE ONLINE LOBBY", game.ReturnToLobby));
+                    lobbyRows.Add(new("LEAVE ONLINE", game.LeaveOnlineLobby));
                 lobbyRows.Add(new("QUIT LOBBY", game.MainMenu, Color: new(255, 85, 85)));
                 return lobbyRows;
             case GameScreen.SlotEditor:
@@ -87,7 +87,13 @@ internal sealed partial class MenuController
                     );
                 roomRows.Add(
                     new(
-                        "SLOT TYPE: " + (slot.Type == SlotType.Cpu ? "CPU" : slot.Type.ToString().ToUpperInvariant()),
+                        "SLOT TYPE",
+                        Value: slot.Type switch
+                        {
+                            SlotType.Cpu => "CPU",
+                            SlotType.Local => "LOCAL",
+                            _ => "ANY PLAYER",
+                        },
                         Change: amount =>
                         {
                             EditRoom((SlotType)Wrap((int)slot.Type + amount, 3), slot.Open);
@@ -101,7 +107,8 @@ internal sealed partial class MenuController
                 var personal = new List<MenuEntry>
                 {
                     new(
-                        "BORDERLESS FULLSCREEN: " + OnOff(game.Settings.Fullscreen),
+                        "FULLSCREEN",
+                        Value: OnOff(game.Settings.Fullscreen),
                         Change: _ =>
                         {
                             game.Settings.Fullscreen = !game.Settings.Fullscreen;
@@ -109,7 +116,8 @@ internal sealed partial class MenuController
                         }
                     ),
                     new(
-                        "VSYNC: " + OnOff(game.Settings.VSync),
+                        "VSYNC",
+                        Value: OnOff(game.Settings.VSync),
                         Change: _ =>
                         {
                             game.Settings.VSync = !game.Settings.VSync;
@@ -117,14 +125,17 @@ internal sealed partial class MenuController
                         }
                     ),
                     new(
-                        "FRAME LIMIT: " + game.Settings.FrameLimit,
+                        "FPS LIMIT",
+                        Value: game.Settings.FrameLimit.ToString(),
+                        DisabledReason: game.Settings.VSync ? "VSYNC ENABLED" : null,
                         Change: amount =>
                             game.Settings.FrameLimit = FrameRates[
                                 Wrap(Array.IndexOf(FrameRates, game.Settings.FrameLimit) + amount, FrameRates.Length)
                             ]
                     ),
                     new(
-                        "VOLUME: " + (int)MathF.Round(game.Settings.Volume * 100) + "%",
+                        "VOLUME",
+                        Value: (int)MathF.Round(game.Settings.Volume * 100) + "%",
                         Change: amount =>
                         {
                             game.Settings.Volume =
@@ -133,7 +144,8 @@ internal sealed partial class MenuController
                         }
                     ),
                     new(
-                        "SCREEN SHAKE: " + OnOff(game.Settings.ScreenShake),
+                        "SCREEN SHAKE",
+                        Value: OnOff(game.Settings.ScreenShake),
                         Change: _ =>
                         {
                             game.Settings.ScreenShake = !game.Settings.ScreenShake;
@@ -141,38 +153,39 @@ internal sealed partial class MenuController
                         }
                     ),
                 };
-                if (KeyboardAllowed)
-                {
-                    personal.Add(new("KEYBOARD 1 CONTROLS", () => OpenBindings(0)));
-                    personal.Add(new("KEYBOARD 2 CONTROLS", () => OpenBindings(1)));
-                }
+                personal.Add(new("CONTROLS", () => OpenBindings(Owner ?? HintDevice)));
                 personal.Add(BackRow());
                 return personal;
             case GameScreen.MatchSettings:
                 var entries = new List<MenuEntry>
                 {
-                    new("TEAMS: " + OnOff(Rules.TeamMode), Change: _ => Rules.TeamMode = !Rules.TeamMode),
+                    new("TEAMS", Value: OnOff(Rules.TeamMode), Change: _ => Rules.TeamMode = !Rules.TeamMode),
                     new(
-                        "WIN SCORE: " + (Rules.WinScore == 0 ? "ORIGINAL DEFAULT" : Rules.WinScore),
+                        "ROUND TARGET",
+                        Value: Rules.WinScore == 0 ? "AUTO" : Rules.WinScore.ToString(),
                         Change: amount => Rules.WinScore = Wrap(Rules.WinScore + amount, 31)
                     ),
                     new(
-                        "MATCH ROUNDS: " + Rules.MatchRounds,
+                        "ROUNDS",
+                        Value: Rules.MatchRounds.ToString(),
                         Change: amount => Rules.MatchRounds = Math.Clamp(Rules.MatchRounds + amount, 1, 20)
                     ),
                     new(
-                        "FIRST ARENA: " + game.Assets.Data.Maps[Rules.FirstMap].Name,
+                        "FIRST ARENA",
+                        Value: game.Assets.Data.Maps[Rules.FirstMap].Name,
                         Change: amount => Rules.FirstMap = Wrap(Rules.FirstMap + amount, 7)
                     ),
                     new(
-                        "MAP ORDER: " + (Rules.ShuffleMaps ? "SHUFFLED" : "SEQUENTIAL"),
+                        "MAP ORDER",
+                        Value: Rules.ShuffleMaps ? "SHUFFLED" : "SEQUENTIAL",
                         Change: _ => Rules.ShuffleMaps = !Rules.ShuffleMaps
                     ),
                 };
                 if (!Rules.TeamMode)
                     entries.Add(
                         new(
-                            "CHARACTER BODY BOUNCES: " + OnOff(Rules.CharactersBounceEachOther),
+                            "BODY BOUNCES",
+                            Value: OnOff(Rules.CharactersBounceEachOther),
                             Change: _ => Rules.CharactersBounceEachOther = !Rules.CharactersBounceEachOther
                         )
                     );
@@ -181,8 +194,8 @@ internal sealed partial class MenuController
             case GameScreen.Online:
                 return
                 [
-                    Link("HOST STEAM LOBBY", GameScreen.HostSteam),
-                    Link("JOIN STEAM LOBBY", GameScreen.JoinSteam),
+                    Link("HOST STEAM", GameScreen.HostSteam),
+                    Link("JOIN STEAM", GameScreen.JoinSteam),
                     Link("UDP / LAN", GameScreen.Udp),
                     BackRow(),
                 ];
@@ -191,62 +204,57 @@ internal sealed partial class MenuController
                 [
                     Link("MATCH SETTINGS", GameScreen.MatchSettings),
                     Link("PLAYER SLOTS", GameScreen.SlotEditor),
-                    new("OPEN PRIVATE STEAM LOBBY", () => game.BeginLobby("steam", true)),
+                    new("OPEN PRIVATE LOBBY", () => game.BeginLobby("steam", true)),
                     BackRow(),
                 ];
             case GameScreen.Udp:
-                return
-                [
-                    Link("HOST UDP / LAN", GameScreen.HostUdp),
-                    Link("JOIN BY ADDRESS", GameScreen.JoinUdp),
-                    BackRow(),
-                ];
+                return [Link("HOST UDP", GameScreen.HostUdp), Link("JOIN BY ADDRESS", GameScreen.JoinUdp), BackRow()];
             case GameScreen.HostUdp:
                 return
                 [
                     Link("MATCH SETTINGS", GameScreen.MatchSettings),
                     Link("PLAYER SLOTS", GameScreen.SlotEditor),
-                    new("ALLOW LAN CONNECTIONS: " + OnOff(AllowLan), Change: _ => AllowLan = !AllowLan),
-                    new("OPEN UDP LOBBY", () => game.BeginLobby("udp", true)),
+                    new(
+                        "NETWORK ACCESS",
+                        Value: AllowLan ? "LAN / INTERNET" : "THIS PC",
+                        Change: _ => AllowLan = !AllowLan
+                    ),
+                    new("OPEN LOBBY", () => game.BeginLobby("udp", true)),
                     BackRow(),
                 ];
             case GameScreen.JoinSteam:
                 return
                 [
-                    new("LOBBY ID: " + (SteamCode.Length == 0 ? "ENTER ID" : SteamCode), () => EditingAddress = true),
+                    new("LOBBY ID", BeginAddressEdit, Value: SteamCode.Length == 0 ? "ENTER ID" : SteamCode),
                     new("JOIN LOBBY", () => game.BeginLobby("steam:" + SteamCode, false)),
                     BackRow(),
                 ];
             case GameScreen.JoinUdp:
                 return
                 [
-                    new("ADDRESS: " + JoinAddress, () => EditingAddress = true),
+                    new("ADDRESS", BeginAddressEdit, Value: JoinAddress),
                     new("JOIN LOBBY", () => game.BeginLobby("udp:" + JoinAddress, false)),
                     BackRow(),
                 ];
             case GameScreen.Connecting:
                 return game.Online.Lobby is SteamLobby steam
-                    ? [new("INVITE STEAM FRIENDS", steam.InviteFriends), new("CANCEL", game.ReturnToLobby)]
-                    : [new("CANCEL", game.ReturnToLobby)];
+                    ? [new("INVITE FRIENDS", steam.InviteFriends), new("CANCEL", game.LeaveOnlineLobby)]
+                    : [new("CANCEL", game.LeaveOnlineLobby)];
             case GameScreen.Playing:
-                return game.Match.Paused
-                    ?
-                    [
-                        new("RESUME", Resume),
-                        Link("SETTINGS", GameScreen.Settings),
-                        new("RETURN TO LOCAL LOBBY", game.ReturnToLobby),
-                        new("MAIN MENU", game.MainMenu),
-                    ]
-                    : [];
+                if (!game.Match.Paused)
+                    return [];
+                var pauseRows = new List<MenuEntry> { new("RESUME", Resume), Link("SETTINGS", GameScreen.Settings) };
+                if (game.Online.Lobby == null || game.Online.Lobby.IsHost)
+                    pauseRows.Add(new("RETURN TO LOBBY", game.ReturnToLobby));
+                pauseRows.Add(new("QUIT GAME", game.MainMenu, Color: new(255, 85, 85)));
+                return pauseRows;
             case GameScreen.Bindings:
-                var keys = BindingKeys();
                 string[] names = ["LEFT", "RIGHT", "UP", "DOWN", "JUMP", "BAT", "TONGUE", "STRAFE"];
                 return names
-                    .Select((name, i) => new MenuEntry(name, () => WaitingForBinding = true, Key: keys[i]))
+                    .Select((name, i) => BindingEntry(name, i))
+                    .Append(new MenuEntry("RESET TO DEFAULT", ResetBindings))
                     .Append(BackRow())
                     .ToArray();
-            case GameScreen.Error:
-                return [new("MAIN MENU", game.MainMenu)];
             default:
                 return [];
         }

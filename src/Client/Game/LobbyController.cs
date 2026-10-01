@@ -12,6 +12,7 @@ internal sealed class LobbyController(FrogGame game)
     private readonly LobbyPlayer?[] previewPlayers = new LobbyPlayer?[8];
     private long previewSoundId = long.MinValue;
     private string receivedSettings = "";
+    private string? lastNotice;
     private bool onlineTeams;
     public bool TeamMode => IsHost ? game.Setup.Preferences.TeamMode : onlineTeams;
     private double accumulator;
@@ -39,6 +40,8 @@ internal sealed class LobbyController(FrogGame game)
         Array.Clear(occupants);
         Array.Clear(previewPlayers);
         accumulator = sendClock = 0;
+        receivedSettings = "";
+        lastNotice = null;
         game.Renderer.Reset();
         game.Audio.Reset();
     }
@@ -86,7 +89,7 @@ internal sealed class LobbyController(FrogGame game)
             color < 0
             || !SetPlayers([.. players, new LobbyPlayer(device, Math.Max(0, LocalPeer), players.Length % 2, color)])
         )
-            game.Menus.Status = "NO OPEN SLOT";
+            game.Toasts.Show("NO OPEN SLOTS");
     }
 
     public void Choose(int device, int horizontal, int vertical)
@@ -143,6 +146,12 @@ internal sealed class LobbyController(FrogGame game)
             RememberParty();
             game.Fail(Online.Error);
             return;
+        }
+        if (Online?.Notice != lastNotice)
+        {
+            lastNotice = Online?.Notice;
+            if (!string.IsNullOrEmpty(lastNotice))
+                game.Toasts.Show(lastNotice);
         }
         if (Online?.Ready == true)
         {

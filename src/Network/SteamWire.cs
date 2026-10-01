@@ -13,6 +13,7 @@ internal sealed class SteamWire : IWire
     private readonly Dictionary<ulong, HSteamNetConnection> connections = new();
     private readonly HashSet<ulong> connected = new();
     private readonly Queue<WireMessage> incoming = new();
+    private readonly Queue<string> disconnected = new();
     private bool disposed;
     public CSteamID Owner { get; }
     public string? Error { get; private set; }
@@ -108,9 +109,14 @@ internal sealed class SteamWire : IWire
             connected.Remove(id);
             connections.Remove(id);
             SteamNetworkingSockets.CloseConnection(c.m_hConn, 0, "Closing failed connection", false);
-            Error = $"Steam peer disconnected: {c.m_info.m_szEndDebug}";
+            if (hosting)
+                disconnected.Enqueue(id.ToString());
+            else
+                Error = $"Steam peer disconnected: {c.m_info.m_szEndDebug}";
         }
     }
+
+    public bool TakeDisconnected(out string address) => disconnected.TryDequeue(out address!);
 
     public void Poll()
     {

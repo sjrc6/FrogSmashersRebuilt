@@ -109,27 +109,27 @@ internal static class ContentSimulationTests
                 && y >= box.Y - box.Height / 2
                 && y <= box.Y + box.Height / 2
             );
-        foreach (decimal x in new[] { -14.5m, 14.5m })
-        foreach (decimal y in new[] { 15m, 0m, -15m })
+        foreach (decimal x in new[] { -145m / 15, 145m / 15 })
+        foreach (decimal y in new[] { 10m, 0m, -10m })
         {
             Check(SolidAt(x, y), "An interior lobby wall has no collision");
-            Check(!SolidAt(x, y - 5), "A lobby doorway was blocked");
+            Check(!SolidAt(x, y - 50m / 15), "A lobby doorway was blocked");
         }
         Check(
-            SolidAt(-45, 12) && SolidAt(45, 12) && SolidAt(0, 25) && SolidAt(0, -25),
+            SolidAt(-30, 8) && SolidAt(30, 8) && SolidAt(0, 250m / 15) && SolidAt(0, -250m / 15),
             "Lobby outer walls must contain players on all four sides"
         );
         foreach (var box in map.Collision)
         {
             decimal[] edges =
             [
-                (box.X - box.Width / 2) * 10,
-                (box.X + box.Width / 2) * 10,
-                (box.Y - box.Height / 2) * 10,
-                (box.Y + box.Height / 2) * 10,
+                (box.X - box.Width / 2) * 15,
+                (box.X + box.Width / 2) * 15,
+                (box.Y - box.Height / 2) * 15,
+                (box.Y + box.Height / 2) * 15,
             ];
             Check(
-                edges.All(edge => edge == decimal.Round(edge)),
+                edges.All(edge => Math.Abs(edge - decimal.Round(edge)) < .0000001m),
                 "Lobby collision is not aligned to background pixels"
             );
         }

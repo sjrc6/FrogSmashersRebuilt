@@ -65,6 +65,7 @@ internal static class MenuSetupTests
         );
         setup.Lobby.SetTeam(1, 5);
         var match = setup.CreateOptions();
+        check(match.Rules.MapOrder[0] == 3, "shuffle preserves the selected first arena");
         check(
             match.Rules.PlayerCount == 4 && match.Rules.Teams[1] == 5,
             "match derives its roster from the local party"
@@ -156,6 +157,20 @@ internal static class MenuSetupTests
             "mouse accounts for letterboxing and window scale"
         );
         check(MenuLayout.Pointer(new Point(480, 10), 960, 768) == null, "letterbox clicks cannot activate menu rows");
+        mouse = new(
+            640,
+            350,
+            0,
+            ButtonState.Released,
+            ButtonState.Released,
+            ButtonState.Pressed,
+            ButtonState.Released,
+            ButtonState.Released
+        );
+        controls.Poll();
+        check(controls.MouseRightPressed && !controls.MousePressed, "right click has its own menu input edge");
+        controls.Poll();
+        check(!controls.MouseRightPressed, "holding right click does not repeatedly change a menu value");
         Console.WriteLine("Settings validation, match isolation, local party and menu input ownership passed");
     }
 }

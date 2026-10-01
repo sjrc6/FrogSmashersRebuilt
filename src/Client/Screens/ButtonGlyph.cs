@@ -6,6 +6,36 @@ internal readonly record struct ButtonGlyph(string Path)
 {
     public static ButtonGlyph Pad(string name) => new("UI/Buttons/xbox/" + name);
 
+    public static ButtonGlyph Pad(Buttons button) =>
+        Pad(
+            button switch
+            {
+                Buttons.A => "oButton",
+                Buttons.B => "aButton",
+                Buttons.X => "uButton",
+                Buttons.Y => "yButton",
+                Buttons.LeftShoulder => "leftBumper",
+                Buttons.RightShoulder => "rightBumper",
+                Buttons.LeftTrigger => "leftTrigger",
+                Buttons.RightTrigger => "rightTrigger",
+                Buttons.Back => "selectButton",
+                Buttons.Start => "startButton",
+                Buttons.DPadLeft => "dPadLeft",
+                Buttons.DPadRight => "dPadRight",
+                Buttons.DPadUp => "dPadUp",
+                Buttons.DPadDown => "dPadDown",
+                Buttons.RightStick
+                or Buttons.RightThumbstickLeft
+                or Buttons.RightThumbstickRight
+                or Buttons.RightThumbstickUp
+                or Buttons.RightThumbstickDown => "rightStick",
+                _ => "leftStick",
+            }
+        );
+
+    public static ButtonGlyph[] PadBinding(Buttons binding) =>
+        PadBindings.BindableButtons.Where(button => (binding & button) != 0).Select(Pad).Distinct().ToArray();
+
     public static ButtonGlyph Accept(int? owner) => owner >= 2 ? Pad("oButton") : Key(Keys.Enter);
 
     public static ButtonGlyph Back(int? owner) => owner >= 2 ? Pad("aButton") : Key(Keys.Escape);

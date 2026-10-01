@@ -1,5 +1,6 @@
 using FrogSmashers.Network;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace FrogSmashers.Client;
 
@@ -7,6 +8,10 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
 {
     private static readonly Color Selected = new(255, 236, 164);
     private readonly Dictionary<string, Rectangle> glyphSources = new();
+    private readonly float arrowFrameSeconds = game
+        .Assets.Data.PresentationScenes["TitleScreen"]
+        .Sprites.Single(sprite => sprite.ObjectPath == "Start")
+        .FrameSeconds;
     private const float HintGap = 4;
 
     public void Draw()
@@ -17,14 +22,17 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             DrawLobby();
         if (menu.Screen == GameScreen.Outro)
         {
-            ActionHint(ButtonGlyph.Accept(menu.HintDevice), "RETURN TO LOBBY", 530, 692);
+            if (game.Online.Lobby is { IsHost: false })
+            {
+                game.Renderer.CenteredText("WAITING FOR HOST", 640, 660, Color.White, center: true);
+                CenteredHint(ButtonGlyph.Back(menu.HintDevice), "QUIT GAME", 640, 692);
+            }
+            else
+                CenteredHint(ButtonGlyph.Accept(menu.HintDevice), "RETURN TO LOBBY", 640, 692);
             return;
         }
         if (menu.Screen == GameScreen.Seats)
-        {
-            DrawStatus();
             return;
-        }
         if (menu.Screen == GameScreen.Playing && !game.Match.Paused)
             return;
         var entries = menu.Entries();
@@ -43,70 +51,240 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
                     480
                 );
             else
-                game.Renderer.CenteredText(Title(), panel.Center.X, panel.Top + 32, Color.White, center: true);
+            {
+                bool bindings = menu.Screen == GameScreen.Bindings;
+                game.Renderer.CenteredText(
+                    game.Assets.Font.Wrap(Title(), panel.Width - (bindings ? 104 : 40), 2),
+                    panel.Center.X,
+                    panel.Top + (bindings ? 48 : 36),
+                    Color.White,
+                    center: true
+                );
+                Separator(panel, panel.Top + (bindings ? 84 : 60));
+                if (bindings)
+                    DrawDeviceArrows(panel);
+            }
+            Separator(panel, panel.Bottom - 50);
         }
-        if (menu.Screen == GameScreen.Connecting)
-            game.Renderer.CenteredText(
-                game.Assets.Font.Wrap(game.Online.Lobby?.Status ?? "", panel.Width - 64, 3),
-                panel.Center.X,
-                panel.Top + 100,
-                Color.White,
-                center: true
-            );
-        if (menu.Screen == GameScreen.Error)
-            game.Renderer.Text(
-                game.Assets.Font.Wrap(menu.Status, panel.Width - 64, 8),
-                panel.Left + 32,
-                panel.Top + 72,
-                Color.White
-            );
         for (int i = 0; i < entries.Count; i++)
         {
             var rect = Row(i, entries.Count);
             var entry = entries[i];
             bool selected = i == menu.Selected;
-            string label = game.Assets.Font.Wrap(entry.Label, rect.Width - 48, editingSlots ? 1 : 2);
             var color = entry.Color ?? Color.White;
-            if (selected)
+            if (entry.DisabledReason != null)
+                color = new Color(135, 145, 136);
+            else if (selected)
                 color = entry.Color.HasValue ? Color.Lerp(color, Color.White, .55f) : Selected;
-            if (entry.Key is { } key)
-            {
-                game.Renderer.CenteredText(label, rect.X + 26, rect.Center.Y, color);
-                var glyph = ButtonGlyph.Key(key);
-                Glyph(glyph, rect.Right - 26 - GlyphWidth(glyph), rect.Center.Y);
-            }
-            else
-                game.Renderer.CenteredText(label, rect.Center.X, rect.Center.Y, color, center: true);
+            DrawEntry(entry, rect, panel, color, editingSlots);
+            if (selected && !editingSlots)
+                DrawArrows(panel, rect.Center.Y);
         }
         if (editingSlots)
             return;
+        if (menu.Screen == GameScreen.Bindings && menu.BindingDevice >= 2)
+            DrawStickInputs(panel);
         DrawFooter(panel);
+    }
+
+    private void DrawEntry(MenuEntry entry, Rectangle row, Rectangle panel, Color color, bool editingSlots)
+    {
+        var font = game.Assets.Font;
+        if (editingSlots || menu.Screen == GameScreen.Main)
+        {
+            string text = font.Wrap(entry.Text, editingSlots ? row.Width - 48 : panel.Width - 64, editingSlots ? 1 : 2);
+            game.Renderer.CenteredText(text, row.Center.X, row.Center.Y, color, center: true);
+            return;
+        }
+        float left = panel.Left + 32;
+        float right = panel.Right - 32;
+        float width = right - left;
+        if (entry.Key != null || entry.Button != null)
+        {
+            ButtonGlyph[] glyphs = entry.Key is { } key
+                ? [ButtonGlyph.Key(key)]
+                : ButtonGlyph.PadBinding(entry.Button!.Value);
+            float glyphWidth = glyphs.Sum(GlyphWidth) + HintGap * (glyphs.Length - 1);
+            string label = font.Wrap(entry.Label, width - glyphWidth - 16, 2);
+            game.Renderer.CenteredText(label, left, row.Center.Y, color);
+            float x = right - glyphWidth;
+            foreach (var glyph in glyphs)
+            {
+                Glyph(glyph, x, row.Center.Y);
+                x += GlyphWidth(glyph) + HintGap;
+            }
+        }
+        else if (entry.Value is { } value)
+        {
+            float valueWidth = font.Measure(value).X;
+            if (valueWidth <= width * .55f)
+            {
+                string label = font.Wrap(entry.Label, width - valueWidth - 16, 2);
+                game.Renderer.CenteredText(label, left, row.Center.Y, color);
+                RightText(value, right, row.Center.Y, color);
+            }
+            else
+            {
+                string label = font.Wrap(entry.Label, width, 1);
+                value = font.Wrap(value, width, 2);
+                float labelHeight = font.Measure(label).Y;
+                float valueHeight = font.Measure(value).Y;
+                float top = row.Center.Y - (labelHeight + 6 + valueHeight) / 2;
+                game.Renderer.Text(label, left, top, color);
+                RightText(value, right, top + labelHeight + 6 + valueHeight / 2, color);
+            }
+        }
+        else
+            game.Renderer.CenteredText(font.Wrap(entry.Label, width, 2), left, row.Center.Y, color);
+    }
+
+    private void RightText(string text, float right, float centerY, Color color)
+    {
+        var font = game.Assets.Font;
+        float top = centerY - font.Measure(text).Y / 2;
+        float lineHeight = font.Measure("H\nH").Y - font.Measure("H").Y;
+        foreach (string line in text.Split('\n'))
+        {
+            game.Renderer.Text(line, right - font.Measure(line).X, top, color);
+            top += lineHeight;
+        }
+    }
+
+    private void DrawArrows(Rectangle panel, float centerY)
+    {
+        var texture = game.Assets.Texture("UI/whitearrow");
+        var scale = game.Assets.Font.PixelScale(1);
+        bool outward = (long)(menu.AnimationTime / arrowFrameSeconds) % 2 != 0;
+        float inset = outward ? 7 : 8;
+        float panelLeft = MathF.Round(panel.Left / scale.X) * scale.X;
+        float panelRight = panelLeft + MathF.Round(panel.Width / scale.X) * scale.X;
+        float left = panelLeft + inset * scale.X;
+        float right = panelRight - (inset + texture.Width) * scale.X;
+        float top = MathF.Round((centerY - texture.Height * scale.Y / 2) / scale.Y) * scale.Y;
+        void Draw(float x, SpriteEffects flip) =>
+            game.Renderer.Batch.Draw(
+                texture,
+                new Vector2(MathF.Round(x / scale.X) * scale.X, top),
+                null,
+                Color.White,
+                0,
+                Vector2.Zero,
+                scale,
+                flip,
+                0
+            );
+        Draw(left, SpriteEffects.FlipHorizontally);
+        Draw(right, SpriteEffects.None);
+    }
+
+    private void Separator(Rectangle panel, float y)
+    {
+        var scale = game.Assets.Font.PixelScale(1);
+        float left = MathF.Round((panel.Left + 18) / scale.X) * scale.X;
+        float right = MathF.Round((panel.Right - 18) / scale.X) * scale.X;
+        float top = MathF.Round(y / scale.Y) * scale.Y;
+        game.Renderer.Batch.Draw(
+            game.Assets.White,
+            new Vector2(left, top),
+            new Rectangle(0, 0, 1, 1),
+            Color.White,
+            0,
+            Vector2.Zero,
+            new Vector2(right - left, scale.Y),
+            SpriteEffects.None,
+            0
+        );
+    }
+
+    private void DrawDeviceArrows(Rectangle panel)
+    {
+        var texture = game.Assets.Texture("UI/whitearrow");
+        var scale = game.Assets.Font.PixelScale(1);
+        foreach (int direction in new[] { -1, 1 })
+        {
+            var button = MenuLayout.BindingPageButton(panel, direction);
+            var position = new Vector2(
+                MathF.Round((button.Center.X - texture.Width * scale.X / 2) / scale.X) * scale.X,
+                MathF.Round((button.Center.Y - texture.Height * scale.Y / 2) / scale.Y) * scale.Y
+            );
+            game.Renderer.Batch.Draw(
+                texture,
+                position,
+                null,
+                menu.WaitingForBinding ? Color.Gray : Color.White,
+                0,
+                Vector2.Zero,
+                scale,
+                direction < 0 ? SpriteEffects.None : SpriteEffects.FlipHorizontally,
+                0
+            );
+        }
+    }
+
+    private void DrawStickInputs(Rectangle panel)
+    {
+        var pad = game.Controls.Pads[menu.BindingDevice - 2];
+        var scale = game.Assets.Font.PixelScale(1);
+        DrawStick(pad.ThumbSticks.Left, panel.Center.X - 48, "leftStick");
+        DrawStick(pad.ThumbSticks.Right, panel.Center.X + 64, "rightStick");
+
+        void DrawStick(Vector2 value, float x, string icon)
+        {
+            var center = new Vector2(
+                MathF.Round(x / scale.X) * scale.X,
+                MathF.Round((panel.Bottom - 76) / scale.Y) * scale.Y
+            );
+            Glyph(ButtonGlyph.Pad(icon), center.X - 40, center.Y);
+            for (int y = -6; y <= 6; y++)
+            for (int column = -6; column <= 6; column++)
+            {
+                int distance = column * column + y * y;
+                if (distance is >= 25 and <= 36)
+                    Pixel(center + new Vector2(column, y) * scale, new Color(135, 145, 136));
+            }
+            var dot = new Vector2(MathF.Round(value.X * 5), -MathF.Round(value.Y * 5));
+            Pixel(center + dot * scale, Color.White);
+        }
+
+        void Pixel(Vector2 position, Color color) =>
+            game.Renderer.Batch.Draw(
+                game.Assets.White,
+                position,
+                new Rectangle(0, 0, 1, 1),
+                color,
+                0,
+                Vector2.Zero,
+                scale,
+                SpriteEffects.None,
+                0
+            );
     }
 
     private void DrawFooter(Rectangle panel)
     {
-        string status =
-            menu.WaitingForBinding ? "PRESS A KEY TO BIND"
-            : menu.EditingAddress ? "TYPE ADDRESS / LOBBY ID"
-            : menu.Screen == GameScreen.Error ? ""
-            : menu.Status.Length > 0 ? menu.Status
-            : game.Online.Lobby?.Notice ?? "";
-        if (status.Length > 0)
-            game.Renderer.CenteredText(
-                game.Assets.Font.Wrap(status, panel.Width - 64, 2),
-                panel.Center.X,
-                panel.Bottom - 66,
-                Selected,
-                center: true
-            );
+        if (menu.WaitingForBinding)
+        {
+            CenteredHint(ButtonGlyph.Menu(menu.HintDevice), "CANCEL", panel.Center.X, panel.Bottom - 30);
+            return;
+        }
         var accept = ButtonGlyph.Accept(menu.HintDevice);
+        if (menu.Screen == GameScreen.Main)
+        {
+            CenteredHint(accept, "SELECT", panel.Center.X, panel.Bottom - 30);
+            return;
+        }
         var back = ButtonGlyph.Back(menu.HintDevice);
         string acceptText = menu.EditingAddress ? "DONE" : "SELECT";
-        string backText = menu.WaitingForBinding || menu.EditingAddress ? "CANCEL" : "BACK";
+        string backText =
+            menu.WaitingForBinding ? "CANCEL"
+            : menu.EditingAddress ? "DONE"
+            : "BACK";
         float acceptWidth = HintWidth(accept, acceptText);
-        float left = panel.Center.X - (acceptWidth + 32 + HintWidth(back, backText)) / 2;
+        float backWidth = HintWidth(back, backText);
+        float gap = Math.Clamp(panel.Width - 40 - acceptWidth - backWidth, 8, 32);
+        float left = panel.Center.X - (acceptWidth + gap + backWidth) / 2;
         ActionHint(accept, acceptText, left, panel.Bottom - 30);
-        ActionHint(back, backText, left + acceptWidth + 32, panel.Bottom - 30);
+        ActionHint(back, backText, left + acceptWidth + gap, panel.Bottom - 30);
     }
 
     private Rectangle Row(int index, int count) => MenuLayout.Row(menu.Screen, index, count, menu.SelectedSeat);
@@ -131,32 +309,23 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
         }
         var back = ButtonGlyph.Back(menu.HintDevice);
         ActionHint(back, "BACK", room.Right - HintWidth(back, "BACK") - 14, room.Bottom - 19);
-        if (menu.Status.Length > 0)
-            game.Renderer.CenteredText(
-                game.Assets.Font.Wrap(menu.Status, room.Width - 28, 2),
-                room.Center.X,
-                room.Center.Y,
-                Selected,
-                center: true
-            );
     }
 
     private string Title() =>
         menu.Screen switch
         {
-            GameScreen.LobbyMenu => "LOBBY MENU",
+            GameScreen.LobbyMenu => "LOBBY",
             GameScreen.Settings => "SETTINGS",
             GameScreen.MatchSettings => "MATCH SETTINGS",
-            GameScreen.Bindings => $"KEYBOARD {menu.BindingDevice + 1} CONTROLS",
+            GameScreen.Bindings => menu.BindingTitle,
             GameScreen.Online => "ONLINE OPTIONS",
-            GameScreen.HostSteam => "HOST STEAM LOBBY",
-            GameScreen.JoinSteam => "JOIN STEAM LOBBY",
+            GameScreen.HostSteam => "HOST STEAM",
+            GameScreen.JoinSteam => "JOIN STEAM",
             GameScreen.Udp => "UDP / LAN",
-            GameScreen.HostUdp => "HOST UDP / LAN",
+            GameScreen.HostUdp => "HOST UDP",
             GameScreen.JoinUdp => "JOIN BY ADDRESS",
             GameScreen.Extras => "EXTRAS",
             GameScreen.Connecting => "CONNECTING",
-            GameScreen.Error => "COULD NOT CONTINUE",
             GameScreen.Playing => game.Match.Network == null ? "PAUSED" : "MATCH CONTINUES",
             _ => "",
         };
@@ -167,7 +336,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             return;
         string heading =
             game.Online.Lobby is SteamLobby steam ? $"STEAM LOBBY {steam.LobbyCode}"
-            : game.Online.Lobby != null ? $"UDP LOBBY PORT {game.Options.Port}"
+            : game.Online.Lobby != null ? $"UDP LOBBY :{game.Options.Port}"
             : "LOCAL LOBBY";
         game.Renderer.Text(heading, 640, 17, Color.White, center: true);
         for (int room = 0; room < 8; room++)
@@ -207,7 +376,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             {
                 var colorButton =
                     player.Id >= 2
-                        ? ButtonGlyph.Pad("aButton")
+                        ? ButtonGlyph.PadBinding(game.Settings.Controllers[player.Id - 2].Tongue)[0]
                         : ButtonGlyph.Key(game.Settings.Keyboard[player.Id].Tongue);
                 CenteredHint(
                     colorButton,
@@ -219,14 +388,14 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
                 CenteredHint(ButtonGlyph.Start(player.Id), "SPAWN", rect.Center.X, rect.Bottom - 46, Color.Black);
                 var backButton =
                     player.Id >= 2
-                        ? ButtonGlyph.Pad("uButton")
+                        ? ButtonGlyph.PadBinding(game.Settings.Controllers[player.Id - 2].Attack)[0]
                         : ButtonGlyph.Key(game.Settings.Keyboard[player.Id].Attack);
                 CenteredHint(backButton, "BACK OUT", rect.Center.X, rect.Bottom - 20, Color.Black);
             }
             else if (game.Lobby.CanChooseAgain(room))
                 CenteredHint(
                     ButtonGlyph.Start(player.Id),
-                    "CHANGE COLOR",
+                    game.Lobby.TeamMode ? "COLOR / TEAM" : "CHANGE COLOR",
                     rect.Center.X,
                     rect.Bottom - 46,
                     Color.Black
@@ -238,13 +407,6 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
         ActionHint(ButtonGlyph.Start(1), "JOIN P2", 270, 694);
         ActionHint(ButtonGlyph.Pad("startButton"), "JOIN / MENU", 475, 694);
         ActionHint(ButtonGlyph.Menu(0), "MENU", 1020, 694);
-    }
-
-    private void DrawStatus()
-    {
-        string status = menu.Status.Length > 0 ? menu.Status : game.Online.Lobby?.Notice ?? "";
-        if (status.Length > 0 && menu.Screen != GameScreen.Error)
-            game.Renderer.CenteredText(game.Assets.Font.Wrap(status, 1000, 2), 640, 637, Selected, center: true);
     }
 
     private Rectangle GlyphSource(ButtonGlyph glyph)

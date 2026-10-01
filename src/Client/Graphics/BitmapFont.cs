@@ -40,7 +40,7 @@ public sealed class BitmapFont
 
     private Glyph Character(char character) => glyphs.GetValueOrDefault(character, glyphs['?']);
 
-    private Vector2 PixelScale(float scale)
+    internal Vector2 PixelScale(float scale)
     {
         if (!pixelAligned)
             return new Vector2(pixelSize * scale);

@@ -9,6 +9,7 @@ public interface IGameLobby : IDisposable
     bool IsHost { get; }
     bool Starting { get; }
     bool Ready { get; }
+    int Generation { get; }
     string Status { get; }
     string? Error { get; }
     string? Notice { get; }
@@ -23,6 +24,7 @@ public interface IGameLobby : IDisposable
     void Kick(int peer, bool ban);
     void SetMatchSettings(string settings);
     bool StartMatch(string settings);
+    bool ReturnToLobby();
     void SendLobbyInputs(InputFrame[] inputs);
     InputFrame[] ReadLobbyInputs();
     void SendSnapshot(byte[] snapshot);

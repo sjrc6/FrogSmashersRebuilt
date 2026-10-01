@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using FrogSmashers.Core;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
@@ -20,7 +21,8 @@ public sealed class Audio : IDisposable
     private string mapId = "";
     private float volume = .65f;
     private bool paused;
-    private SoundEffectInstance? menuSound;
+    private readonly List<SoundEffectInstance> menuSounds = new();
+    private long? lastMenuSoundTime;
     private long menuSoundNumber;
     public Vector3 ListenerPosition { get; set; } = new(0, 0, -10);
     public bool Enabled { get; private set; } = true;
@@ -31,8 +33,8 @@ public sealed class Audio : IDisposable
         set
         {
             volume = Math.Clamp(value, 0, 1);
-            if (menuSound != null)
-                menuSound.Volume = MenuVolume * volume;
+            foreach (var sound in menuSounds)
+                sound.Volume = MenuVolume * volume;
             foreach (var sound in ambient)
             {
                 sound.Instance.Volume = Math.Clamp(sound.BaseVolume * volume, 0, 1);
@@ -79,19 +81,20 @@ public sealed class Audio : IDisposable
 
     public void PlayMenuAction()
     {
-        if (!Enabled)
+        if (!Enabled || Volume <= 0)
             return;
-        menuSound?.Dispose();
-        menuSound = null;
-        if (Volume <= 0)
+        if (lastMenuSoundTime is { } last && Stopwatch.GetElapsedTime(last).TotalMilliseconds < 20)
             return;
         try
         {
-            var clips = assets.Data.Sounds["Footstep"];
+            Prune();
+            var clips = assets.Data.Sounds["Land"];
             string path = clips[VariationKey(++menuSoundNumber) % (ulong)clips.Length];
-            menuSound = assets.Sound(path).CreateInstance();
-            menuSound.Volume = MenuVolume * Volume;
-            menuSound.Play();
+            var sound = assets.Sound(path).CreateInstance();
+            menuSounds.Add(sound);
+            sound.Volume = MenuVolume * Volume;
+            sound.Play();
+            lastMenuSoundTime = Stopwatch.GetTimestamp();
         }
         catch (Exception ex) when (IsAudioFailure(ex))
         {
@@ -204,13 +207,20 @@ public sealed class Audio : IDisposable
     {
         Console.Error.WriteLine(operation + " unavailable: " + ex.Message);
         Enabled = false;
-        menuSound?.Dispose();
-        menuSound = null;
+        ClearMenuSounds();
         Reset();
     }
 
     private void Prune()
     {
+        for (int i = menuSounds.Count - 1; i >= 0; i--)
+        {
+            if (menuSounds[i].State == SoundState.Stopped)
+            {
+                menuSounds[i].Dispose();
+                menuSounds.RemoveAt(i);
+            }
+        }
         for (int i = shots.Count - 1; i >= 0; i--)
         {
             if (shots[i].Instance.State == SoundState.Stopped)
@@ -565,7 +575,14 @@ public sealed class Audio : IDisposable
     public void Dispose()
     {
         Reset();
-        menuSound?.Dispose();
-        menuSound = null;
+        ClearMenuSounds();
+    }
+
+    private void ClearMenuSounds()
+    {
+        foreach (var sound in menuSounds)
+            sound.Dispose();
+        menuSounds.Clear();
+        lastMenuSoundTime = null;
     }
 }

@@ -35,7 +35,7 @@ internal sealed class MatchSetup
             ?? (FirstMap == 6 ? [6] : Enumerable.Range(0, 6).Select(index => (index + FirstMap) % 6).ToArray());
         if (customMapOrder == null && Preferences.ShuffleMaps)
         {
-            new Random((int)Seed).Shuffle(order);
+            new Random((int)Seed).Shuffle(order.AsSpan(1));
         }
 
         rules.MapOrder = order;

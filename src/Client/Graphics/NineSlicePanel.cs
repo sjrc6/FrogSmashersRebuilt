@@ -18,7 +18,7 @@ internal sealed class NineSlicePanel
         tileHeight = texture.Height / 3;
     }
 
-    public void Draw(SpriteBatch batch, Rectangle bounds)
+    public void Draw(SpriteBatch batch, Rectangle bounds, int horizontalPadding = 0, bool alignRight = false)
     {
         var viewport = texture.GraphicsDevice.Viewport;
         var outputScale = new Vector2(viewport.Width / (float)Renderer.Width, viewport.Height / (float)Renderer.Height);
@@ -30,6 +30,10 @@ internal sealed class NineSlicePanel
         var origin = new Vector2(MathF.Round(bounds.X / scale.X), MathF.Round(bounds.Y / scale.Y)) * scale;
         int width = Math.Max(tileWidth * 2, (int)MathF.Round(bounds.Width / scale.X));
         int height = Math.Max(tileHeight * 2, (int)MathF.Round(bounds.Height / scale.Y));
+        if (alignRight)
+            origin.X = bounds.Right - width * scale.X;
+        origin.X -= horizontalPadding * scale.X;
+        width += horizontalPadding * 2;
         ReadOnlySpan<int> columns = [0, tileWidth, width - tileWidth, width];
         ReadOnlySpan<int> rows = [0, tileHeight, height - tileHeight, height];
 

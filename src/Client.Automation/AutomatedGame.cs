@@ -60,12 +60,12 @@ internal sealed class AutomatedGame : FrogGame
             && Match.World != null
             && (Match.World.TickNumber >= automation.Ticks || Match.World.Phase == MatchPhase.MatchFinished)
             && Match.TerminalConfirmed;
-        if (!framesComplete && !ticksComplete && Menus.Screen != GameScreen.Error)
+        if (!framesComplete && !ticksComplete && LastError == null)
         {
             return;
         }
 
-        if (ticksComplete && Match.Network != null && Menus.Screen != GameScreen.Error)
+        if (ticksComplete && Match.Network != null && LastError == null)
         {
             // Artificial tick limits have no outro. Keep polling briefly so the other process receives our final hash.
             networkFinishMilliseconds ??= Environment.TickCount64;
@@ -99,7 +99,7 @@ internal sealed class AutomatedGame : FrogGame
             Menus.Owner,
             Menus.Selected,
             Menus.SelectedSeat,
-            MenuItems = Menus.Entries().Select(entry => entry.Label).ToArray(),
+            MenuItems = Menus.Entries().Select(entry => entry.Text).ToArray(),
             LocalDevices = Setup.Seats.Select(seat => seat.Device).ToArray(),
             LobbySlots = Menus.ShowingLobby ? Lobby.Roster.Slots : null,
             LobbyPlayers = Menus.ShowingLobby
@@ -142,7 +142,7 @@ internal sealed class AutomatedGame : FrogGame
             RenderedFrames,
             RollbackCount = Match.Network?.RollbackCount ?? 0,
             ConfirmedFrame = Match.Network?.ConfirmedFrame,
-            Error = Menus.Screen == GameScreen.Error ? Menus.Status : Match.Network?.Error,
+            Error = LastError ?? Match.Network?.Error,
         };
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(automation.Result))!);
         File.WriteAllText(

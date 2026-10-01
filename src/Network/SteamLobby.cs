@@ -138,7 +138,7 @@ public sealed class SteamLobby : GameLobby
 
         lobbyId = new CSteamID(c.m_ulSteamIDLobby);
         SteamMatchmaking.SetLobbyData(lobbyId, "game", "FrogSmashersRebuilt");
-        SteamMatchmaking.SetLobbyData(lobbyId, "protocol", "4");
+        SteamMatchmaking.SetLobbyData(lobbyId, "protocol", "5");
         SteamMatchmaking.SetLobbyData(lobbyId, "content", contentHash);
         SteamMatchmaking.SetLobbyData(lobbyId, "state", "forming");
         StartRelay();
@@ -160,7 +160,7 @@ public sealed class SteamLobby : GameLobby
         lobbyId = new CSteamID(c.m_ulSteamIDLobby);
         if (
             SteamMatchmaking.GetLobbyData(lobbyId, "game") != "FrogSmashersRebuilt"
-            || SteamMatchmaking.GetLobbyData(lobbyId, "protocol") != "4"
+            || SteamMatchmaking.GetLobbyData(lobbyId, "protocol") != "5"
             || SteamMatchmaking.GetLobbyData(lobbyId, "content") != contentHash
         )
         {
@@ -216,12 +216,8 @@ public sealed class SteamLobby : GameLobby
             | EChatMemberStateChange.k_EChatMemberStateChangeKicked
             | EChatMemberStateChange.k_EChatMemberStateChangeBanned
         );
-        if ((c.m_rgfChatMemberStateChange & leaving) != 0 && !Starting && hosting)
+        if ((c.m_rgfChatMemberStateChange & leaving) != 0 && hosting)
             relay.RemovePeer(c.m_ulSteamIDUserChanged.ToString());
-        if ((c.m_rgfChatMemberStateChange & leaving) != 0 && Starting)
-        {
-            error = "A Steam peer left the match";
-        }
     }
 
     public override void Poll()
@@ -232,6 +228,9 @@ public sealed class SteamLobby : GameLobby
         }
 
         SteamAPI.RunCallbacks();
+        if (relay != null && wire != null)
+            while (wire.TakeDisconnected(out string address))
+                relay.RemovePeer(address);
         relay?.Poll();
         if (relay == null && startup.Elapsed.TotalSeconds > 120)
         {
@@ -253,10 +252,11 @@ public sealed class SteamLobby : GameLobby
             }
         }
 
-        if (hosting && Starting && SteamMatchmaking.GetLobbyData(lobbyId, "state") != "started")
+        string state = Starting ? "started" : "forming";
+        if (hosting && relay != null && SteamMatchmaking.GetLobbyData(lobbyId, "state") != state)
         {
-            SteamMatchmaking.SetLobbyJoinable(lobbyId, false);
-            SteamMatchmaking.SetLobbyData(lobbyId, "state", "started");
+            SteamMatchmaking.SetLobbyJoinable(lobbyId, !Starting);
+            SteamMatchmaking.SetLobbyData(lobbyId, "state", state);
         }
     }
 
@@ -269,19 +269,21 @@ public sealed class SteamLobby : GameLobby
     }
 
     public override IPeerTransport CreateTransport() =>
-        Ready ? new SteamSessionTransport(this, relay!) : throw new InvalidOperationException("Lobby is not ready");
+        Ready
+            ? new SteamSessionTransport(this, relay!.CreateTransport())
+            : throw new InvalidOperationException("Lobby is not ready");
 
-    private sealed class SteamSessionTransport(SteamLobby owner, RelayLobby relay) : IPeerTransport
+    private sealed class SteamSessionTransport(SteamLobby owner, IPeerTransport session) : IPeerTransport
     {
         public string? Error => owner.Error;
 
         public void Poll() => owner.Poll();
 
-        public void Send(int peer, ReadOnlySpan<byte> data) => relay.Send(peer, data);
+        public void Send(int peer, ReadOnlySpan<byte> data) => session.Send(peer, data);
 
-        public bool TryReceive(out Datagram datagram) => relay.TryReceive(out datagram);
+        public bool TryReceive(out Datagram datagram) => session.TryReceive(out datagram);
 
-        public void Dispose() => owner.Dispose();
+        public void Dispose() => session.Dispose();
     }
 
     public override void Dispose()
