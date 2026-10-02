@@ -62,6 +62,7 @@ internal static class Program
             }
 
             var timer = Stopwatch.StartNew();
+            SnapshotCoverageTests.Run();
             ReplayTests.ReplayAndSnapshots();
             PhysicsTests.FixedArithmetic();
             PhysicsTests.Movement();
@@ -91,10 +92,14 @@ internal static class Program
             NetworkSessionTests.CheckpointContinuation();
             NetworkSessionTests.InputLatching();
             NetworkSessionTests.HighLatencyThroughput();
+            NetworkSessionTests.InputWaitIndicator();
+            NetworkSessionTests.OneRoundTripHandshake();
+            NetworkSessionTests.InputWaitIndicator(hostSpectates: true);
             NetworkProtocolTests.PacketValidationAndDesync();
             NetworkProtocolTests.PacketStructure();
             LobbyRosterTests.Run();
             LobbySimulationTests.Run();
+            CpuSimulationTests.Run();
             SpectatorNetworkTests.Run();
             MeshWireTests.Run(!args.Contains("--no-sockets"));
             LobbyTests.Run(Check);

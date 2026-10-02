@@ -29,7 +29,7 @@ internal sealed class LocalLobby
         if (room < 0)
             return false;
         var player = new LobbyPlayer(
-            device < 0 ? Enumerable.Range(10, 8).First(id => players.All(player => player.Id != id)) : device,
+            device < 0 ? 10 + room : device,
             Team: team is >= 0 ? team.Value : players.Length % 2,
             Color: room,
             Spawned: spawned,

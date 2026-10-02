@@ -27,7 +27,7 @@ internal static class SpectatorNetworkTests
         var world = MakeWorld(2);
         using var session = new NetworkSession(
             world,
-            new SessionConfig(slots, 1, "removal", world, 1),
+            new SessionConfig(slots, 1, "removal", world, 1, rollback: FixedTiming),
             wire.Endpoint(1)
         );
         session.DisconnectPeer(2);
@@ -44,9 +44,9 @@ internal static class SpectatorNetworkTests
         int[][] slots = hostSpectates
             ?
             [
-                [],
                 [0],
                 [1],
+                [2],
                 [],
             ]
             :
@@ -66,7 +66,15 @@ internal static class SpectatorNetworkTests
                 var world = MakeWorld(playerCount);
                 return new NetworkSession(
                     world,
-                    new SessionConfig(slots, peer, "spectators", world, 1),
+                    new SessionConfig(
+                        slots,
+                        peer,
+                        "spectators",
+                        world,
+                        1,
+                        rollback: FixedTiming,
+                        inputPlayerSlots: hostSpectates ? [-1, 0, 1] : null
+                    ),
                     wire.Endpoint(peer)
                 );
             })
@@ -82,7 +90,13 @@ internal static class SpectatorNetworkTests
                 Check(session.Error == null, session.Error ?? "Spectator network failure");
                 if (session.World.TickNumber < target)
                     session.TryAdvance(
-                        session.LocalSlots.Select(slot => Input(session.World.TickNumber, slot)).ToArray()
+                        session
+                            .LocalSlots.Select(handle =>
+                                session.PlayerSlot(handle) < 0
+                                    ? default
+                                    : Input(session.World.TickNumber, session.PlayerSlot(handle))
+                            )
+                            .ToArray()
                     );
             }
         }

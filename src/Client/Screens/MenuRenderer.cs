@@ -332,6 +332,14 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             Color.White,
             center: true
         );
+        if (game.Lobby.SlotEditPending(menu.SelectedSeat))
+            game.Renderer.CenteredText(
+                "APPLYING",
+                room.Center.X,
+                room.Top + 56,
+                new Color(180, 190, 180),
+                center: true
+            );
         if (slot.Player is not { Cpu: false })
             CenteredHint(
                 ButtonGlyph.Accept(menu.HintDevice),
@@ -360,6 +368,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
         {
             GameScreen.LobbyMenu => "LOBBY",
             GameScreen.Settings => "SETTINGS",
+            GameScreen.Rollback => "ROLLBACK",
             GameScreen.MatchSettings => "MATCH SETTINGS",
             GameScreen.Bindings => menu.BindingTitle,
             GameScreen.Online => "ONLINE OPTIONS",
@@ -383,17 +392,24 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             : "LOCAL LOBBY";
         if (!editing)
             game.Renderer.Text(heading, 640, 17, Color.White, center: true);
+        if (!editing && game.Lobby.ProgressText is { } progress)
+            game.Renderer.Text(progress, 640, 44, Color.White, center: true);
         var joinDevices = game.Lobby.JoinHintDevices();
         int joinHint = 0;
         for (int room = 0; room < 8; room++)
         {
             var rect = MenuLayout.RoomInterior(room);
-            var slot = game.Lobby.Roster.Slots[room];
+            var slot = game.Lobby.Presentation.Roster.Slots[room];
             var player = slot.Player;
+            if (!editing && game.Lobby.Presentation.Status(room) is { } pending)
+            {
+                game.Renderer.CenteredText(pending, rect.Center.X, rect.Top + 24, Color.Black, center: true);
+                continue;
+            }
             if (player == null || editing)
             {
                 game.Renderer.CenteredText(
-                    MenuController.SlotLabel(slot.Type),
+                    MenuController.SlotLabel(game.Lobby.GetSlotType(room)),
                     rect.Center.X,
                     rect.Top + 28,
                     Color.Black,

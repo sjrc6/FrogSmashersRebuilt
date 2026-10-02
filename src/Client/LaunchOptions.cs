@@ -11,6 +11,10 @@ public sealed class LaunchOptions
     public int Port { get; private set; } = 24804;
     public int Slots { get; private set; } = 8;
     public int LocalPlayers { get; private set; } = 1;
+    public int LocalTestCount { get; private set; }
+    public bool Tile { get; private set; }
+    internal int LocalTestIndex { get; private set; }
+    internal IReadOnlyList<string> Arguments { get; private set; } = [];
     public uint Seed { get; private set; } = 1;
     public string? Map { get; private set; }
     public string? Host { get; private set; }
@@ -22,7 +26,9 @@ public sealed class LaunchOptions
 
     public static LaunchOptions Parse(IReadOnlyList<string> arguments)
     {
-        var options = new LaunchOptions();
+        var options = new LaunchOptions { Arguments = arguments.ToArray() };
+        bool localTest = false;
+        bool testInstance = false;
         for (int index = 0; index < arguments.Count; index++)
         {
             string Value()
@@ -75,6 +81,17 @@ public sealed class LaunchOptions
                 case "--local-players":
                     options.LocalPlayers = int.Parse(Value());
                     break;
+                case "--localtest":
+                    localTest = true;
+                    options.LocalTestCount = int.Parse(Value());
+                    break;
+                case "--tile":
+                    options.Tile = true;
+                    break;
+                case "--localtest-instance":
+                    testInstance = true;
+                    options.LocalTestIndex = int.Parse(Value());
+                    break;
                 case "--host":
                     options.Host = Value();
                     options.NoIntro = true;
@@ -109,6 +126,28 @@ public sealed class LaunchOptions
             throw new ArgumentException("Invalid launch option range.");
         }
 
+        if ((options.Tile || testInstance) && !localTest)
+            throw new ArgumentException(
+                "--tile requires --localtest N; instance indices are assigned by the launcher."
+            );
+        if (localTest)
+        {
+            if (
+                options.LocalTestCount is < 1 or > 8
+                || options.LocalTestIndex < 0
+                || options.LocalTestIndex >= options.LocalTestCount
+            )
+                throw new ArgumentException("--localtest requires 1 to 8 total instances.");
+            if (options.LocalTestCount * options.LocalPlayers > options.Slots)
+                throw new ArgumentException("Local-test players must fit within --slots (maximum 8).");
+            if (options.Host != null || options.Join != null || options.Replay != null || options.Record != null)
+                throw new ArgumentException(
+                    "--localtest cannot be combined with --host, --join, --replay or --record."
+                );
+            options.Host = options.LocalTestIndex == 0 ? "udp" : null;
+            options.Join = options.LocalTestIndex == 0 ? null : "udp:127.0.0.1";
+            options.NoIntro = true;
+        }
         return options;
     }
 
@@ -123,6 +162,8 @@ public sealed class LaunchOptions
           --join udp:127.0.0.1        Join UDP host (--port 24804)
           --join steam:LOBBY_ID       Join a Steam lobby by invite ID
           --local-players 1..8        Local players for a network match
+          --localtest 1..8            Launch N total instances in a local UDP lobby
+          --tile                     Tile local-test windows across the screen
           --lan                      Bind UDP host to LAN (default localhost)
           --record match.fsr         Record a local match
           --replay match.fsr         Play and verify recorded inputs
@@ -132,6 +173,7 @@ public sealed class LaunchOptions
         Keyboard 2: arrows, M jump, period bat, comma tongue, N strafe.
         Controller: stick/D-pad, A jump, X bat, B tongue, left shoulder strafe.
         F3 diagnostics; F4 collision overlay; F11 fullscreen; Escape pause/menu.
-        Windowed mode uses a fixed 1280x720 resolution.
+        Windowed mode uses 1280x720; --tile uses smaller borderless test windows.
+        Local tests load your preferences but do not save changes.
         """;
 }

@@ -16,13 +16,19 @@ public interface IGameLobby : IDisposable
     int LocalPeer { get; }
     LobbyRoster Roster { get; }
     IReadOnlyList<LobbyPlayer> PendingLocalPlayers { get; }
+    bool PendingLocalSpectating { get; }
+    bool LocalRequestPending { get; }
     LobbyAccess Access { get; }
     int[][] PeerSlots { get; }
+    int[] InputPlayerSlots { get; }
+    LobbyCpuCommand HostCommand { get; }
     int[] PlayerTeams { get; }
     int[] PlayerColors { get; }
     string MatchSettingsJson { get; }
     bool SetPlayers(LobbyPlayer[] players);
     bool EditSlot(int room, SlotType type);
+    SlotType GetSlotType(int room);
+    bool IsSlotEditPending(int room);
     bool ApplySlotType(SlotType type);
     bool RemovePlayer(int peer, int id);
     bool SetSpectating(int peer, bool spectating);
@@ -35,6 +41,9 @@ public interface IGameLobby : IDisposable
     NetworkSession? LobbySession { get; }
     bool SimulationReady { get; }
     bool Transitioning { get; }
+    RollbackPreferences RollbackSettings { get; }
+    IReadOnlyDictionary<int, RollbackPreferences> PeerRollbackSettings { get; }
+    void SetRollbackSettings(RollbackPreferences preferences);
     void AttachSimulation(LobbySimulation simulation);
     IPeerTransport CreateTransport();
 }

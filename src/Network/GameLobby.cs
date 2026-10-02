@@ -17,8 +17,12 @@ public abstract class GameLobby : IGameLobby
     public int LocalPeer => Active?.LocalPeer ?? -1;
     public LobbyRoster Roster => Active?.Roster ?? emptyRoster;
     public IReadOnlyList<LobbyPlayer> PendingLocalPlayers => Active?.PendingLocalPlayers ?? [];
+    public bool PendingLocalSpectating => Active?.PendingLocalSpectating ?? false;
+    public bool LocalRequestPending => Active?.LocalRequestPending ?? false;
     public LobbyAccess Access => Active?.Access ?? default;
     public int[][] PeerSlots => Active?.PeerSlots ?? [];
+    public int[] InputPlayerSlots => Active?.InputPlayerSlots ?? [];
+    public LobbyCpuCommand HostCommand => Active?.HostCommand ?? default;
     public int[] PlayerTeams => Active?.PlayerTeams ?? [];
     public int[] PlayerColors => Active?.PlayerColors ?? [];
     public string MatchSettingsJson => Active?.MatchSettingsJson ?? "";
@@ -26,6 +30,10 @@ public abstract class GameLobby : IGameLobby
     public bool SetPlayers(LobbyPlayer[] players) => Active?.SetPlayers(players) ?? false;
 
     public bool EditSlot(int room, SlotType type) => Active?.EditSlot(room, type) ?? false;
+
+    public SlotType GetSlotType(int room) => Active?.GetSlotType(room) ?? Roster.Slots[room].Type;
+
+    public bool IsSlotEditPending(int room) => Active?.IsSlotEditPending(room) ?? false;
 
     public bool ApplySlotType(SlotType type) => Active?.ApplySlotType(type) ?? false;
 
@@ -48,6 +56,19 @@ public abstract class GameLobby : IGameLobby
     public bool Transitioning => Active?.Transitioning ?? true;
     private LobbySimulation? pendingSimulation;
 
+    private RollbackPreferences rollback = new();
+    public RollbackPreferences RollbackSettings => rollback;
+    public IReadOnlyDictionary<int, RollbackPreferences> PeerRollbackSettings =>
+        Active?.PeerRollbackSettings ?? new Dictionary<int, RollbackPreferences>();
+
+    public void SetRollbackSettings(RollbackPreferences preferences)
+    {
+        if (!preferences.IsValid)
+            throw new ArgumentException("Invalid rollback preferences", nameof(preferences));
+        rollback = preferences;
+        Active?.SetRollbackSettings(preferences);
+    }
+
     public void AttachSimulation(LobbySimulation simulation)
     {
         pendingSimulation = simulation;
@@ -56,6 +77,7 @@ public abstract class GameLobby : IGameLobby
 
     protected void AttachPendingSimulation()
     {
+        Active?.SetRollbackSettings(rollback);
         if (pendingSimulation != null && Active != null)
             Active.AttachSimulation(pendingSimulation);
     }

@@ -113,7 +113,13 @@ internal static class UdpProcessTests
             {
                 lobbySession.TryAdvance(
                     lobbySession
-                        .LocalSlots.Select(handle => new RollbackInput(Input(lobbySimulation.World.TickNumber, handle)))
+                        .LocalSlots.Select(handle =>
+                            lobbySimulation.InputSources[handle].HostCommand
+                                ? new RollbackInput(default, Cpu: lobby.HostCommand)
+                                : new RollbackInput(
+                                    Input(lobbySimulation.World.TickNumber, lobbySimulation.InputRooms[handle])
+                                )
+                        )
                         .ToArray()
                 );
                 if (lobbySession.Error != null)
@@ -137,12 +143,14 @@ internal static class UdpProcessTests
                 "test",
                 w,
                 lobby.SessionId,
-                activePeers: lobby.PeerIds.ToArray()
+                activePeers: lobby.PeerIds.ToArray(),
+                inputPlayerSlots: lobby.InputPlayerSlots
             ),
             lobby.CreateTransport()
         );
         while (timer.Elapsed.TotalSeconds < 15 && !session.AllPeersConfirmed(479))
         {
+            lobby.Poll();
             session.Poll();
             if (session.Error != null)
             {
@@ -151,7 +159,13 @@ internal static class UdpProcessTests
 
             if (w.TickNumber < 480)
             {
-                session.TryAdvance(session.LocalSlots.Select(s => Input(w.TickNumber, s)).ToArray());
+                session.TryAdvance(
+                    session
+                        .LocalSlots.Select(s =>
+                            session.PlayerSlot(s) < 0 ? default : Input(w.TickNumber, session.PlayerSlot(s))
+                        )
+                        .ToArray()
+                );
             }
 
             Thread.Sleep(1);
@@ -165,6 +179,7 @@ internal static class UdpProcessTests
         long end = timer.ElapsedMilliseconds + 300;
         while (timer.ElapsedMilliseconds < end)
         {
+            lobby.Poll();
             session.Poll();
             Thread.Sleep(1);
         }

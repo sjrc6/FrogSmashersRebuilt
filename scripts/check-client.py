@@ -46,6 +46,54 @@ def run(name, options, sound=False, expect_error=False):
     return value
 
 
+def verify_connections_and_repeat():
+    settings_file = Path(env["XDG_DATA_HOME"]) / "FrogSmashersRebuilt/settings.json"
+    initial_settings = settings_file.read_bytes()
+    def key(frame, *keys):
+        return dict(From=frame, To=frame + 1, Keys=list(keys))
+
+    def capture(name, inputs, frames, options=None):
+        settings_file.write_bytes(initial_settings)
+        script = out / (name + "-input.json")
+        script.write_text(json.dumps(inputs))
+        return run(name, (options or ["--no-intro"]) + [
+            "--input-script", str(script), "--frames", str(frames),
+            "--capture", str(out / (name + ".png"))])
+
+    held = [dict(From=0, To=80, Keys=["Tab"])]
+    shown = capture("connections-eight", held, 60, ["--demo", "--players", "8"])
+    hidden = capture("connections-released", held, 90, ["--demo", "--players", "8"])
+    assert shown["ConnectionsVisible"] and len(shown["ConnectionPlayers"]) == 8, shown
+    assert shown["TickNumber"] == 120 and not hidden["ConnectionsVisible"], (shown, hidden)
+    lobby = [key(1, "Enter"), key(3, "U"), key(5, "OemPeriod"), dict(From=7, To=30, Keys=["Tab"])]
+    shown = capture("connections-lobby", lobby, 25)
+    assert shown["Page"] == "Seats" and len(shown["ConnectionPlayers"]) == 2, shown
+    assert all(p["Prediction"] == 0 and p["Ping"] == 0 for p in shown["ConnectionPlayers"]), shown
+    with Image.open(out / "connections-lobby.png") as panel:
+        first = panel.crop((686, 326, 862, 344))
+        second = panel.crop((686, 370, 862, 388))
+        assert ImageChops.difference(first, second).getbbox() is None, "Lobby hints obscure connection text"
+    editor = [key(1, "Enter"), key(3, "Escape"), key(5, "Down"), key(7, "Down"),
+              key(9, "Enter"), dict(From=11, To=30, Keys=["Tab"])]
+    edited = capture("connections-slot-editor", editor, 25)
+    assert edited["Page"] == "SlotEditor" and not edited["ConnectionsVisible"], edited
+
+    settings = [key(1, "Down"), key(3, "Down"), key(5, "Enter")]
+    volume = settings + [key(7, "Down"), key(9, "Down"), key(11, "Down")]
+    for name, action in [("key", dict(Keys=["Left"])), ("pad", dict(Pads={0: ["DPadLeft"]}))]:
+        changed = capture("repeat-volume-" + name,
+                          volume + [dict(From=13, To=110, **action)], 108)
+        assert changed["Volume"] == 0, changed
+    toggled = capture("no-repeat-toggle", settings + [key(7, "Down"), dict(From=9, To=90, Keys=["Right"])], 95)
+    assert "VSYNC: ON" in toggled["MenuItems"], toggled
+    rollback = settings + [key(frame, "Down") for frame in (7, 9, 11, 13, 15, 17)] + [key(19, "Enter")]
+    adjusted = capture("repeat-rollback", rollback + [dict(From=21, To=80, Keys=["Right"])], 85)
+    assert adjusted["Page"] == "Rollback" and len(adjusted["MenuItems"]) == 4, adjusted
+    assert adjusted["MenuItems"][0] != "DELAY: 16.7 MS", adjusted
+    settings_file.write_bytes(initial_settings)
+    print("PASS: Tab visibility, eight-player layout, local lobby, slot editor, numeric repeat and single-press toggles.")
+
+
 def verify_render_cadence():
     hashes = []
     for fps in (60, 144, 240):
@@ -538,6 +586,74 @@ def verify_lobby_network():
             if p.poll() is None:p.kill();p.wait()
 
 
+def verify_spectator_direct_join():
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as reserve:
+        reserve.bind(("127.0.0.1", 0))
+        port = reserve.getsockname()[1]
+    script = out / "spectator-direct-join-input.json"
+    script.write_text(json.dumps([dict(From=180, To=181, Keys=["OemPeriod"])]))
+    for pending in (True, False):
+        name = "spectator-join-pending" if pending else "spectator-join-complete"
+        host = subprocess.Popen(command(name + "-host", ["--host", "udp", "--port", str(port)]),
+                                cwd=root, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            value = run(name, ["--join", "udp:127.0.0.1", "--port", str(port), "--spectate",
+                               "--input-script", str(script), "--frames", "181" if pending else "350",
+                               "--capture", str(out / (name + ".png"))])
+            assert value["Page"] == "Seats", value
+            if pending:
+                assert value["LobbyProgress"] is not None and "JOINING..." in value["LobbyRoomStatus"], value
+                assert value["LobbySpawnPuffs"] >= 1, value
+                slots = value["PresentedLobbySlots"]
+            else:
+                assert value["LobbySpectators"] == [] and value["LobbyProgress"] is None, value
+                slots = value["LobbySlots"]
+            assert any(slot["Player"] is not None and slot["Player"]["Peer"] == 1 and slot["Player"]["Id"] == 1 for slot in slots), value
+        finally:
+            host.kill()
+            host.wait()
+    print("PASS: spectator joins with another keyboard directly; preview and progress appear immediately and clear on completion.")
+
+
+def verify_cpu_network():
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as reserve:
+        reserve.bind(("127.0.0.1", 0))
+        port = reserve.getsockname()[1]
+    actions = [(90, "Escape"), (92, "Down"), (94, "Down"), (96, "Enter"),
+               (98, "Right"), (100, "Right")]
+    actions += [(frame, "Enter") for frame in (102, 104, 106, 108, 110)]
+    actions += [(112, "Escape"), (114, "Escape")]
+    script = out / "udp-cpu-edit-input.json"
+    script.write_text(json.dumps([dict(From=f, To=f + 1, Keys=[key]) for f, key in actions]))
+    common = ["--local-players", "1", "--port", str(port), "--ticks", "480"]
+    processes = []
+    try:
+        for name, options in [
+            ("udp-cpu-host", ["--host", "udp", "--start-players", "3", "--input-script", str(script)]),
+            ("udp-cpu-guest", ["--join", "udp:127.0.0.1"]),
+        ]:
+            process = subprocess.Popen(command(name, common + options), cwd=root, env=env,
+                                       text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            processes.append((name, process))
+        values = []
+        for name, process in processes:
+            log, _ = process.communicate(timeout=60)
+            (out / (name + ".log")).write_text(log)
+            assert process.returncode == 0, (name, log)
+            value = json.loads((out / (name + ".json")).read_text())
+            assert value["Error"] is None and value["Players"] == 3, value
+            assert value["TickNumber"] == 480 and value["ConfirmedFrame"] == 479, value
+            assert value["MatchPeerSlots"] == [[0, 1], [2]], value
+            values.append(value)
+        assert values[0]["Hash"] == values[1]["Hash"], values
+        print("PASS: host created CPU through slot editor; both clients reached the same confirmed CPU match state.")
+    finally:
+        for _, process in processes:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+
+
 def verify_network():
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as reserve:
         reserve.bind(("127.0.0.1", 0))
@@ -592,6 +708,7 @@ def main():
     settings_file.write_text(
         json.dumps(dict(Fullscreen=False, VSync=False))
     )
+    verify_connections_and_repeat()
     verify_render_cadence()
     pause_script = verify_pause()
     verify_smoke_pause(pause_script)
@@ -607,6 +724,8 @@ def main():
         verify_player_network_actions()
         verify_online_creation()
         verify_lobby_network()
+        verify_spectator_direct_join()
+        verify_cpu_network()
         verify_network()
     print("PASS: client input, replay and render cadence checks; captures in", out)
 

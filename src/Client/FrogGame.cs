@@ -14,6 +14,7 @@ public class FrogGame : Game
     private WindowsWindowIcons? windowIcons;
     private MenuRenderer menuRenderer = null!;
     private ToastRenderer toastRenderer = null!;
+    internal ConnectionOverlay Connections { get; private set; } = null!;
     private int matchGeneration;
     private bool showDiagnostics;
     private World? diagnosticWorld;
@@ -45,24 +46,33 @@ public class FrogGame : Game
     public FrogGame(LaunchOptions options)
     {
         Options = options;
+        if (options.LocalTestCount > 0)
+            Settings.Fullscreen = false;
+        Rectangle? tile = options.Tile
+            ? LocalTestLauncher.TileBounds(DesktopArea.Primary(), options.LocalTestCount, options.LocalTestIndex)
+            : null;
         Controls = new Controls(Settings);
         Setup = new MatchSetup(options.Seed);
         graphics = new GraphicsDeviceManager(this)
         {
-            PreferredBackBufferWidth = Renderer.Width,
-            PreferredBackBufferHeight = Renderer.Height,
+            PreferredBackBufferWidth = tile?.Width ?? Renderer.Width,
+            PreferredBackBufferHeight = tile?.Height ?? Renderer.Height,
             SynchronizeWithVerticalRetrace = !options.Offscreen && Settings.VSync,
             IsFullScreen = !options.Offscreen && Settings.Fullscreen,
             HardwareModeSwitch = false,
             GraphicsProfile = GraphicsProfile.HiDef,
         };
-        display = new DisplaySettings(Window, graphics, Settings, options.Offscreen);
+        display = new DisplaySettings(Window, graphics, Settings, options.Offscreen, tile);
         Content.RootDirectory = Path.Combine(AppContext.BaseDirectory, "Content");
         IsFixedTimeStep = false;
         InactiveSleepTime = TimeSpan.Zero;
         IsMouseVisible = true;
         Window.AllowUserResizing = false;
-        Window.Title = "Frog Smashers Rebuilt";
+        Window.Title =
+            options.LocalTestCount == 0
+                ? "Frog Smashers Rebuilt"
+                : $"Frog Smashers Rebuilt - Local Test {options.LocalTestIndex + 1}/{options.LocalTestCount}"
+                    + (options.LocalTestIndex == 0 ? " (Host)" : "");
         Window.TextInput += (_, input) => Menus?.EnterText(input.Character);
         Window.ClientSizeChanged += (_, _) => Controls.SuspendMouseHover();
     }
@@ -70,6 +80,7 @@ public class FrogGame : Game
     protected override void LoadContent()
     {
         display.MatchDesktopBackBuffer();
+        display.PositionWindow();
         if (OperatingSystem.IsWindows())
             windowIcons = new WindowsWindowIcons(Window.Handle);
         Assets = new Assets(Content, Content.RootDirectory);
@@ -82,7 +93,10 @@ public class FrogGame : Game
         Menus = new MenuController(this);
         menuRenderer = new MenuRenderer(this, Menus);
         toastRenderer = new ToastRenderer(this);
+        Connections = new(this);
         ConfigureLaunch();
+        if (LastError == null && Online.Lobby != null)
+            LocalTestLauncher.StartGuests(Options);
         contentLoaded = true;
     }
 
@@ -144,6 +158,7 @@ public class FrogGame : Game
         Controls.Poll(IsActive || Options.Offscreen);
         double elapsedSeconds = ElapsedSeconds(gameTime);
         Toasts.Update(elapsedSeconds);
+        PumpNetwork();
         CheckLobbyReturn();
         HandleGlobalInput();
         Renderer.Update(Menus.LocalPresentationPaused ? 0 : (float)elapsedSeconds);
@@ -169,6 +184,14 @@ public class FrogGame : Game
 
         CheckInvitations();
         base.Update(gameTime);
+    }
+
+    private void PumpNetwork()
+    {
+        Online.Lobby?.SetRollbackSettings(Settings.Rollback);
+        Online.Lobby?.Poll();
+        Match.Network?.SetTiming(Settings.Rollback);
+        Match.Network?.Poll();
     }
 
     private void HandleGlobalInput()
@@ -318,7 +341,6 @@ public class FrogGame : Game
     {
         if (Match.Network == null || Online.Lobby is not { } online)
             return;
-        online.Poll();
         if (online.Generation != matchGeneration)
         {
             OpenCurrentLobby();
@@ -386,6 +408,8 @@ public class FrogGame : Game
         Online.Lobby?.SetMatchSettings(
             System.Text.Json.JsonSerializer.Serialize(Setup.CreateOptions(Options.MapOrder))
         );
+        if (Options.LocalTestCount > 0)
+            return;
         try
         {
             Settings.Save();
@@ -410,6 +434,8 @@ public class FrogGame : Game
         {
             DrawDiagnostics(diagnosticScene, gameTime.ElapsedGameTime.TotalSeconds);
         }
+        Connections.Draw();
+        Connections.DrawInputWait();
         toastRenderer.Draw();
         Renderer.EndUi();
         Renderer.Present();
@@ -478,7 +504,6 @@ public class FrogGame : Game
         var lines = new List<string>
         {
             $"{timing.FramesPerSecond:F0} FPS | {diagnosticTickRate:F1}/{World.TickRate} HZ | TICK {world.TickNumber}",
-            $"HASH {world.HashState():x16}",
         };
         if (network != null)
         {

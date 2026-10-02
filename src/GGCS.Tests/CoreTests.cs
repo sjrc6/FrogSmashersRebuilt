@@ -78,10 +78,21 @@ internal static class CoreTests
             "Cannot replace an active delay prefix"
         );
         var empty = new DelayedInputQueue<int>(2, 8);
-        Check.Throws<InvalidOperationException>(() => empty.Seed([1]), "Seed must fill the delay exactly");
+        Check.Throws<InvalidOperationException>(
+            () => empty.Seed(new int[9]),
+            "Seed cannot exceed the retained delay capacity"
+        );
         empty.Seed([2, 6]);
         empty.SetDelay(4);
         AssertInputs(empty.Submit(0, 8), (2, 6), (3, 6), (4, 8));
+        var shorter = new DelayedInputQueue<int>(4, 8, (input, _) => input & 1);
+        shorter.Seed([3]);
+        AssertInputs(shorter.Submit(0, 7), (1, 1), (2, 1), (3, 1), (4, 7));
+        var longer = new DelayedInputQueue<int>(0, 8);
+        longer.Seed([3, 5]);
+        AssertInputs(longer.Submit(0, 7));
+        AssertInputs(longer.Submit(1, 9));
+        AssertInputs(longer.Submit(2, 11), (2, 11));
     }
 
     private static void PredictionStopsAndRepairsAtTheBoundary()

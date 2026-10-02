@@ -43,24 +43,39 @@ Player[] roster = [new(0, 10), new(1, 10), new(2, 20)];
 var options = new SessionOptions
 {
     FramesPerSecond = 120,
-    MaxPredictionFrames = 24,
+    MaxPredictionFrames = 30,
     HistoryFrames = 360,
-    InputDelay = 2
+    InputDelay = 2,
+    MaxInputDelay = 238
 };
 var session = new P2PSession<MyInput, MySnapshot>(
     generation, localPeerId, roster, game, codec, transport, options,
     inputSchema: "frog-input-layout-and-simulation-configuration");
 ```
 
-The host chooses a fresh nonzero `generation` for each session and distributes it along with the roster and checkpoint. `inputSchema` contributes to the handshake fingerprint; include a stable description/hash of input layout and deterministic game configuration. GGCS also checks the roster, encoded input size, simulation rate and reciprocal packet layouts. Different peers may use different input delays.
+The host chooses a fresh nonzero `generation` for each session and distributes it along with the roster and checkpoint. `inputSchema` contributes to the handshake fingerprint; include a stable description/hash of input layout and deterministic game configuration. GGCS also checks the roster, encoded input size, simulation rate and reciprocal packet layouts. Personal timing is per machine, shared by its local handles. Call `SetTiming(new RollbackTiming { DelayFrames = 2, DonationFrames = 0, MaxExtraDelayFrames = 30 })` to opt into up to 30 frames of automatic extra delay. Both the game and `RollbackTiming` default that allowance to zero; a bare library session starts with `SessionOptions.InputDelay` and no automatic extra delay.
 
 Call `Poll()` regularly, including while paused, synchronizing or waiting for inputs. It processes acknowledgements, retries, timing and events. It may restore/resimulate the game to repair an earlier prediction; it does not consume a new frame.
 
 At the fixed simulation cadence, call `AdvanceFrame(localInputs)`. Inputs must be in `LocalPlayerHandles` order. This method also polls. Its result explains whether a frame advanced or why it waited. Do not accumulate unlimited catch-up work during a network stall.
 
-The first attempt at a frame latches and sends its local inputs, even if that frame must wait. Repeated attempts at that same `CurrentFrame` keep those inputs unchanged. Compare `LastSubmittedFrame` before and after the attempt to consume button edges exactly once; a successful simulation step alone is not the submission signal. Buffer new button edges for a later simulation frame in the application. `SetInputDelay` takes effect on the next newly submitted frame; increasing delay fills the gap with the last input, and decreasing delay discards overlapping submissions.
+The first attempt at a frame latches and sends its local inputs, even if that frame must wait. Repeated attempts at that same `CurrentFrame` keep those inputs unchanged. Compare `LastSubmittedFrame` before and after the attempt, then consume an individual handle's button edges only if `LastAcceptedInputFrame(handle)` equals the new submitted frame. A successful simulation step alone is not the acceptance signal. Reducing delay temporarily skips samples which would overwrite already accepted input. Keep those button edges buffered until a new sample is accepted. Increasing delay fills the gap through the configured predictor (repeat-last by default); the game clears one-shot lobby commands in that padding.
 
-`FramesAhead` is a smoothed estimate. `RecommendedFrameDurationMultiplier` suggests a 10% longer tick duration when ahead by at least three frames. Apply it to the local accumulator's tick duration; continue polling normally. The library never sleeps. This small slowdown follows the TF.EX integration approach; its exact scheduling is not a GGRS wire/API compatibility promise.
+### Personal timing and pacing
+
+Let S be the displayed simulation frame, D the effective response delay (manual plus automatic), and L the voluntary simulation lead. Local input is queued for S + D. Pacing aligns **S + D - L** between machines, instead of aligning S alone.
+
+- **Delay** moves this machine's simulation behind its input horizon, reducing its own prediction of remote players. It does not force other machines to use the same response delay.
+- **Donation** lets this machine run further ahead, accepting more prediction locally so peers need less prediction of its inputs.
+- **Max extra delay** bounds automatic response delay during poor connections. Zero preserves pause-and-wait behavior at the prediction limit.
+
+`FramesAhead` is the worst smoothed peer advantage after those offsets. `RecommendedFrameDurationMultiplier` keeps a two-frame deadband, then adds 2% tick duration per excess frame up to 10%. The smaller correction avoids all peers slowing excessively when jitter introduces a small apparent lead. Apply the multiplier to the local accumulator; continue polling normally. Pacing converges within a few ticks, rather than promising an exact instantaneous lead.
+
+Automatic delay is opt-in. Increases require actual prediction depth to enter the last four allowed frames; RTT alone cannot trigger them. The first increase is immediate, sized from half-RTT, relative donation, base delay and current prediction pressure. Subsequent pressure-only increases wait half an RTT plus `TimeSync`'s 30-frame averaging window (at least 100 ms) for feedback. A higher RTT-based requirement can raise the target sooner. Limits always apply, and another automatic adjustment requires fresh accepted input after the previous change.
+
+Recovery removes one extra-delay frame every 50 ms when prediction is at least three frames below the pressure threshold, the RTT estimate permits it, and pressure has been absent for half an RTT (at least 100 ms). This avoids long stretches of skipped samples from large instant reductions. Polling without advancing cannot drain or inflate the allowance repeatedly. At the combined delay/prediction limit the session still waits for input; delay cannot recover a disconnected link. Settings and effective extra delay travel with revisioned protocol progress. None changes deterministic world state or the handshake configuration.
+
+This timing policy extends GGPO/GGRS; it is not TF.EX's ordinary frame-delay setting. There is no host minimum or response-delay donation setting. A generic GGCS session only enables adaptation when the application supplies a nonzero allowance.
 
 `CurrentFrame` is the next input frame to simulate. Snapshot frame N is the state **before** input N. `ConfirmedFrame` is the last simulated input frame that can no longer change, so its corresponding state is `ConfirmedFrame + 1`.
 
@@ -74,7 +89,7 @@ Missing inputs limit prediction. Global confirmation separately bounds retention
 
 The application chooses a pause boundary at least as large as both `CurrentFrame` and `LastSubmittedFrame + 1` on every playing machine. The second condition matters when a frame has latched input but cannot yet advance. Stop new advancements at that boundary, continue polling and repairs, then transfer the agreed state.
 
-Input delay also contains already accepted inputs after the pause boundary. Preserve each surviving local handle's next `InputDelay` actual inputs with `TryGetSubmittedInput(handle, frame, out input)`. After creating the new generation, call `SeedLocalInputDelay(handle, inputs)` before its first advancement. The seed must contain exactly that handle's configured delay, in frame order. It occupies frames zero through `delay - 1`; newly sampled input starts at frame `delay`. Map seeds by stable player identity when handles change. A newly admitted player starts with neutral delay frames.
+Call `FreezeTiming(true)` while coordinating a pause. Manual edits are deferred and automatic changes stop until `FreezeTiming(false)` resumes a canceled transition. Export each surviving handle's `PendingInputCount(handle, boundary)` inputs with `TryGetSubmittedInput`, in frame order. Prefix lengths can differ from the current preference after a delay change. In the new generation, set the personal policy, restore bounded temporary delay with `RestoreExtraDelay`, then call `SeedLocalInputDelay(handle, inputs)` before advancement. Seeding preserves already accepted inputs independently of the next-sample delay. Map prefixes by stable player identity when handles change. New identities start with neutral delay frames.
 
 Do not replay a pending button edge twice or silently discard it when restarting the session. The game adapter rejects exporting a prefix while the boundary still has an unconsumed latched submission.
 
@@ -96,7 +111,7 @@ The host collects each playing machine's raw input stream and receipt reports, a
 
 ## Diagnostics and determinism checks
 
-Drain `TryGetEvent` for synchronization, interruption, recovery, disconnection, exclusion, protocol errors, spectator backlog and checksum mismatches. Event queues and checksum histories are bounded. `GetNetworkStats` exposes RTT, frame advantage, pending/received/acknowledged frames, traffic counters and invalid/stale packets. `NetworkStats` returns the current list of active links, including observer links. Session diagnostics include prediction depth and total/largest resimulation.
+Drain `TryGetEvent` for synchronization, interruption, recovery, disconnection, exclusion, protocol errors, spectator backlog and checksum mismatches. Event queues and checksum histories are bounded. `GetNetworkStats` exposes RTT, frame advantage, remote response/donation/extra-delay preferences, pending/received/acknowledged frames, traffic counters and invalid/stale packets. `NetworkStats` returns the current list of active links, including observer links. Session diagnostics include prediction depth and total/largest resimulation.
 
 Use `SyncTestSession` during offline development with checksums enabled on every snapshot. It replays the recent history after every advancement and throws `DeterminismException` at the first changed state. This catches incomplete snapshots and nondeterministic game logic without involving a network.
 
@@ -133,13 +148,13 @@ Deliberate C# differences:
 - History and pending-input capacity follow configured limits, independently of the prediction limit. All pending inputs are eligible for transmission; newer chunks are not hidden behind an old fixed-size send window.
 - Globally final confirmation is separate from local prediction, protecting observer streams and disconnect corrections.
 - Observer buffers are bounded. A host with no local frog is supported explicitly.
-- Timing uses an injected monotonic clock; there are no spin waits, browser bindings or native code.
+- Personal response delay, voluntary simulation lead and bounded automatic delay share an adjusted pacing horizon. Timing uses an injected monotonic clock; there are no spin waits, browser bindings or native code.
 
 ## Game integration
 
 The library stays independent of game content, transport APIs and UI. The application supplies these parts:
 
-- `NetworkSession` adapts GGCS frame numbers to persistent world ticks, captures/restores `IRollbackSimulation`, retains reversible events, and exposes diagnostics and confirmed checkpoints. Its `LocalInputSubmitted` flag tells the client when to consume pending button edges.
+- `NetworkSession` adapts GGCS frame numbers to persistent world ticks, captures/restores `IRollbackSimulation`, retains reversible events, and exposes diagnostics and confirmed checkpoints. Its `AcceptedLocalSlots` identifies which devices may consume pending button edges; `LocalInputSubmitted` means at least one local handle accepted a sample.
 - `RollbackInput` carries gameplay plus tick-stamped lobby spawn, selection, color and team commands. Its explicit codec validates every field. Prediction retains gameplay while clearing lobby command edges.
 - `LobbySimulation` snapshots the world, roster, cosmetic RNG, preview events and CPU retaliation state. Match simulation uses the regular world snapshot.
 - `MeshLobby` coordinates membership through a confirmed pause, snapshot transfer, direct-link readiness and a new session generation. Empty lobbies use a neutral host input stream to keep the simulation clock running without inventing a room occupant.

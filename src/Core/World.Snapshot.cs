@@ -26,10 +26,10 @@ public sealed partial class World
         writer.Write(Players.Length);
         foreach (var player in Players)
         {
-            WritePlayer(writer, player);
+            player.WriteSnapshot(writer);
         }
 
-        WriteFly(writer, Fly);
+        Fly.WriteSnapshot(writer);
         return stream.ToArray();
     }
 
@@ -83,7 +83,7 @@ public sealed partial class World
         var players = new PlayerState[count];
         for (int i = 0; i < count; i++)
         {
-            players[i] = ReadPlayer(reader);
+            players[i] = PlayerState.ReadSnapshot(reader);
             if (
                 players[i].ColorIndex is < 0 or > 7
                 || players[i].Slot != i
@@ -98,7 +98,7 @@ public sealed partial class World
             }
         }
 
-        var fly = ReadFly(reader);
+        var fly = FlyState.ReadSnapshot(reader);
         if (
             stream.Position != stream.Length
             || fly.Owner < -1
@@ -144,6 +144,8 @@ public sealed partial class World
         writer.Write(TickRate);
         writer.Write(Rules.PlayerCount);
         writer.Write(Rules.Lobby);
+        foreach (bool cpu in Rules.CpuPlayers)
+            writer.Write(cpu);
         foreach (int color in Rules.Colors)
             writer.Write(color);
         writer.Write(Rules.TeamMode);
@@ -196,148 +198,4 @@ public sealed partial class World
 
         return Hash(stream.ToArray());
     }
-
-    private static void WritePlayer(BinaryWriter writer, PlayerState player)
-    {
-        writer.Write(player.Slot);
-        writer.Write(player.Team);
-        writer.Write(player.ColorIndex);
-        writer.Write(player.Facing);
-        writer.Write(player.LastHitBy);
-        writer.Write(player.HitsTaken);
-        writer.Write(player.Score);
-        writer.Write(player.RoundWins);
-        writer.Write(player.WallSlideSide);
-        writer.Write(player.SpawnTicks);
-        writer.Write(player.HitstopTicks);
-        writer.Write(player.Alive);
-        writer.Write(player.Eliminated);
-        writer.Write(player.OnGround);
-        writer.Write(player.WallSliding);
-        writer.Write(player.HasFly);
-        writer.Write(player.WasHitDownwards);
-        writer.Write(player.HasReachedApex);
-        writer.Write(player.CanBounceDodge);
-        writer.Write(player.HasBounceDodged);
-        writer.Write(player.CanBounceTongue);
-        writer.Write(player.HasBounceTongued);
-        writer.Write(player.WasBouncingBeforeTongue);
-        writer.Write(player.X.Raw);
-        writer.Write(player.Y.Raw);
-        writer.Write(player.VX.Raw);
-        writer.Write(player.VY.Raw);
-        writer.Write(player.AttackX.Raw);
-        writer.Write(player.AttackY.Raw);
-        writer.Write(player.TongueX.Raw);
-        writer.Write(player.TongueY.Raw);
-        writer.Write(player.TongueDistance.Raw);
-        writer.Write(player.AttackCharge.Raw);
-        writer.Write(player.AttackTimeLeft.Raw);
-        writer.Write(player.AttackRecoverTimeLeft.Raw);
-        writer.Write(player.TongueDelayLeft.Raw);
-        writer.Write(player.JumpGraceLeft.Raw);
-        writer.Write(player.GravityGraceLeft.Raw);
-        writer.Write(player.JumpCooldownLeft.Raw);
-        writer.Write(player.TimeSinceHit.Raw);
-        writer.Write(player.BounceGravityRestore.Raw);
-        writer.Write(player.SkidRecoverLeft.Raw);
-        writer.Write(player.HitstopScale.Raw);
-        writer.Write(player.LocalDelta.Raw);
-        writer.Write(player.AnimationTime.Raw);
-        writer.Write((int)player.Mode);
-        writer.Write((int)player.AttackPhase);
-        writer.Write((int)player.TonguePhase);
-        writer.Write(player.PreviousInput.Packed);
-        writer.Write(player.AnimationKey);
-        writer.Write(player.StateStartTick);
-    }
-
-    private static PlayerState ReadPlayer(BinaryReader reader) =>
-        new()
-        {
-            Slot = reader.ReadInt32(),
-            Team = reader.ReadInt32(),
-            ColorIndex = reader.ReadInt32(),
-            Facing = reader.ReadInt32(),
-            LastHitBy = reader.ReadInt32(),
-            HitsTaken = reader.ReadInt32(),
-            Score = reader.ReadInt32(),
-            RoundWins = reader.ReadInt32(),
-            WallSlideSide = reader.ReadInt32(),
-            SpawnTicks = reader.ReadInt32(),
-            HitstopTicks = reader.ReadInt32(),
-            Alive = reader.ReadBoolean(),
-            Eliminated = reader.ReadBoolean(),
-            OnGround = reader.ReadBoolean(),
-            WallSliding = reader.ReadBoolean(),
-            HasFly = reader.ReadBoolean(),
-            WasHitDownwards = reader.ReadBoolean(),
-            HasReachedApex = reader.ReadBoolean(),
-            CanBounceDodge = reader.ReadBoolean(),
-            HasBounceDodged = reader.ReadBoolean(),
-            CanBounceTongue = reader.ReadBoolean(),
-            HasBounceTongued = reader.ReadBoolean(),
-            WasBouncingBeforeTongue = reader.ReadBoolean(),
-            X = new(reader.ReadInt64()),
-            Y = new(reader.ReadInt64()),
-            VX = new(reader.ReadInt64()),
-            VY = new(reader.ReadInt64()),
-            AttackX = new(reader.ReadInt64()),
-            AttackY = new(reader.ReadInt64()),
-            TongueX = new(reader.ReadInt64()),
-            TongueY = new(reader.ReadInt64()),
-            TongueDistance = new(reader.ReadInt64()),
-            AttackCharge = new(reader.ReadInt64()),
-            AttackTimeLeft = new(reader.ReadInt64()),
-            AttackRecoverTimeLeft = new(reader.ReadInt64()),
-            TongueDelayLeft = new(reader.ReadInt64()),
-            JumpGraceLeft = new(reader.ReadInt64()),
-            GravityGraceLeft = new(reader.ReadInt64()),
-            JumpCooldownLeft = new(reader.ReadInt64()),
-            TimeSinceHit = new(reader.ReadInt64()),
-            BounceGravityRestore = new(reader.ReadInt64()),
-            SkidRecoverLeft = new(reader.ReadInt64()),
-            HitstopScale = new(reader.ReadInt64()),
-            LocalDelta = new(reader.ReadInt64()),
-            AnimationTime = new(reader.ReadInt64()),
-            Mode = (CharacterMode)reader.ReadInt32(),
-            AttackPhase = (AttackPhase)reader.ReadInt32(),
-            TonguePhase = (TonguePhase)reader.ReadInt32(),
-            PreviousInput = InputFrame.FromPacked(reader.ReadUInt32()),
-            AnimationKey = reader.ReadString(),
-            StateStartTick = reader.ReadInt64(),
-        };
-
-    private static void WriteFly(BinaryWriter writer, FlyState f)
-    {
-        writer.Write(f.Active);
-        writer.Write(f.Owner);
-        writer.Write(f.IngestedBy);
-        writer.Write(f.ClaimTicks);
-        writer.Write(f.SpawnTicks);
-        writer.Write(f.DirectionTicks);
-        writer.Write(f.X.Raw);
-        writer.Write(f.Y.Raw);
-        writer.Write(f.VX.Raw);
-        writer.Write(f.VY.Raw);
-        writer.Write(f.TargetVX.Raw);
-        writer.Write(f.TargetVY.Raw);
-    }
-
-    private static FlyState ReadFly(BinaryReader reader) =>
-        new()
-        {
-            Active = reader.ReadBoolean(),
-            Owner = reader.ReadInt32(),
-            IngestedBy = reader.ReadInt32(),
-            ClaimTicks = reader.ReadInt32(),
-            SpawnTicks = reader.ReadInt32(),
-            DirectionTicks = reader.ReadInt32(),
-            X = new(reader.ReadInt64()),
-            Y = new(reader.ReadInt64()),
-            VX = new(reader.ReadInt64()),
-            VY = new(reader.ReadInt64()),
-            TargetVX = new(reader.ReadInt64()),
-            TargetVY = new(reader.ReadInt64()),
-        };
 }

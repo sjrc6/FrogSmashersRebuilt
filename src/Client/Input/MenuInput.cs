@@ -10,7 +10,8 @@ internal readonly record struct MenuInput(
     bool AcceptHeld = false,
     bool AcceptReleased = false,
     bool Remove = false,
-    bool ApplyAll = false
+    bool ApplyAll = false,
+    int HorizontalHeld = 0
 )
 {
     public static MenuInput Read(Controls controls, int? source = null)
@@ -22,10 +23,22 @@ internal readonly record struct MenuInput(
         bool back = Key(Keys.Escape) || Pad(Buttons.B) || Pad(Buttons.Back) || Pad(Buttons.Start);
         int vertical = 0,
             horizontal = 0;
+        bool leftHeld =
+            (source == null || source < 2)
+            && (controls.KeysNow.IsKeyDown(Keys.A) || controls.KeysNow.IsKeyDown(Keys.Left));
+        bool rightHeld =
+            (source == null || source < 2)
+            && (controls.KeysNow.IsKeyDown(Keys.D) || controls.KeysNow.IsKeyDown(Keys.Right));
         foreach (int device in source.HasValue ? [source.Value] : new[] { 0 }.Concat(Enumerable.Range(2, 8)))
         {
             vertical += controls.Vertical(device, menu: true);
             horizontal += controls.Horizontal(device, menu: true);
+            if (device >= 2)
+            {
+                var pad = controls.Pads[device - 2];
+                leftHeld |= pad.IsButtonDown(Buttons.DPadLeft) || pad.ThumbSticks.Left.X < -.5f;
+                rightHeld |= pad.IsButtonDown(Buttons.DPadRight) || pad.ThumbSticks.Left.X > .5f;
+            }
         }
         bool held = (source == null || source < 2) && controls.KeysNow.IsKeyDown(Keys.Enter);
         bool released = (source == null || source < 2) && controls.Release(Keys.Enter);
@@ -43,7 +56,8 @@ internal readonly record struct MenuInput(
             held,
             released && !held,
             Key(Keys.U) || Pad(Buttons.X),
-            Key(Keys.Tab) || Pad(Buttons.Y)
+            Key(Keys.Tab) || Pad(Buttons.Y),
+            (rightHeld ? 1 : 0) - (leftHeld ? 1 : 0)
         );
     }
 }

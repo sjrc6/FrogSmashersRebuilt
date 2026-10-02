@@ -4,7 +4,7 @@ internal sealed partial class MeshLobby
 {
     public bool SetPlayers(LobbyPlayer[] players)
     {
-        if (!Connected || Starting || checkpoint != null)
+        if (!Connected || Starting || checkpoint != null || HasPendingSlotEdits)
             return false;
         if (IsHost)
         {
@@ -23,26 +23,17 @@ internal sealed partial class MeshLobby
         return true;
     }
 
-    public bool EditSlot(int room, SlotType type)
-    {
-        if (!IsHost || Starting || checkpoint != null || !Roster.Edit(room, type))
-            return false;
-        Changed();
-        return true;
-    }
-
-    public bool ApplySlotType(SlotType type)
-    {
-        if (!IsHost || Starting || checkpoint != null || !Enum.IsDefined(type))
-            return false;
-        Roster.ApplySlotType(type);
-        Changed();
-        return true;
-    }
-
     public bool RemovePlayer(int peer, int id)
     {
-        if (!Connected || Starting || checkpoint != null || !IsHost && peer != LocalPeer)
+        int cpuRoom = Enumerable
+            .Range(0, LobbyRoster.MaxPlayers)
+            .FirstOrDefault(
+                room => Roster.Slots[room].Player is { Cpu: true } player && player.Peer == peer && player.Id == id,
+                -1
+            );
+        if (IsHost && cpuRoom >= 0)
+            return EditSlot(cpuRoom, SlotType.Open);
+        if (!Connected || Starting || checkpoint != null || HasPendingSlotEdits || !IsHost && peer != LocalPeer)
             return false;
         var player = Roster.Players(peer).FirstOrDefault(player => player.Id == id);
         if (player == null)
@@ -63,7 +54,7 @@ internal sealed partial class MeshLobby
 
     public bool SetSpectating(int peer, bool spectating)
     {
-        if (!Connected || Starting || checkpoint != null || !IsHost && peer != LocalPeer)
+        if (!Connected || Starting || checkpoint != null || HasPendingSlotEdits || !IsHost && peer != LocalPeer)
             return false;
         var validation = CopyRoster();
         if (!validation.SetSpectating(peer, spectating, IsHost ? AccessFor(peer) : localAccess))
@@ -101,16 +92,13 @@ internal sealed partial class MeshLobby
     {
         if (players.Length == 0 || players.Any(player => player.Cpu))
             return false;
-        if (spectating || roster.Spectator(peer) != null)
+        if (spectating)
         {
             var humans = roster.Humans(peer);
             var saved = roster.Spectator(peer) ?? (humans.Length == 1 ? humans[0] : null);
             if (players.Length != 1 || saved == null || players[0].Id != saved.Id)
                 return false;
-            if (!roster.SetSpectating(peer, spectating, access))
-                return false;
-            if (spectating)
-                return true;
+            return roster.SetSpectating(peer, true, access);
         }
         return roster.SetPlayers(peer, players, access);
     }

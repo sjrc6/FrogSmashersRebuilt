@@ -306,8 +306,6 @@ public sealed class SteamLobby : GameLobby
         public string? Error => owner.Error;
         public long TimeMilliseconds => session.TimeMilliseconds;
 
-        public void Poll() => owner.Poll();
-
         public void Send(int peer, ReadOnlySpan<byte> data) => session.Send(peer, data);
 
         public bool TryReceive(out Datagram datagram) => session.TryReceive(out datagram);

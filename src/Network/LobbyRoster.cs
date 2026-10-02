@@ -30,7 +30,28 @@ public sealed record LobbyPlayer(
     int Color = 0,
     bool Spawned = false,
     bool Cpu = false
-);
+)
+{
+    internal void WriteSnapshot(BinaryWriter writer)
+    {
+        writer.Write(Id);
+        writer.Write(Peer);
+        writer.Write(Team);
+        writer.Write(Color);
+        writer.Write(Spawned);
+        writer.Write(Cpu);
+    }
+
+    internal static LobbyPlayer ReadSnapshot(BinaryReader reader) =>
+        new(
+            reader.ReadInt32(),
+            reader.ReadInt32(),
+            reader.ReadInt32(),
+            reader.ReadInt32(),
+            reader.ReadBoolean(),
+            reader.ReadBoolean()
+        );
+}
 
 public sealed record LobbySlot(SlotType Type = SlotType.Open, LobbyPlayer? Player = null)
 {
@@ -49,6 +70,26 @@ public sealed class LobbyRoster
     public IReadOnlyList<LobbyPlayer> Spectators => spectators;
     public int Capacity => slots.Count(slot => slot.Open);
     public int Count => slots.Count(slot => slot.Player != null);
+
+    public LobbyMembership Membership() => new(slots.Select(slot => slot.Player), spectators);
+
+    public void ApplyMembership(LobbyMembership membership)
+    {
+        var next = slots
+            .Select(
+                (slot, room) =>
+                {
+                    var player = membership.Rooms[room];
+                    var type =
+                        player is { Cpu: true } ? SlotType.Cpu
+                        : slot.Type == SlotType.Cpu || player != null && slot.Type == SlotType.Closed ? defaultType
+                        : slot.Type;
+                    return new LobbySlot(type, player);
+                }
+            )
+            .ToArray();
+        Replace(next, membership.Spectators);
+    }
 
     public LobbyRoster(SlotType defaultType = SlotType.Open)
     {
@@ -102,7 +143,6 @@ public sealed class LobbyRoster
             || players.Count > MaxPlayers
             || players.Any(p => !ValidPlayer(p) || p.Cpu && peer != 0)
             || players.Select(p => p.Id).Distinct().Count() != players.Count
-            || Spectator(peer) != null && players.Any(p => !p.Cpu)
         )
             return false;
         var next = slots.ToArray();
@@ -127,6 +167,8 @@ public sealed class LobbyRoster
             };
         }
         slots = next;
+        if (players.Any(player => !player.Cpu))
+            spectators = spectators.Where(player => player.Peer != peer).ToArray();
         return true;
     }
 
@@ -141,7 +183,7 @@ public sealed class LobbyRoster
         {
             var others = slots.Select(slot => slot.Player).ToArray();
             int color = Enumerable.Range(0, MaxPlayers).First(value => others.All(p => p?.Color != value));
-            int id = Enumerable.Range(10, MaxPlayers).First(value => others.All(p => p?.Peer != 0 || p.Id != value));
+            int id = 10 + room;
             player = new LobbyPlayer(id, Team: room % 2, Color: color, Spawned: true, Cpu: true);
         }
         slots[room] = new(type, player);
@@ -179,12 +221,7 @@ public sealed class LobbyRoster
         }
         if (saved == null)
             return false;
-        var previous = spectators;
-        spectators = spectators.Where(player => player.Peer != peer).ToArray();
-        if (SetPlayers(peer, [.. Players(peer), saved with { Spawned = false }], access))
-            return true;
-        spectators = previous;
-        return false;
+        return SetPlayers(peer, [.. Players(peer), saved with { Spawned = false }], access);
     }
 
     public void RemovePeer(int peer)
@@ -198,9 +235,6 @@ public sealed class LobbyRoster
         observers ??= [];
         if (
             state.Count != MaxPlayers
-            || observers.Count > MaxSpectators
-            || observers.Any(p => p == null || !ValidPlayer(p) || p.Cpu)
-            || observers.Select(p => p.Peer).Distinct().Count() != observers.Count
             || state.Any(slot =>
                 slot == null
                 || !Enum.IsDefined(slot.Type)
@@ -210,20 +244,14 @@ public sealed class LobbyRoster
             )
         )
             throw new ArgumentException("Invalid lobby roster");
-        var players = state.Where(slot => slot.Player != null).Select(slot => slot.Player!).ToArray();
-        if (
-            players.Select(p => (p.Peer, p.Id)).Distinct().Count() != players.Length
-            || players.Select(p => p.Color).Distinct().Count() != players.Length
-            || observers.Any(observer => players.Any(p => !p.Cpu && p.Peer == observer.Peer))
-        )
-            throw new ArgumentException("Duplicate lobby players or colors");
+        _ = new LobbyMembership(state.Select(slot => slot.Player), observers);
         slots = state.ToArray();
         spectators = observers.ToArray();
     }
 
     private LobbySlot Empty(LobbySlot slot) => new(slot.Type == SlotType.Cpu ? defaultType : slot.Type);
 
-    private static bool ValidPlayer(LobbyPlayer player) =>
+    internal static bool ValidPlayer(LobbyPlayer player) =>
         player.Id is >= 0 and < 18
         && player.Peer is >= 0 and < MaxPeers
         && player.Team is >= 0 and < MaxPlayers

@@ -82,6 +82,7 @@ internal sealed partial class MenuController
                     ),
                     new(
                         "FPS LIMIT",
+                        RepeatAdjust: true,
                         Value: game.Settings.FrameLimit.ToString(),
                         DisabledReason: game.Settings.VSync ? "VSYNC ENABLED" : null,
                         Change: amount =>
@@ -91,6 +92,7 @@ internal sealed partial class MenuController
                     ),
                     new(
                         "VOLUME",
+                        RepeatAdjust: true,
                         Value: (int)MathF.Round(game.Settings.Volume * 100) + "%",
                         Change: amount =>
                         {
@@ -110,19 +112,24 @@ internal sealed partial class MenuController
                     ),
                 };
                 personal.Add(new("CONTROLS", () => OpenBindings(HintDevice)));
+                personal.Add(Link("ROLLBACK", GameScreen.Rollback));
                 personal.Add(BackRow());
                 return personal;
+            case GameScreen.Rollback:
+                return RollbackRows();
             case GameScreen.MatchSettings:
                 var entries = new List<MenuEntry>
                 {
                     new("TEAMS", Value: OnOff(Rules.TeamMode), Change: _ => Rules.TeamMode = !Rules.TeamMode),
                     new(
                         "ROUND TARGET",
+                        RepeatAdjust: true,
                         Value: Rules.WinScore == 0 ? "AUTO" : Rules.WinScore.ToString(),
                         Change: amount => Rules.WinScore = Wrap(Rules.WinScore + amount, 31)
                     ),
                     new(
                         "ROUNDS",
+                        RepeatAdjust: true,
                         Value: Rules.MatchRounds.ToString(),
                         Change: amount => Rules.MatchRounds = Math.Clamp(Rules.MatchRounds + amount, 1, 20)
                     ),
@@ -152,6 +159,7 @@ internal sealed partial class MenuController
                     new("TYPE", Value: Creation.TypeLabel, Change: Creation.CycleType),
                     new(
                         "MAX PLAYERS",
+                        RepeatAdjust: true,
                         Value: Creation.Capacity(game.Lobby.Roster).ToString(),
                         Change: amount => Creation.ChangeCapacity(amount, game.Lobby.Roster)
                     ),

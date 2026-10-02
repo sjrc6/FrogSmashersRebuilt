@@ -2,7 +2,7 @@ namespace GGCS.Core;
 
 internal sealed class TimeSync
 {
-    private const int WindowSize = 30;
+    internal const int WindowSize = 30;
     private readonly int[] localAdvantages = new int[WindowSize];
     private readonly int[] remoteAdvantages = new int[WindowSize];
 

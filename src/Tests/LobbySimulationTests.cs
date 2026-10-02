@@ -15,6 +15,38 @@ internal static class LobbySimulationTests
         EmptyLobbyAndSnapshotsRemainIndependent();
         ColorSelectionRequiresTheStartingPlatform();
         SpectatingRetainsTheLastConfirmedSelection();
+        SlotPoliciesAreOutsideSimulation();
+    }
+
+    private static void SlotPoliciesAreOutsideSimulation()
+    {
+        var roster = new LobbyRoster();
+        roster.SetPlayers(0, [new(0, Spawned: true)]);
+        roster.Edit(1, SlotType.Cpu);
+        var original = Create(roster);
+        roster.Edit(2, SlotType.Closed);
+        roster.Edit(3, SlotType.Friend);
+        roster.Edit(4, SlotType.Private);
+        roster.Edit(5, SlotType.Local);
+        var changed = Create(roster);
+        Check(
+            original.Capture().SequenceEqual(changed.Capture()),
+            "Access rules cannot enter rollback snapshots or hashes"
+        );
+        original.Tick([default, default]);
+        changed.Tick([default, default]);
+        Check(
+            original.Capture().SequenceEqual(changed.Capture()),
+            "Access rules cannot affect deterministic lobby gameplay"
+        );
+        roster.ApplyMembership(original.Membership);
+        Check(
+            roster.Slots[2].Type == SlotType.Closed
+                && roster.Slots[3].Type == SlotType.Friend
+                && roster.Slots[4].Type == SlotType.Private
+                && roster.Slots[5].Type == SlotType.Local,
+            "Restoring membership preserves access rules"
+        );
     }
 
     private static LobbySimulation Create(LobbyRoster roster, uint seed = 71) =>
@@ -29,24 +61,18 @@ internal static class LobbySimulationTests
         roster.Replace(slots);
         var simulation = Create(roster);
         Check(
-            simulation.InputRooms.SequenceEqual(new[] { 2, 7 }),
+            simulation.InputRooms.SequenceEqual(new[] { -1, 2, 7 }),
             "Lobby input handles compact occupied rooms in room order"
         );
-        simulation.Tick([default, new(default, (byte)LobbyInputActions.Spawn, TeamStep: 1)]);
+        simulation.Tick([default, default, new(default, (byte)LobbyInputActions.Spawn, TeamStep: 1)]);
+        Check(!simulation.Membership.Rooms[2]!.Spawned, "A remote spawn command cannot affect another handle's room");
         Check(
-            !simulation.Roster.Slots[2].Player!.Spawned,
-            "A remote spawn command cannot affect another handle's room"
-        );
-        Check(
-            simulation.Roster.Slots[7].Player is { Spawned: true, Team: 1 },
+            simulation.Membership.Rooms[7] is { Spawned: true, Team: 1 },
             "Unspawned players retain deterministic input handles"
         );
         Check(simulation.World.Players[7].Alive, "A spawn command creates the frog on its mapped room platform");
-        simulation.Tick([new(default, ColorStep: 1), default]);
-        Check(
-            simulation.Roster.Slots[7].Player!.Color == 7,
-            "Changing one frog's color leaves other room colors alone"
-        );
+        simulation.Tick([default, new(default, ColorStep: 1), default]);
+        Check(simulation.Membership.Rooms[7]!.Color == 7, "Changing one frog's color leaves other room colors alone");
     }
 
     private static void CommandsAndColorRandomnessRestoreExactly()
@@ -63,11 +89,8 @@ internal static class LobbySimulationTests
             states.Add(simulation.Capture());
             previewEvents.Add(simulation.Events.ToArray());
             Check(
-                simulation
-                    .Roster.Slots.Where(slot => slot.Player != null)
-                    .Select(slot => slot.Player!.Color)
-                    .Distinct()
-                    .Count() == 2,
+                simulation.Membership.Rooms.OfType<LobbyPlayer>().Select(player => player.Color).Distinct().Count()
+                    == 2,
                 "Simultaneous color commands cannot assign duplicate colors"
             );
         }
@@ -88,6 +111,7 @@ internal static class LobbySimulationTests
 
     private static RollbackInput[] ColorInputs(int tick) =>
         [
+            default,
             new(
                 default,
                 ColorStep: tick % 3 == 0 ? (sbyte)1 : (sbyte)0,
@@ -105,7 +129,7 @@ internal static class LobbySimulationTests
         var roster = new LobbyRoster();
         roster.SetPlayers(0, [new(0, Color: 3, Spawned: true)]);
         var simulation = Create(roster);
-        simulation.Tick([default]);
+        simulation.Tick([default, default]);
         simulation.World.Players[0].X = 9;
         simulation.World.Players[0].Y = 14;
         simulation.World.Players[0].VX = 7;
@@ -115,11 +139,11 @@ internal static class LobbySimulationTests
         requested.SetPlayers(1, [new(1, Peer: 1, Color: 3)]);
         simulation.ApplyRoster(requested);
         Check(
-            simulation.Roster.Slots[0].Player is { Spawned: true, Color: 3 },
+            simulation.Membership.Rooms[0] is { Spawned: true, Color: 3 },
             "Membership proposals cannot overwrite incumbent cosmetic or spawn state"
         );
         Check(
-            simulation.Roster.Slots[1].Player!.Color != 3,
+            simulation.Membership.Rooms[1]!.Color != 3,
             "New admissions resolve collisions with incumbent colors deterministically"
         );
         Check(
@@ -165,7 +189,7 @@ internal static class LobbySimulationTests
         bool hit = false;
         for (int tick = 0; tick < 20 && !hit; tick++)
         {
-            simulation.Tick([new(tick < 3 ? new(0, 0, InputButtons.Attack) : default), default, default]);
+            simulation.Tick([default, new(tick < 3 ? new(0, 0, InputButtons.Attack) : default), default]);
             hit = simulation.Events.Any(item =>
                 item.Kind == SimulationEventKind.Hit && item.Player == 1 && item.Other == 0
             );
@@ -200,18 +224,18 @@ internal static class LobbySimulationTests
     private static void EmptyLobbyAndSnapshotsRemainIndependent()
     {
         var empty = Create(new LobbyRoster());
-        empty.Tick([]);
+        empty.Tick([default]);
         empty.Tick([default]);
         Check(
             empty.World.TickNumber == 2 && empty.World.Players.All(player => player.Eliminated),
-            "Empty lobbies support a neutral placeholder stream"
+            "Empty lobbies support a permanent host command stream"
         );
         var roster = new LobbyRoster();
         roster.SetPlayers(0, [new(0)]);
         var simulation = Create(roster);
         byte[] snapshot = simulation.Capture();
         roster.Reset();
-        Check(simulation.Roster.Count == 1, "Simulation roster does not alias its admission proposal");
+        Check(simulation.Membership.Count == 1, "Simulation roster does not alias its admission proposal");
         simulation.Restore(snapshot);
         byte[] expected = simulation.Capture();
         Array.Fill(snapshot, (byte)0);
@@ -230,28 +254,28 @@ internal static class LobbySimulationTests
         map.Collision[0].X = map.Spawns[0].X;
         var simulation = new LobbySimulation(new World(map, new GameRules { Lobby = true, PlayerCount = 8 }), roster);
         for (int tick = 0; tick < 20; tick++)
-            simulation.Tick([default]);
+            simulation.Tick([default, default]);
         Check(
             LobbySimulation.OnStartingPlatform(simulation.World, 0),
             "Lobby selection fixture lands on its starting platform"
         );
         simulation.World.Players[0].OnGround = false;
-        simulation.Tick([new(default, (byte)LobbyInputActions.SelectColor)]);
-        Check(simulation.Roster.Slots[0].Player!.Spawned, "A selection command cannot despawn an airborne frog");
+        simulation.Tick([default, new(default, (byte)LobbyInputActions.SelectColor)]);
+        Check(simulation.Membership.Rooms[0]!.Spawned, "A selection command cannot despawn an airborne frog");
         for (int tick = 0; tick < 20; tick++)
-            simulation.Tick([default]);
-        simulation.Tick([new(default, (byte)LobbyInputActions.SelectColor)]);
+            simulation.Tick([default, default]);
+        simulation.Tick([default, new(default, (byte)LobbyInputActions.SelectColor)]);
         Check(
-            !simulation.Roster.Slots[0].Player!.Spawned && simulation.World.Players[0].Eliminated,
+            !simulation.Membership.Rooms[0]!.Spawned && simulation.World.Players[0].Eliminated,
             "Landing on the starting platform enables deterministic color selection"
         );
         Check(
             simulation.Events.Any(item => item.Kind == SimulationEventKind.LobbyPreview),
             "Returning to color selection creates a reproducible preview event"
         );
-        simulation.Tick([new(default, (byte)LobbyInputActions.Spawn)]);
+        simulation.Tick([default, new(default, (byte)LobbyInputActions.Spawn)]);
         Check(
-            simulation.Roster.Slots[0].Player!.Spawned && simulation.World.Players[0].Alive,
+            simulation.Membership.Rooms[0]!.Spawned && simulation.World.Players[0].Alive,
             "The spawn command restores the selected frog"
         );
     }
@@ -262,11 +286,11 @@ internal static class LobbySimulationTests
         roster.SetPlayers(0, [new(0)]);
         var simulation = Create(roster);
         roster.SetSpectating(0, true);
-        simulation.Tick([new(default, ColorStep: 1, TeamStep: 1)]);
-        var selected = simulation.Roster.Slots[0].Player!;
+        simulation.Tick([default, new(default, ColorStep: 1, TeamStep: 1)]);
+        var selected = simulation.Membership.Rooms[0]!;
         simulation.ApplyRoster(roster);
         Check(
-            simulation.Roster.Spectator(0) is { } spectator
+            simulation.Membership.Spectator(0) is { } spectator
                 && spectator.Color == selected.Color
                 && spectator.Team == selected.Team,
             "A spectating transaction preserves selections confirmed while draining the old session"

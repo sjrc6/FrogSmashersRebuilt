@@ -27,32 +27,51 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
     private readonly Queue<Datagram> incoming = new();
     private readonly string clientNonce = Guid.NewGuid().ToString("N");
     private string nonce = Guid.NewGuid().ToString("N");
+    private RollbackPreferences rollback = new();
+    private readonly Dictionary<int, RollbackPreferences> peerRollback = new();
+    public RollbackPreferences RollbackSettings => rollback;
+    public IReadOnlyDictionary<int, RollbackPreferences> PeerRollbackSettings => peerRollback;
+
+    public void SetRollbackSettings(RollbackPreferences preferences)
+    {
+        if (!preferences.IsValid)
+            throw new ArgumentException("Invalid rollback preferences");
+        if (preferences == rollback)
+            return;
+        rollback = preferences;
+        if (Connected)
+            peerRollback[LocalPeer] = preferences;
+        LobbySession?.SetTiming(preferences);
+        revision++;
+        lastSend = -1000;
+    }
+
     private LobbyAccess localAccess;
     private LobbyPlayer[] requested;
     private bool requestedSpectating;
     private int requestVersion;
+    private int acknowledgedRequest;
     private int requestEpoch;
     private int revision;
     private int receivedRevision = -1;
     private long lastSend = -1000;
     private bool disposed;
-    private bool polling;
     private LobbySimulation? simulation;
     private LobbyCheckpoint? checkpoint;
     private bool rosterChanged;
     private bool matchRequested;
-    private bool initializedSimulation;
+    private LobbyPhase phase = LobbyPhase.AwaitingSimulation;
 
     public bool IsHost => host == null;
     public bool Connected => LocalPeer >= 0;
-    public bool Starting { get; private set; }
-    public bool Ready { get; private set; }
+    public bool Starting => phase == LobbyPhase.Match;
+    public bool Ready => Starting;
     public int Generation { get; private set; }
     public ulong SessionId { get; private set; }
     public IReadOnlyList<int> PeerIds => peerAddresses.Keys.Order().ToArray();
     public NetworkSession? LobbySession { get; private set; }
-    public bool SimulationReady => initializedSimulation && checkpoint == null && !Starting;
-    public bool Transitioning => checkpoint != null || !initializedSimulation;
+    public bool SimulationReady => phase == LobbyPhase.Lobby;
+    public bool Transitioning => phase is LobbyPhase.AwaitingSimulation or LobbyPhase.Updating;
     public string Status =>
         checkpoint?.Status
         ?? (
@@ -65,8 +84,11 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
     public int LocalPeer { get; private set; } = -1;
     public LobbyRoster Roster { get; } = new();
     public IReadOnlyList<LobbyPlayer> PendingLocalPlayers => IsHost ? Roster.Players(0) : requested;
+    public bool PendingLocalSpectating => IsHost ? Roster.Spectator(0) != null : requestedSpectating;
+    public bool LocalRequestPending => !IsHost && requestVersion > acknowledgedRequest;
     public LobbyAccess Access => IsHost ? default : localAccess;
     public int[][] PeerSlots { get; private set; } = [];
+    public int[] InputPlayerSlots { get; private set; } = [];
     public int[] PlayerTeams { get; private set; } = [];
     public int[] PlayerColors { get; private set; } = [];
     public string MatchSettingsJson { get; private set; }
@@ -109,6 +131,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
             if (!Roster.SetCapacity(capacity))
                 throw new ArgumentException("Invalid lobby capacity");
             LocalPeer = 0;
+            peerRollback[0] = rollback;
             peerAddresses[0] = wire.LocalAddress;
             SessionId = NewSessionId();
         }
@@ -134,28 +157,27 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
 
     public void AttachSimulation(LobbySimulation value)
     {
-        if (ReferenceEquals(simulation, value))
+        if (ReferenceEquals(simulation, value) || Starting)
             return;
         LobbySession?.Dispose();
         LobbySession = null;
         simulation = value;
-        initializedSimulation = false;
-        if (IsHost && !Starting)
+        phase = LobbyPhase.AwaitingSimulation;
+        if (IsHost)
         {
             simulation.ApplyRoster(Roster);
             rosterChanged = addresses.Count > 0;
             if (!rosterChanged)
             {
                 CreateLobbySession(new Dictionary<int, RollbackInput[]>());
-                initializedSimulation = true;
+                phase = LobbyPhase.Lobby;
             }
         }
     }
 
     private void Changed()
     {
-        revision++;
-        lastSend = -1000;
+        PublishRoster();
         rosterChanged = true;
     }
 
@@ -177,7 +199,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
         if (!IsHost || !addresses.Remove(address, out int peer))
             return;
         bool wasPlaying =
-            Roster.Players(peer).Length > 0 || simulation?.InputPlayers.Any(player => player.Peer == peer) == true;
+            Roster.Players(peer).Length > 0 || simulation?.InputSources.Any(player => player.Peer == peer) == true;
         if (Starting && wasPlaying)
         {
             ReturnToLobby();
@@ -187,6 +209,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
             LobbySession?.DisconnectPeer(peer);
         Roster.RemovePeer(peer);
         peerAddresses.Remove(peer);
+        peerRollback.Remove(peer);
         access.Remove(peer);
         rejectedClients.TryAdd(address, (clientNonces[peer], "CONNECTION CLOSED"));
         clientNonces.Remove(peer);
@@ -213,7 +236,15 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
     public bool StartMatch(string settings)
     {
         RefreshSelections();
-        if (!IsHost || Starting || checkpoint != null || !SimulationReady || Roster.Count < 2 || settings.Length > 4096)
+        if (
+            !IsHost
+            || Starting
+            || checkpoint != null
+            || HasPendingSlotEdits
+            || !SimulationReady
+            || Roster.Count < 2
+            || settings.Length > 4096
+        )
             return false;
         if (Roster.Slots.Any(slot => slot.Player is { Spawned: false }))
         {
@@ -237,8 +268,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
             return false;
         Generation++;
         SessionId = NewSessionId();
-        Starting = Ready = false;
-        initializedSimulation = false;
+        phase = LobbyPhase.AwaitingSimulation;
         simulation = null;
         LobbySession?.Dispose();
         LobbySession = null;
@@ -251,21 +281,6 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
     }
 
     public void Poll()
-    {
-        if (polling)
-            return;
-        polling = true;
-        try
-        {
-            PollCore();
-        }
-        finally
-        {
-            polling = false;
-        }
-    }
-
-    private void PollCore()
     {
         if (disposed || Error != null)
             return;
@@ -294,6 +309,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
         if (Connected)
         {
             ConfigureMesh();
+            LobbySession?.Poll();
             UpdateCheckpoint();
         }
         if (Now - lastSend >= 100)
@@ -308,7 +324,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
                             pair.Value,
                             new Control
                             {
-                                Kind = "heartbeat",
+                                Kind = ControlKind.Heartbeat,
                                 Nonce = nonce,
                                 Generation = Generation,
                             },
@@ -320,7 +336,8 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
                     host!,
                     new Control
                     {
-                        Kind = "hello",
+                        Kind = ControlKind.Hello,
+                        Rollback = rollback,
                         Hash = contentHash,
                         Nonce = clientNonce,
                         Players = requested,
@@ -338,7 +355,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
                         peer,
                         new Control
                         {
-                            Kind = "mesh",
+                            Kind = ControlKind.Mesh,
                             Nonce = nonce,
                             Peer = LocalPeer,
                         },
@@ -367,13 +384,13 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
     {
         if (peer == 0)
             return peerAddresses.Keys.Where(id => id != 0).ToArray();
-        bool playing = Roster.Players(peer).Length > 0 || simulation?.InputPlayers.Any(p => p.Peer == peer) == true;
+        bool playing = Roster.Players(peer).Length > 0 || simulation?.InputSources.Any(p => p.Peer == peer) == true;
         if (!playing)
             return [0];
         return peerAddresses
             .Keys.Where(id =>
                 id != peer
-                && (id == 0 || Roster.Players(id).Length > 0 || simulation?.InputPlayers.Any(p => p.Peer == id) == true)
+                && (id == 0 || Roster.Players(id).Length > 0 || simulation?.InputSources.Any(p => p.Peer == id) == true)
             )
             .ToArray();
     }
@@ -400,7 +417,8 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
     private Control State(int peer) =>
         new()
         {
-            Kind = "state",
+            Kind = ControlKind.State,
+            Rollbacks = peerRollback.Select(pair => new PeerRollback(pair.Key, pair.Value)).ToArray(),
             Peer = peer,
             Hash = contentHash,
             Nonce = nonce,
@@ -461,7 +479,17 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
     }
 
     private static bool Valid(Control control) =>
-        control.Kind != null
+        Enum.IsDefined(control.Kind)
+        && control.Rollback != null
+        && control.Rollback.IsValid
+        && control.Rollbacks != null
+        && control.Rollbacks.Length <= LobbyRoster.MaxPeers
+        && control.Rollbacks.All(item =>
+            item != null
+            && item.Peer is >= 0 and < LobbyRoster.MaxPeers
+            && item.Settings != null
+            && item.Settings.IsValid
+        )
         && control.Hash != null
         && control.Nonce != null
         && control.ClientNonce != null
@@ -475,7 +503,6 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
         && control.Data != null
         && control.Inputs != null
         && control.Transaction != null
-        && control.Stage != null
         && control.Spectators.Length <= LobbyRoster.MaxSpectators
         && control.Hash.Length <= 128
         && control.Nonce.Length <= 32
@@ -493,8 +520,16 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
         )
         && control.Mesh.Length <= LobbyRoster.MaxPeers
         && control.Mesh.All(peer => peer is >= 0 and < LobbyRoster.MaxPeers)
-        && control.Inputs.Length <= 8
-        && control.Inputs.All(input => input != null && input.Data != null && input.Data.Length <= 84)
+        && control.InputCount is >= 0 and <= SessionConfig.MaxInputs
+        && control.Inputs.Length <= SessionConfig.MaxInputs
+        && control.Inputs.All(input =>
+            input != null
+            && input.Peer is >= 0 and < LobbyRoster.MaxPeers
+            && input.Id is >= -1 and < 10
+            && (input.Id != -1 || input.Peer == 0)
+            && input.Data != null
+            && input.Data.Length <= RollbackPreferences.InputCapacityFrames * new RollbackInputCodec().Size
+        )
         && control.Data.Length <= 1024
         && control.Transaction.Length <= 32
         && control.Version >= 0
@@ -503,12 +538,12 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
 
     private void HandleControl(string source, Control control)
     {
-        if (IsHost && control.Kind == "hello")
+        if (IsHost && control.Kind == ControlKind.Hello)
         {
             HandleHello(source, control);
             return;
         }
-        if (control.Kind is "mesh" or "meshAck")
+        if (control.Kind is ControlKind.Mesh or ControlKind.MeshAcknowledged)
         {
             if (
                 !Connected
@@ -517,12 +552,12 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
                 || peer != control.Peer
             )
                 return;
-            if (control.Kind == "mesh")
+            if (control.Kind == ControlKind.Mesh)
                 SendControl(
                     source,
                     new Control
                     {
-                        Kind = "meshAck",
+                        Kind = ControlKind.MeshAcknowledged,
                         Nonce = nonce,
                         Peer = LocalPeer,
                     },
@@ -541,7 +576,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
             )
                 return;
             lastSeen[peer] = Now;
-            if (control.Kind == "leave")
+            if (control.Kind == ControlKind.Leave)
                 RemovePeer(source);
             else
                 HandleCheckpointControl(peer, control);
@@ -549,12 +584,12 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
         }
         if (source != host)
             return;
-        if (control.Kind == "error" && control.ClientNonce == clientNonce)
+        if (control.Kind == ControlKind.Error && control.ClientNonce == clientNonce)
         {
             Error = control.Notice;
             return;
         }
-        if (control.Kind != "state")
+        if (control.Kind != ControlKind.State)
         {
             if (Connected && control.Nonce == nonce && control.Generation == Generation)
             {
@@ -578,8 +613,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
         {
             Generation = control.Generation;
             SessionId = control.Session;
-            Starting = Ready = false;
-            initializedSimulation = false;
+            phase = LobbyPhase.AwaitingSimulation;
             checkpoint = null;
             LobbySession?.Dispose();
             LobbySession = null;
@@ -593,11 +627,17 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
         MatchSettingsJson = control.Settings;
         Notice = control.Notice;
         InstallAddresses(control.Peers);
+        peerRollback.Clear();
+        foreach (var item in control.Rollbacks)
+            if (peerAddresses.ContainsKey(item.Peer))
+                peerRollback[item.Peer] = item.Settings;
+        peerRollback[LocalPeer] = rollback;
         if (control.Version == requestVersion || control.Epoch != requestEpoch)
         {
             requestedSpectating = Roster.Spectator(LocalPeer) != null;
             requested = requestedSpectating ? [Roster.Spectator(LocalPeer)!] : Roster.Players(LocalPeer);
         }
+        acknowledgedRequest = control.Epoch != requestEpoch ? requestVersion : control.Version;
         requestEpoch = control.Epoch;
         lastSeen[0] = Now;
     }
@@ -646,11 +686,12 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
                 Starting
                 || matchRequested
                 || checkpoint != null
+                || HasPendingSlotEdits
                 || banned.Contains(source)
                 || addresses.Count >= LobbyRoster.MaxPeers - 1
             )
             {
-                if (checkpoint == null)
+                if (checkpoint == null && !HasPendingSlotEdits)
                     Reject(source, "LOBBY UNAVAILABLE", control.Nonce);
                 return;
             }
@@ -677,9 +718,20 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
         }
         if (clientNonces[peer] != control.Nonce)
             return;
+        if (peerRollback.GetValueOrDefault(peer) != control.Rollback)
+        {
+            peerRollback[peer] = control.Rollback;
+            revision++;
+        }
         lastSeen[peer] = Now;
         meshReports[peer] = control.Mesh;
-        if (!Starting && checkpoint == null && control.Generation == Generation && control.Version > versions[peer])
+        if (
+            !Starting
+            && checkpoint == null
+            && !HasPendingSlotEdits
+            && control.Generation == Generation
+            && control.Version > versions[peer]
+        )
         {
             if (control.Epoch == epochs[peer])
             {
@@ -689,10 +741,13 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
                 {
                     Roster.Replace(next.Slots, next.Spectators);
                     Notice = null;
+                    Changed();
                 }
                 else
+                {
                     Notice = control.Spectating ? "CANNOT SPECTATE" : "NO OPEN SLOTS";
-                Changed();
+                    PublishRoster();
+                }
             }
             versions[peer] = control.Version;
         }
@@ -701,12 +756,9 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
 
     private void RefreshSelections()
     {
-        if (simulation == null || !initializedSimulation || checkpoint != null)
+        if (simulation == null || phase != LobbyPhase.Lobby || checkpoint != null)
             return;
-        var live = simulation
-            .Roster.Slots.Where(slot => slot.Player != null)
-            .Select(slot => slot.Player!)
-            .ToDictionary(p => (p.Peer, p.Id));
+        var live = simulation.Membership.Rooms.OfType<LobbyPlayer>().ToDictionary(p => (p.Peer, p.Id));
         var slots = Roster
             .Slots.Select(slot =>
                 slot.Player is { } player && live.TryGetValue((player.Peer, player.Id), out var current)
@@ -733,10 +785,22 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
             .ToArray();
         if (players.Length < 2 || players.Any(player => !player.Spawned))
             throw new InvalidDataException("SPAWN ALL PLAYERS");
+        InputPlayerSlots =
+        [
+            -1,
+            .. players
+                .Select((player, slot) => (player, slot))
+                .Where(item => !item.player.Cpu)
+                .Select(item => item.slot),
+        ];
         PeerSlots = Enumerable
             .Range(0, peerAddresses.Keys.Max() + 1)
             .Select(peer =>
-                players.Select((p, i) => (p, i)).Where(item => item.p.Peer == peer).Select(item => item.i).ToArray()
+                InputPlayerSlots
+                    .Select((slot, handle) => (slot, handle))
+                    .Where(item => (item.slot < 0 ? 0 : players[item.slot].Peer) == peer)
+                    .Select(item => item.handle)
+                    .ToArray()
             )
             .ToArray();
         PlayerTeams = players.Select(p => p.Team).ToArray();
@@ -750,7 +814,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
             address,
             new Control
             {
-                Kind = "error",
+                Kind = ControlKind.Error,
                 ClientNonce = requestNonce,
                 Notice = reason,
             }
@@ -782,8 +846,6 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
     {
         public string? Error => lobby.Error;
         public long TimeMilliseconds => lobby.Now;
-
-        public void Poll() => lobby.Poll();
 
         public void Send(int peer, ReadOnlySpan<byte> data)
         {
@@ -825,7 +887,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
                 host!,
                 new Control
                 {
-                    Kind = "leave",
+                    Kind = ControlKind.Leave,
                     Nonce = nonce,
                     Generation = Generation,
                 }
@@ -839,9 +901,14 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
 
     public sealed record PendingInput(int Peer, int Id, byte[] Data);
 
-    public sealed class Control
+    public sealed record PeerRollback(int Peer, RollbackPreferences Settings);
+
+    public sealed record Control
     {
-        public string Kind { get; set; } = "";
+        public RollbackPreferences Rollback { get; set; } = new();
+        public PeerRollback[] Rollbacks { get; set; } = [];
+        public int InputCount { get; set; }
+        public ControlKind Kind { get; set; }
         public string Hash { get; set; } = "";
         public string Nonce { get; set; } = "";
         public string ClientNonce { get; set; } = "";
@@ -864,7 +931,6 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
         public string Notice { get; set; } = "";
         public string Transaction { get; set; } = "";
         public int Change { get; set; }
-        public string Stage { get; set; } = "";
         public long Tick { get; set; }
         public int Size { get; set; }
         public int Chunk { get; set; }

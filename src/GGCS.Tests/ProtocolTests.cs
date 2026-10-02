@@ -21,6 +21,41 @@ internal static class ProtocolTests
         StructuredPacketAndCompressionFuzzStayWithinBounds();
         DisconnectProgressSurvivesPacketReordering();
         ExclusionIsDifferentFromVoluntaryDeparture();
+        TimingMetadataIsBoundedAndOrdered();
+    }
+
+    private static void TimingMetadataIsBoundedAndOrdered()
+    {
+        var pair = new Pair();
+        pair.Synchronize();
+        pair.A.SetTiming(
+            new()
+            {
+                DelayFrames = 2,
+                DonationFrames = 4,
+                MaxExtraDelayFrames = 2,
+            },
+            1
+        );
+        pair.Step(250);
+        Check.Equal(2, pair.B.Stats.ResponseDelayFrames, "Response delay travels with protocol progress");
+        Check.Equal(4, pair.B.Stats.DonationFrames, "Donation travels with protocol progress");
+        Check.Equal(1, pair.B.Stats.ExtraDelayFrames, "Temporary delay is reported to remote peers");
+        Check.Equal(2, pair.B.Stats.MaxExtraDelayFrames, "Remote automatic-delay limit is visible");
+        var stale = new ProtocolPacket
+        {
+            Kind = PacketKind.Ping,
+            Frame = 0,
+            Timestamp = pair.Clock.NowMilliseconds,
+        };
+        pair.B.HandlePacket(PacketCodec.Encode(1, 9, stale));
+        Check.Equal(2, pair.B.Stats.ResponseDelayFrames, "Old timing reports cannot overwrite a newer revision");
+        long rejected = pair.B.Stats.InvalidPackets;
+        stale.TimingRevision = 42;
+        stale.ResponseDelay = 5;
+        pair.B.HandlePacket(PacketCodec.Encode(1, 9, stale));
+        Check.Equal(rejected + 1, pair.B.Stats.InvalidPackets, "Out-of-range remote delay is rejected");
+        Check.Equal(2, pair.B.Stats.ResponseDelayFrames, "Rejected timing leaves existing peer settings intact");
     }
 
     private static void CompressionRoundTripsAndRejectsDamage()

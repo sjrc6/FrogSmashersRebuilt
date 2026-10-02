@@ -14,4 +14,10 @@ public readonly record struct PeerNetworkStats(
     long BytesReceived,
     long InvalidPackets,
     long StalePackets
-);
+)
+{
+    public int ResponseDelayFrames { get; init; }
+    public int DonationFrames { get; init; }
+    public int ExtraDelayFrames { get; init; }
+    public int MaxExtraDelayFrames { get; init; }
+}

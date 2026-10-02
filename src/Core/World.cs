@@ -47,9 +47,9 @@ public sealed partial class World
             throw new ArgumentOutOfRangeException(nameof(rules.PlayerCount));
         }
 
-        if (rules.Colors.Length != 8 || rules.Colors.Any(color => color is < 0 or > 7))
+        if (rules.Colors.Length != 8 || rules.Colors.Any(color => color is < 0 or > 7) || rules.CpuPlayers.Length != 8)
         {
-            throw new ArgumentException("Invalid player colors");
+            throw new ArgumentException("Invalid player colors or CPU assignments");
         }
 
         if (availableMaps.Count == 0)
@@ -79,6 +79,7 @@ public sealed partial class World
         {
             PlayerCount = rules.PlayerCount,
             Lobby = rules.Lobby,
+            CpuPlayers = rules.CpuPlayers.ToArray(),
             Colors = rules.Colors.ToArray(),
             TeamMode = rules.TeamMode,
             Teams = (int[])rules.Teams.Clone(),
@@ -187,6 +188,13 @@ public sealed partial class World
             return;
         }
 
+        if (!Rules.Lobby && Rules.CpuPlayers.Any(cpu => cpu))
+        {
+            inputs = inputs.ToArray();
+            for (int slot = 0; slot < Players.Length; slot++)
+                if (Rules.CpuPlayers[slot])
+                    inputs[slot] = BotController.GetInput(this, slot);
+        }
         for (int slot = 0; slot < Players.Length; slot++)
         {
             TickPlayer(Players[slot], inputs[slot]);

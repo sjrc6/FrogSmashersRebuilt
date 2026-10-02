@@ -36,6 +36,11 @@ internal sealed class ProtocolPacket
     public long Timestamp;
     public int Frame;
     public int Advantage;
+    public int TimingRevision;
+    public int ResponseDelay;
+    public int Donation;
+    public int ExtraDelay;
+    public int MaxExtraDelay;
     public int CommittedFrame = -1;
     public uint DisconnectMask;
     public int DisconnectFloor = -1;
@@ -47,7 +52,7 @@ internal sealed class ProtocolPacket
 internal static class PacketCodec
 {
     internal const int HeaderSize = 21;
-    internal const int InputHeaderSize = 38;
+    internal const int InputHeaderSize = 58;
     private const uint Magic = 0x53434747;
 
     internal static byte[] Encode(ulong sessionId, ulong configurationId, ProtocolPacket packet)
@@ -86,11 +91,13 @@ internal static class PacketCodec
                 writer.Write((ushort)packet.InputCount);
                 writer.Write((ushort)packet.InputData.Length);
                 writer.Write(packet.InputData);
+                WriteTiming(writer, packet);
                 break;
             case PacketKind.Ping:
                 writer.Write(packet.Timestamp);
                 writer.Write(packet.Frame);
                 writer.Write(packet.Advantage);
+                WriteTiming(writer, packet);
                 break;
             case PacketKind.Pong:
                 writer.Write(packet.Timestamp);
@@ -173,16 +180,18 @@ internal static class PacketCodec
                 packet.InputCount = BinaryPrimitives.ReadUInt16LittleEndian(data[4..]);
                 int length = BinaryPrimitives.ReadUInt16LittleEndian(data[6..]);
                 data = data[8..];
-                if (length != data.Length)
+                if (length + 20 != data.Length)
                     return false;
-                packet.InputData = data.ToArray();
+                packet.InputData = data[..length].ToArray();
+                ReadTiming(data[length..], packet);
                 return true;
             case PacketKind.Ping:
-                if (data.Length != 16)
+                if (data.Length != 36)
                     return false;
                 packet.Timestamp = BinaryPrimitives.ReadInt64LittleEndian(data);
                 packet.Frame = BinaryPrimitives.ReadInt32LittleEndian(data[8..]);
                 packet.Advantage = BinaryPrimitives.ReadInt32LittleEndian(data[12..]);
+                ReadTiming(data[16..], packet);
                 return true;
             case PacketKind.Pong:
                 if (data.Length != 8)
@@ -203,5 +212,23 @@ internal static class PacketCodec
             default:
                 return false;
         }
+    }
+
+    private static void WriteTiming(BinaryWriter writer, ProtocolPacket packet)
+    {
+        writer.Write(packet.TimingRevision);
+        writer.Write(packet.ResponseDelay);
+        writer.Write(packet.Donation);
+        writer.Write(packet.ExtraDelay);
+        writer.Write(packet.MaxExtraDelay);
+    }
+
+    private static void ReadTiming(ReadOnlySpan<byte> data, ProtocolPacket packet)
+    {
+        packet.TimingRevision = BinaryPrimitives.ReadInt32LittleEndian(data);
+        packet.ResponseDelay = BinaryPrimitives.ReadInt32LittleEndian(data[4..]);
+        packet.Donation = BinaryPrimitives.ReadInt32LittleEndian(data[8..]);
+        packet.ExtraDelay = BinaryPrimitives.ReadInt32LittleEndian(data[12..]);
+        packet.MaxExtraDelay = BinaryPrimitives.ReadInt32LittleEndian(data[16..]);
     }
 }

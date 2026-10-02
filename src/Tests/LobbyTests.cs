@@ -5,13 +5,16 @@ using static FrogSmashers.Tests.TestAssert;
 
 namespace FrogSmashers.Tests;
 
-internal static class LobbyTests
+internal static partial class LobbyTests
 {
     public static void Run(Action<bool, string> check)
     {
         JoiningUsesConfirmedCheckpoints();
         CommandsStayInTheInputStream();
         PendingCommandsSurviveMembershipChanges();
+        PersonalTimingSurvivesCheckpoints();
+        GrowingDelayDoesNotRepeatLobbyCommands();
+        FallingDelayRetainsButtonEdges();
         MultiplePartyEditsBeforePolling();
         MeshFailureCancelsAdmission();
         LeavingKeepsPeerIdentityStable();
@@ -25,6 +28,122 @@ internal static class LobbyTests
         SpectatorLeavingDoesNotEndMatch();
         LostKickCannotReadmitTheSameClient();
         LeavingWhileEnteringSpectate();
+        SlotPoliciesDoNotRestartRollback(250);
+        SlotPoliciesDoNotRestartRollback(500);
+        SlotEditsKeepTheLatestChoice();
+        ApplyAllDuringCpuTransition();
+        BatchedCpuEditsPreserveIdentity();
+        CpuCommandsDoNotRestartRollback(250);
+        CpuCommandsDoNotRestartRollback(500);
+        CpuCommandsSurviveDeparture(false);
+        CpuCommandsSurviveDeparture(true);
+        SpectatingHostEditsCpusAndStartsMatch();
+        SpectatorCanJoinDirectly(250);
+        SpectatorCanJoinDirectly(500);
+        RejectedJoinDoesNotPauseLobby();
+    }
+
+    private static void PersonalTimingSurvivesCheckpoints()
+    {
+        using var rig = new Rig
+        {
+            DatagramMode = true,
+            Delay = 20,
+            Jitter = 12,
+            Loss = .03,
+        };
+        var host = rig.Add("host", Enumerable.Range(0, 4).Select(id => new LobbyPlayer(id)).ToArray());
+        host.Lobby.SetRollbackSettings(new() { Delay = RollbackPreferences.MaximumDelayFrames, MaxExtraDelay = 0 });
+        rig.Input = (node, _) => node == host ? new(default, TeamStep: 1) : default;
+        rig.Steps(240);
+        var guest = rig.Add("guest", Enumerable.Range(0, 3).Select(id => new LobbyPlayer(id)).ToArray());
+        guest.Lobby.SetRollbackSettings(
+            new()
+            {
+                Delay = 37,
+                Donation = 3,
+                MaxExtraDelay = 0,
+            }
+        );
+        rig.WaitFor(() => rig.Ready, "Long input prefixes did not survive admission");
+        rig.Steps(240);
+        var last = rig.Add("last", [new(0)]);
+        last.Lobby.SetRollbackSettings(new() { Delay = 0, MaxExtraDelay = 12 });
+        rig.WaitFor(() => rig.Ready, "Eight-player delayed checkpoint failed");
+        rig.Steps(240);
+        foreach (var player in host.Simulation.Membership.Humans(0))
+            Check(
+                player.Team == (host.Simulation.World.TickNumber - RollbackPreferences.MaximumDelayFrames) % 8,
+                "Long checkpoint prefix dropped or repeated an accepted lobby command"
+            );
+        foreach (var node in rig.Nodes)
+        {
+            Check(
+                node.Lobby.PeerRollbackSettings[0] == host.Lobby.RollbackSettings
+                    && node.Lobby.PeerRollbackSettings[guest.Lobby.LocalPeer] == guest.Lobby.RollbackSettings
+                    && node.Lobby.PeerRollbackSettings[last.Lobby.LocalPeer] == last.Lobby.RollbackSettings,
+                "Every machine sees the personal settings of every other machine"
+            );
+            int polls = node.Wire.PollCount;
+            node.Lobby.LobbySession!.Poll();
+            node.Lobby.LobbySession.TryAdvance(
+                node.Lobby.LobbySession.LocalSlots.Select(_ => default(RollbackInput)).ToArray()
+            );
+            Check(
+                node.Wire.PollCount == polls,
+                "Rollback polling and advancement cannot pump lobby transport recursively"
+            );
+            node.Lobby.Poll();
+            Check(node.Wire.PollCount == polls + 1, "One outer lobby poll pumps transport exactly once");
+        }
+        rig.Steps(60);
+        rig.AssertConfirmedStates();
+        Check(
+            rig.Sent.All(packet => packet.Data.Length <= 8192),
+            "Long delayed-input checkpoints respect transport bounds"
+        );
+    }
+
+    private static void GrowingDelayDoesNotRepeatLobbyCommands()
+    {
+        using var rig = new Rig();
+        var host = rig.Add("host", [new(0)]);
+        host.Lobby.SetRollbackSettings(new() { Delay = 0, MaxExtraDelay = 0 });
+        rig.Input = (_, _) => new(default, TeamStep: 1);
+        rig.Steps(1);
+        Check(host.Simulation.Membership.Rooms[0]!.Team == 1, "Fixture applies one lobby command");
+        host.Lobby.SetRollbackSettings(new() { Delay = 12, MaxExtraDelay = 0 });
+        rig.Input = null;
+        rig.Steps(30);
+        Check(
+            host.Simulation.Membership.Rooms[0]!.Team == 1,
+            "Increasing response delay pads held controls without repeating one-shot lobby commands"
+        );
+    }
+
+    private static void FallingDelayRetainsButtonEdges()
+    {
+        using var rig = new Rig();
+        var host = rig.Add("host", [new(0)]);
+        host.Lobby.SetRollbackSettings(new() { Delay = 12, MaxExtraDelay = 0 });
+        rig.Steps(30);
+        host.Lobby.SetRollbackSettings(new() { Delay = 0, MaxExtraDelay = 0 });
+        var pending = new RollbackInput(default, TeamStep: 1);
+        rig.Input = (_, _) => pending;
+        int accepted = 0;
+        for (int step = 0; step < 30; step++)
+        {
+            rig.Steps(1);
+            if (host.Lobby.LobbySession!.LocalInputSubmitted)
+            {
+                accepted += pending.TeamStep;
+                pending = default;
+            }
+        }
+        Check(
+            accepted == 1 && host.Simulation.Membership.Rooms[0]!.Team == 1,
+            "Reducing delay retains a pending button edge until a new sample is accepted exactly once"
+        );
     }
 
     private static void MultiplePartyEditsBeforePolling()
@@ -46,7 +165,7 @@ internal static class LobbyTests
                 "A same-render join replaced an earlier pending device"
             );
             Check(
-                node.Simulation.Roster.Humans(node.Lobby.LocalPeer).Length == 1,
+                node.Simulation.Membership.Humans(node.Lobby.LocalPeer).Length == 1,
                 "Pending party edits mutated the committed simulation before its checkpoint"
             );
             rig.WaitFor(
@@ -56,7 +175,7 @@ internal static class LobbyTests
             Check(
                 rig.Nodes.All(other =>
                     other
-                        .Simulation.Roster.Humans(node.Lobby.LocalPeer)
+                        .Simulation.Membership.Humans(node.Lobby.LocalPeer)
                         .Select(player => player.Id)
                         .Order()
                         .SequenceEqual(new[] { 0, 1, 2 })
@@ -79,7 +198,7 @@ internal static class LobbyTests
             "Same-render back-outs did not finish their checkpoint"
         );
         Check(
-            rig.Nodes.All(node => node.Simulation.Roster.Humans(guest.Lobby.LocalPeer).Length == 1),
+            rig.Nodes.All(node => node.Simulation.Membership.Humans(guest.Lobby.LocalPeer).Length == 1),
             "The last party request was not committed on every machine"
         );
         rig.Steps(60);
@@ -129,35 +248,35 @@ internal static class LobbyTests
         int room = Enumerable
             .Range(0, 8)
             .Single(index =>
-                guest.Simulation.Roster.Slots[index].Player is { } player
+                guest.Simulation.Membership.Rooms[index] is { } player
                 && player.Peer == guest.Lobby.LocalPeer
                 && player.Id == 0
             );
-        int color = guest.Simulation.Roster.Slots[room].Player!.Color;
+        int color = guest.Simulation.Membership.Rooms[room]!.Color;
         long colorTick = guest.Simulation.World.TickNumber + 4;
         rig.Input = (node, handle) =>
             node == guest
-            && node.Simulation.InputPlayers[handle].Id == 0
+            && node.Simulation.InputSources[handle].Id == 0
             && node.Simulation.World.TickNumber == colorTick
                 ? new(default, ColorStep: 1, TeamStep: 1)
                 : default;
         rig.Steps(100);
         Check(
             rig.Nodes.All(node =>
-                node.Simulation.Roster.Slots[room].Player is { Team: 1 } player && player.Color != color
+                node.Simulation.Membership.Rooms[room] is { Team: 1 } player && player.Color != color
             ),
             "Color and team commands did not converge through rollback"
         );
         long spawnTick = guest.Simulation.World.TickNumber + 4;
         rig.Input = (node, handle) =>
             node == guest
-            && node.Simulation.InputPlayers[handle].Id == 0
+            && node.Simulation.InputSources[handle].Id == 0
             && node.Simulation.World.TickNumber == spawnTick
                 ? new(default, (byte)LobbyInputActions.Spawn)
                 : default;
         rig.Steps(100);
         Check(
-            rig.Nodes.All(node => node.Simulation.Roster.Slots[room].Player is { Spawned: true }),
+            rig.Nodes.All(node => node.Simulation.Membership.Rooms[room] is { Spawned: true }),
             "Spawn action did not converge through rollback"
         );
         Check(
@@ -178,13 +297,14 @@ internal static class LobbyTests
         rig.AssertConfirmedStates();
         rig.Input = null;
         Check(host.Lobby.EditSlot(7, SlotType.Closed), "Host could not close an unused room");
-        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId != session, "Capacity change checkpoint did not complete");
+        rig.WaitFor(() => rig.Nodes.All(node => node.Lobby.Roster.Capacity == 7), "Capacity metadata did not arrive");
         Check(
-            rig.Nodes.All(node =>
-                node.Lobby.Roster.Capacity == 7 && node.Simulation.Roster.Slots[7].Type == SlotType.Closed
-            ),
-            "Slot capacity did not propagate through the checkpoint"
+            rig.Nodes.All(node => node.Lobby.Roster.Capacity == 7 && node.Simulation.Membership.Rooms[7] == null),
+            "Slot capacity did not propagate as metadata"
         );
+        Check(host.Lobby.SessionId == session, "Capacity change restarted rollback");
+        Check(host.Lobby.SetPlayers([.. host.Lobby.Roster.Players(0), new(1)]), "Host could not add a human");
+        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId != session, "Human admission checkpoint did not complete");
         rig.Steps(80);
         rig.AssertConfirmedStates();
         var old = rig.Sent.Last(packet =>
@@ -223,21 +343,21 @@ internal static class LobbyTests
         rig.Input = (node, handle) => node == host ? new(default, TeamStep: 1) : default;
         rig.Steps(80);
         Check(
-            host.Simulation.Roster.Slots[0].Player!.Team == (host.Simulation.World.TickNumber - 2) % 8,
+            host.Simulation.Membership.Rooms[0]!.Team == (host.Simulation.World.TickNumber - 2) % 8,
             "Fixture did not establish the two-frame input delay"
         );
         rig.Add("guest", [new(0, Spawned: true)]);
         rig.WaitFor(() => rig.Ready, "Pending-command fixture admission failed");
         rig.Steps(120);
         Check(
-            host.Simulation.Roster.Slots[0].Player!.Team == (host.Simulation.World.TickNumber - 2) % 8,
+            host.Simulation.Membership.Rooms[0]!.Team == (host.Simulation.World.TickNumber - 2) % 8,
             "Checkpoint dropped or repeated a queued one-shot team command"
         );
         rig.Add("other", [new(0, Spawned: true)]);
         rig.WaitFor(() => rig.Ready, "Second pending-command fixture admission failed");
         rig.Steps(120);
         Check(
-            host.Simulation.Roster.Slots[0].Player!.Team == (host.Simulation.World.TickNumber - 2) % 8,
+            host.Simulation.Membership.Rooms[0]!.Team == (host.Simulation.World.TickNumber - 2) % 8,
             "Second checkpoint lost the original input-delay continuity"
         );
         rig.AssertConfirmedStates();
@@ -301,10 +421,11 @@ internal static class LobbyTests
         rig.AssertConfirmedStates();
         Check(host.Lobby.EditSlot(7, SlotType.Cpu), "Host could not create a CPU");
         oldSession = host.Lobby.SessionId;
-        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId != oldSession, "CPU checkpoint failed");
+        rig.WaitFor(() => !host.Lobby.IsSlotEditPending(7), "CPU command failed");
+        Check(host.Lobby.SessionId == oldSession, "CPU command changed the session");
         rig.Steps(80);
         Check(
-            host.Simulation.Roster.Slots[7].Player is { Cpu: true }
+            host.Simulation.Membership.Rooms[7] is { Cpu: true }
                 && host.Simulation.World.Players[7].PreviousInput == default,
             "New lobby CPU was missing or attacked without provocation"
         );
@@ -324,7 +445,10 @@ internal static class LobbyTests
         );
         rig.WaitFor(() => host.Lobby.Ready && guest.Lobby.Ready, "Match start checkpoint did not complete");
         Check(
-            host.Lobby.PeerSlots.Length == 2 && host.Lobby.PeerSlots.All(slots => slots.Length == 1),
+            host.Lobby.PeerSlots.Length == 2
+                && host.Lobby.PeerSlots[0].SequenceEqual(new[] { 0, 1 })
+                && host.Lobby.PeerSlots[1].SequenceEqual(new[] { 2 })
+                && host.Lobby.InputPlayerSlots.SequenceEqual(new[] { -1, 0, 1 }),
             "Frozen match input ownership was incorrect"
         );
         Check(
@@ -371,8 +495,8 @@ internal static class LobbyTests
         Check(host.Lobby.SetSpectating(0, true), "Host could not select spectating");
         rig.WaitFor(() => rig.Ready && host.Lobby.SessionId != session, "Spectating host checkpoint failed");
         Check(
-            host.Lobby.LobbySession!.LocalSlots.Length == 0 && host.Lobby.Roster.Spectator(0) != null,
-            "Spectating host retained an active input slot"
+            host.Lobby.LobbySession!.LocalSlots.SequenceEqual(new[] { 0 }) && host.Lobby.Roster.Spectator(0) != null,
+            "Spectating host must retain only the host command stream"
         );
         rig.Steps(180);
         rig.AssertConfirmedStates();
@@ -518,7 +642,10 @@ internal static class LobbyTests
         rig.Steps(80);
         original = host.Lobby.SessionId;
         rig.DeliveryDelay["observer"] = 2000;
-        Check(host.Lobby.EditSlot(7, SlotType.Closed), "Host could not trigger spectator delay fixture checkpoint");
+        Check(
+            host.Lobby.SetPlayers([.. host.Lobby.Roster.Players(0), new(1)]),
+            "Host could not trigger spectator delay fixture checkpoint"
+        );
         rig.WaitFor(
             () =>
                 host.Lobby.SimulationReady
@@ -614,8 +741,9 @@ internal static class LobbyTests
         var kicked = rig.Add("kicked", [new(0, Spawned: true)]);
         rig.WaitFor(() => rig.Ready, "Kick fixture did not synchronize");
         rig.Steps(80);
-        Check(host.Lobby.EditSlot(7, SlotType.Closed), "Kick fixture could not begin a roster change");
+        Check(host.Lobby.SetSpectating(0, true), "Kick fixture could not begin a roster change");
         rig.WaitFor(() => host.Lobby.Transitioning, "Kick fixture did not enter its barrier");
+        Check(host.Lobby.EditSlot(7, SlotType.Private), "Could not change a policy during a checkpoint");
         rig.Blocked.Add(("host", "kicked"));
         host.Lobby.Kick(kicked.Lobby.LocalPeer, false);
         rig.WaitFor(
@@ -632,6 +760,10 @@ internal static class LobbyTests
         Check(
             host.Simulation.World.TickNumber > before + 180,
             "Removed client's retries repeatedly paused the surviving lobby"
+        );
+        Check(
+            host.Lobby.GetSlotType(7) == SlotType.Private && !host.Lobby.IsSlotEditPending(7),
+            "Canceling a checkpoint lost the latest queued slot policy"
         );
         kicked.Lobby.Dispose();
         kicked.Active = false;
@@ -677,6 +809,7 @@ internal static class LobbyTests
         private readonly Dictionary<(string, string), long> reliableDue = new();
         public readonly List<Node> Nodes = new();
         public readonly List<Packet> Sent = new();
+        public int CheckpointMessages;
         public readonly HashSet<(string, string)> Blocked = new();
         public int Frame;
         public long Now => Frame * 1000L / 120;
@@ -764,7 +897,13 @@ internal static class LobbyTests
                 if (node.Lobby.LobbySession is not { } session)
                     continue;
                 session.TryAdvance(
-                    session.LocalSlots.Select(handle => Input?.Invoke(node, handle) ?? default).ToArray()
+                    session
+                        .LocalSlots.Select(handle =>
+                            node.Simulation.InputSources[handle].HostCommand
+                                ? new RollbackInput(default, Cpu: node.Lobby.HostCommand)
+                                : Input?.Invoke(node, handle) ?? default
+                        )
+                        .ToArray()
                 );
                 if (session.Error != null)
                     throw new InvalidOperationException(Describe());
@@ -826,6 +965,7 @@ internal static class LobbyTests
         private readonly Rig rig;
         private readonly DatagramReliability? reliability;
         public readonly Queue<WireMessage> Incoming = new();
+        public int PollCount { get; private set; }
         public string? Error => null;
         public string LocalAddress { get; }
         public long TimeMilliseconds => rig.Now;
@@ -856,6 +996,7 @@ internal static class LobbyTests
 
         public void Poll()
         {
+            PollCount++;
             if (reliability == null)
                 return;
             while (Incoming.TryDequeue(out var packet))
@@ -865,6 +1006,8 @@ internal static class LobbyTests
 
         public void Send(string destination, byte[] data, bool reliable)
         {
+            if (IsCheckpointControl(data))
+                rig.CheckpointMessages++;
             if (reliability != null)
                 reliability.Send(destination, data, reliable);
             else

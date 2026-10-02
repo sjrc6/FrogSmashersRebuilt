@@ -15,6 +15,8 @@ internal sealed partial class MenuController
     private readonly Stack<(GameScreen Screen, int Selected)> history = new();
     private GameScreen context = GameScreen.Main;
     private bool menuSoundPending;
+    private readonly MenuAdjustRepeat adjustRepeat = new();
+    private (GameScreen Screen, int Row) repeatTarget;
     public LobbyCreation Creation { get; } = new();
     public double AnimationTime { get; private set; }
     public GameScreen Screen { get; set; } = GameScreen.Intro;
@@ -66,6 +68,7 @@ internal sealed partial class MenuController
         if (Screen == GameScreen.Bindings)
             RefreshBindingDevice();
         var input = MenuInput.Read(game.Controls);
+        input = RepeatAdjustment(input, elapsedSeconds);
         if (
             game.Controls.KeysNow.GetPressedKeys().Any(game.Controls.Press)
             || game.Controls.MouseMoved
@@ -122,7 +125,6 @@ internal sealed partial class MenuController
                 UpdatePlayerList(input);
                 break;
             case GameScreen.Outro:
-                game.Match.Network?.Poll();
                 if (game.Match.Network?.Error != null && !game.Match.Network.IsTransportFailure)
                     game.Fail(game.Match.Network.Error);
                 else if (game.Online.Lobby is { IsHost: false })
@@ -180,6 +182,34 @@ internal sealed partial class MenuController
             menuSoundPending = false;
             game.Audio.PlayMenuAction();
         }
+    }
+
+    private MenuInput RepeatAdjustment(MenuInput input, double elapsedSeconds)
+    {
+        var target = (Screen, Selected);
+        if (repeatTarget != target)
+            adjustRepeat.Reset();
+        repeatTarget = target;
+        var entry = Entries().ElementAtOrDefault(Selected);
+        if (
+            input.Vertical != 0
+            || game.Controls.MouseMoved
+            || entry is not { RepeatAdjust: true, DisabledReason: null }
+        )
+        {
+            adjustRepeat.Reset();
+            return input;
+        }
+        int held =
+            input.HorizontalHeld != 0 ? input.HorizontalHeld
+            : input.AcceptHeld ? 1
+            : 0;
+        int pressed =
+            input.Horizontal != 0 ? input.Horizontal
+            : input.Accept ? 1
+            : 0;
+        int adjustment = adjustRepeat.Read(held, pressed, elapsedSeconds);
+        return input with { Horizontal = adjustment, Accept = false };
     }
 
     private void UpdateRows(MenuInput input)
@@ -297,11 +327,6 @@ internal sealed partial class MenuController
             var player = game.Lobby.LocalPlayers.FirstOrDefault(player => player.Id == device);
             if (join)
             {
-                if (game.Lobby.Roster.Spectator(game.Lobby.LocalPeer) != null)
-                {
-                    OpenLobbyMenu(device);
-                    return;
-                }
                 if (player?.Spawned != true)
                 {
                     game.Lobby.JoinOrSpawn(device);
@@ -451,7 +476,7 @@ internal sealed partial class MenuController
     {
         menuSoundPending |= Screen is GameScreen.Playing or GameScreen.Connecting || history.Count > 0;
         EditingAddress = WaitingForBinding = false;
-        if (Screen is GameScreen.Settings or GameScreen.MatchSettings or GameScreen.Bindings)
+        if (Screen is GameScreen.Settings or GameScreen.Rollback or GameScreen.MatchSettings or GameScreen.Bindings)
             game.SaveSettings();
         if (Screen == GameScreen.Playing)
         {

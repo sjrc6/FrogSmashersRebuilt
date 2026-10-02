@@ -58,6 +58,10 @@ internal sealed class MatchController : IDisposable
     {
         Close();
         seats = localSeats.ToArray();
+        options.Rules.CpuPlayers = Enumerable
+            .Range(0, 8)
+            .Select(slot => slot < seats.Length && seats[slot].Device < 0)
+            .ToArray();
         CreateWorld(options);
         replay = recordingPath != null ? InputReplay.Start(World!) : null;
         recordingSettings = JsonSerializer.Serialize(options, jsonOptions);
@@ -76,6 +80,7 @@ internal sealed class MatchController : IDisposable
                 Rules = new GameRules
                 {
                     PlayerCount = 4,
+                    CpuPlayers = [true, true, true, true, false, false, false, false],
                     MapOrder = [1],
                     // Keep the menu action running without round-end screens.
                     WinScore = int.MaxValue,
@@ -91,7 +96,16 @@ internal sealed class MatchController : IDisposable
         var options =
             JsonSerializer.Deserialize<MatchOptions>(lobby.MatchSettingsJson)
             ?? throw new InvalidDataException("Invalid match settings");
-        options.Rules.PlayerCount = lobby.PeerSlots.Sum(slots => slots.Length);
+        var players = lobby
+            .Roster.Slots.Where(slot => slot.Player != null)
+            .Select(slot => slot.Player!)
+            .OrderBy(player => player.Peer)
+            .ToArray();
+        options.Rules.PlayerCount = players.Length;
+        options.Rules.CpuPlayers = Enumerable
+            .Range(0, 8)
+            .Select(slot => slot < players.Length && players[slot].Cpu)
+            .ToArray();
         options.Rules.Teams = lobby.PlayerTeams.Concat(Enumerable.Repeat(0, 8 - lobby.PlayerTeams.Length)).ToArray();
         if (options.Rules.TeamMode && lobby.PlayerTeams.Distinct().Count() < 2)
         {
@@ -100,8 +114,8 @@ internal sealed class MatchController : IDisposable
 
         options.Rules.Colors = lobby.PlayerColors.Concat(Enumerable.Repeat(0, 8 - lobby.PlayerColors.Length)).ToArray();
         seats = lobby
-            .Roster.Players(lobby.LocalPeer)
-            .Select(player => new LocalSeat(player.Cpu ? -1 : player.Id, player.Team, player.Color, player.Id))
+            .Roster.Humans(lobby.LocalPeer)
+            .Select(player => new LocalSeat(player.Id, player.Team, player.Color, player.Id))
             .ToArray();
         CreateWorld(options);
         Network = new NetworkSession(
@@ -112,7 +126,9 @@ internal sealed class MatchController : IDisposable
                 content.ContentHash,
                 World!,
                 lobby.SessionId,
-                activePeers: lobby.PeerIds.ToArray()
+                activePeers: lobby.PeerIds.ToArray(),
+                rollback: lobby.RollbackSettings,
+                inputPlayerSlots: lobby.InputPlayerSlots
             ),
             lobby.CreateTransport()
         );
@@ -167,7 +183,6 @@ internal sealed class MatchController : IDisposable
             return;
         }
 
-        Network?.Poll();
         Reconcile();
         if (Network?.Error != null)
         {
@@ -246,8 +261,7 @@ internal sealed class MatchController : IDisposable
         var inputs = new InputFrame[seats.Length];
         for (int index = 0; index < seats.Length; index++)
         {
-            inputs[index] =
-                seats[index].Device < 0 ? BotController.GetInput(World!, index) : controls.Read(seats[index].Device);
+            inputs[index] = seats[index].Device < 0 ? default : controls.Read(seats[index].Device);
         }
 
         return inputs;
@@ -257,21 +271,26 @@ internal sealed class MatchController : IDisposable
     {
         var network = Network!;
         var inputs = new InputFrame[network.LocalSlots.Length];
+        int localPlayer = 0;
         for (int index = 0; index < inputs.Length; index++)
         {
-            inputs[index] =
-                Paused ? default
-                : seats[index].Device < 0 ? BotController.GetInput(World!, network.LocalSlots[index])
-                : controls.Read(seats[index].Device, consume: false);
+            if (network.PlayerSlot(network.LocalSlots[index]) < 0)
+                continue;
+            inputs[index] = Paused ? default : controls.Read(seats[localPlayer].Device, consume: false);
+            localPlayer++;
         }
 
         bool advanced = network.TryAdvance(inputs);
         if (network.LocalInputSubmitted)
         {
-            foreach (var seat in seats)
+            localPlayer = 0;
+            foreach (int handle in network.LocalSlots)
             {
-                if (seat.Device >= 0)
-                    controls.Read(seat.Device);
+                if (network.PlayerSlot(handle) < 0)
+                    continue;
+                if (network.AcceptedLocalSlots.Contains(handle))
+                    controls.Read(seats[localPlayer].Device);
+                localPlayer++;
             }
         }
 

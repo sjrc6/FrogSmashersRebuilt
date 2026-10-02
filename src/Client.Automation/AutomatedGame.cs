@@ -105,6 +105,9 @@ internal sealed class AutomatedGame : FrogGame
             Menus.Selected,
             Menus.SelectedSeat,
             MenuItems = Menus.Entries().Select(entry => entry.Text).ToArray(),
+            ConnectionsVisible = Connections.Visible,
+            InputWaitMessage = Connections.InputWaitMessage(),
+            ConnectionPlayers = Connections.Visible ? Connections.Rows() : null,
             PlayerActions = new
             {
                 Accept = playerActions.Accept?.Label,
@@ -113,6 +116,15 @@ internal sealed class AutomatedGame : FrogGame
             },
             LocalDevices = Setup.Seats.Select(seat => seat.Device).ToArray(),
             LobbySlots = Menus.ShowingLobby ? Lobby.Roster.Slots : null,
+            PresentedLobbySlots = Menus.ShowingLobby ? Lobby.Presentation.Roster.Slots : null,
+            LobbyRoomStatus = Menus.ShowingLobby
+                ? Enumerable.Range(0, 8).Select(Lobby.Presentation.Status).ToArray()
+                : null,
+            LobbyProgress = Menus.ShowingLobby ? Lobby.ProgressText : null,
+            LobbySlotTypes = Menus.ShowingLobby ? Enumerable.Range(0, 8).Select(Lobby.GetSlotType).ToArray() : null,
+            PendingSlotEdits = Menus.ShowingLobby
+                ? Enumerable.Range(0, 8).Where(Lobby.SlotEditPending).ToArray()
+                : null,
             LobbySpectators = Online.Lobby?.Roster.Spectators,
             JoinHintDevices = Menus.ShowingLobby ? Lobby.JoinHintDevices() : null,
             MatchPeerSlots = Online.Lobby?.PeerSlots,

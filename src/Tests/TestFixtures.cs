@@ -1,9 +1,12 @@
 using FrogSmashers.Core;
+using FrogSmashers.Network;
 
 namespace FrogSmashers.Tests;
 
 internal static class TestFixtures
 {
+    public static RollbackPreferences FixedTiming { get; } = new() { MaxExtraDelay = 0 };
+
     public static MapData Map() =>
         new()
         {

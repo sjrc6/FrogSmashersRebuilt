@@ -33,6 +33,14 @@ internal sealed class PeerProtocol
     private uint challenge = (uint)Random.Shared.NextInt64(1, uint.MaxValue);
     private int synchronizedRoundTrips;
     private int currentFrame;
+    private RollbackTiming timing = new() { DelayFrames = 0, MaxExtraDelayFrames = 0 };
+    private int extraDelay;
+    private int timingRevision;
+    private int remoteTimingRevision = -1;
+    private int remoteResponseDelay;
+    private int remoteDonation;
+    private int remoteExtraDelay;
+    private int remoteMaxExtraDelay;
     private int remoteFrame = -1;
     private int remoteAdvantage;
     private int lastSampledFrame = -1;
@@ -135,7 +143,13 @@ internal sealed class PeerProtocol
             bytesReceived,
             invalidPackets,
             stalePackets
-        );
+        )
+        {
+            ResponseDelayFrames = remoteResponseDelay,
+            DonationFrames = remoteDonation,
+            ExtraDelayFrames = remoteExtraDelay,
+            MaxExtraDelayFrames = remoteMaxExtraDelay,
+        };
 
     public void SetSessionProgress(int committedFrame, uint mask = 0, int floor = -1, int readyCut = int.MinValue)
     {
@@ -160,6 +174,16 @@ internal sealed class PeerProtocol
         disconnectMask = mask;
         disconnectFloor = floor;
         disconnectReadyCut = readyCut;
+    }
+
+    public void SetTiming(RollbackTiming value, int extra)
+    {
+        if (timing == value && extraDelay == extra)
+            return;
+        timing = value;
+        extraDelay = extra;
+        timingRevision++;
+        statusesChanged = true;
     }
 
     public void Poll(int frame, ReadOnlySpan<ConnectionStatus> statuses)
@@ -558,11 +582,28 @@ internal sealed class PeerProtocol
             options.InputCapacity + (long)options.FramesPerSecond * options.DisconnectTimeoutMilliseconds / 1000;
         return packet.Frame >= initialFrame
             && packet.Frame != int.MaxValue
-            && Math.Abs((long)packet.Advantage) <= maximumAdvantage;
+            && Math.Abs((long)packet.Advantage) <= maximumAdvantage
+            && packet.TimingRevision >= 0
+            && packet.ResponseDelay >= 0
+            && packet.ResponseDelay <= options.MaxInputDelay
+            && packet.Donation >= 0
+            && packet.Donation <= 10000
+            && packet.ExtraDelay >= 0
+            && packet.ExtraDelay <= packet.MaxExtraDelay
+            && packet.MaxExtraDelay >= 0
+            && (long)packet.ResponseDelay + packet.MaxExtraDelay <= options.MaxInputDelay;
     }
 
     private void UpdateRemoteFrame(ProtocolPacket packet)
     {
+        if (packet.TimingRevision >= remoteTimingRevision)
+        {
+            remoteTimingRevision = packet.TimingRevision;
+            remoteResponseDelay = packet.ResponseDelay;
+            remoteDonation = packet.Donation;
+            remoteExtraDelay = packet.ExtraDelay;
+            remoteMaxExtraDelay = packet.MaxExtraDelay;
+        }
         if (packet.Frame >= remoteFrame)
         {
             remoteFrame = packet.Frame;
@@ -695,8 +736,14 @@ internal sealed class PeerProtocol
         if (remoteFrame < initialFrame)
             return 0;
         double elapsed = Math.Max(0, clock.NowMilliseconds - remoteFrameReceivedAt);
-        double projected = remoteFrame + (elapsed + roundTripMilliseconds / 2) * options.FramesPerSecond / 1000;
-        return (int)Math.Clamp(projected - currentFrame, -options.InputCapacity, options.InputCapacity);
+        double projected =
+            remoteFrame
+            + remoteResponseDelay
+            + remoteExtraDelay
+            - remoteDonation
+            + (elapsed + roundTripMilliseconds / 2) * options.FramesPerSecond / 1000;
+        double local = currentFrame + timing.DelayFrames + extraDelay - timing.DonationFrames;
+        return (int)Math.Clamp(projected - local, -options.InputCapacity, options.InputCapacity);
     }
 
     private void SendSynchronization(PacketKind kind, uint token)
@@ -722,6 +769,11 @@ internal sealed class PeerProtocol
 
     private void Send(ProtocolPacket packet)
     {
+        packet.TimingRevision = timingRevision;
+        packet.ResponseDelay = timing.DelayFrames;
+        packet.Donation = timing.DonationFrames;
+        packet.ExtraDelay = extraDelay;
+        packet.MaxExtraDelay = timing.MaxExtraDelayFrames;
         byte[] encoded = PacketCodec.Encode(sessionId, configurationId, packet);
         transport.Send(peerId, encoded);
         lastSentAt = clock.NowMilliseconds;

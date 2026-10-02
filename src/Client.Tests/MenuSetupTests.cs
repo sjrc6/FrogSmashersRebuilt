@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FrogSmashers.Client;
+using FrogSmashers.Network;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
@@ -31,6 +32,42 @@ internal static class MenuSetupTests
             "match and lobby state are not persisted"
         );
         check(ClientSettings.Parse(saved).Volume == settings.Volume, "personal settings survive serialization");
+        check(
+            settings.Rollback.Delay == 2 && settings.Rollback.Donation == 0 && settings.Rollback.MaxExtraDelay == 0,
+            "rollback defaults are two response ticks, zero donation and no automatic extra delay"
+        );
+        settings.Rollback = new()
+        {
+            Delay = 7,
+            Donation = 4,
+            MaxExtraDelay = 12,
+        };
+        check(
+            ClientSettings.Parse(JsonSerializer.Serialize(settings)).Rollback == settings.Rollback,
+            "personal rollback preferences persist"
+        );
+        check(
+            ClientSettings.Parse("""{"Rollback":{"Delay":-1,"Donation":999,"MaxExtraDelay":999}}""").Rollback
+                == new RollbackPreferences
+                {
+                    Delay = 0,
+                    Donation = 30,
+                    MaxExtraDelay = 119,
+                },
+            "rollback settings load within supported limits"
+        );
+        check(
+            ClientSettings.Parse("""{"Rollback":null}""").Rollback == new RollbackPreferences(),
+            "null rollback settings load defaults"
+        );
+        check(
+            RollbackPreferences.Milliseconds(0) == "0.00 MS"
+                && RollbackPreferences.Milliseconds(1) == "8.33 MS"
+                && RollbackPreferences.Milliseconds(2) == "16.7 MS"
+                && RollbackPreferences.Milliseconds(30) == "250 MS"
+                && RollbackPreferences.Milliseconds(119) == "992 MS",
+            "rollback settings use three total digits in milliseconds"
+        );
         var setup = new MatchSetup(7);
         check(setup.Preferences == new MatchPreferences(), "new sessions start with default match settings");
         setup.Preferences.TeamMode = true;

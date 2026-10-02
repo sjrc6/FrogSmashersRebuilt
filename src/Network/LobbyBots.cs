@@ -44,7 +44,7 @@ public sealed class LobbyBots
         return BotController.GetInput(world, room, target);
     }
 
-    public void Observe(World world, LobbyRoster roster)
+    public void Observe(World world, LobbyMembership membership)
     {
         foreach (var item in world.Events)
         {
@@ -54,7 +54,7 @@ public sealed class LobbyBots
                 item.Kind != SimulationEventKind.Hit
                 || item.Player < 0
                 || item.Other < 0
-                || roster.Slots[item.Player].Player?.Cpu != true
+                || membership.Rooms[item.Player]?.Cpu != true
             )
                 continue;
             targets[item.Player] = item.Other;

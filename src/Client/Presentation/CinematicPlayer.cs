@@ -90,8 +90,8 @@ public sealed class CinematicPlayer : IDisposable
             animation.PlayClip(animator.ObjectPath, animator.DefaultClip);
         }
 
-        animation.PlayInitialSounds();
         Evaluate();
+        animation.PlayInitialSounds();
     }
 
     public void SkipIntro()

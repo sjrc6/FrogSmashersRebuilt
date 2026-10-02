@@ -93,7 +93,12 @@ internal static class LobbyRosterTests
             observers.Count == 1 && observers.Spectators.Count == 4 && !observers.SetSpectating(0, true),
             "Four spectators are separate from player slots and cannot displace each other"
         );
-        Check(!observers.SetPlayers(1, [new(0), new(1)]), "Spectators cannot also own human frogs");
+        var rejoining = new LobbyRoster();
+        rejoining.Replace(observers.Slots, observers.Spectators);
+        Check(
+            rejoining.SetPlayers(1, [new(2)]) && rejoining.Spectator(1) == null && rejoining.Humans(1).Single().Id == 2,
+            "A spectator can join directly with another device and leaves the spectator list atomically"
+        );
         observers.ApplySlotType(SlotType.Local);
         Check(
             !observers.SetSpectating(1, false) && observers.Spectator(1) != null,

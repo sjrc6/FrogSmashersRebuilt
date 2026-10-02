@@ -6,6 +6,144 @@ namespace FrogSmashers.Tests;
 
 internal static class NetworkSessionTests
 {
+    public static void OneRoundTripHandshake()
+    {
+        var wire = new SimulatedNetwork(2, delayTicks: 60, jitterTicks: 0, lossPercent: 0, duplicatePercent: 0);
+        int[][] slots =
+        [
+            [0],
+            [1],
+        ];
+        var sessions = Enumerable
+            .Range(0, 2)
+            .Select(peer =>
+            {
+                var world = MakeWorld(2);
+                return new NetworkSession(
+                    world,
+                    new SessionConfig(slots, peer, "handshake", world, 1),
+                    wire.Endpoint(peer)
+                );
+            })
+            .ToArray();
+        try
+        {
+            for (int tick = 0; tick < 125; tick++)
+            {
+                wire.Advance();
+                foreach (var session in sessions)
+                    session.Poll();
+            }
+            Check(
+                sessions.All(session => session.State == GGCS.SessionState.Running && session.Error == null),
+                "A checked game session must not repeat five sequential handshake round trips"
+            );
+        }
+        finally
+        {
+            foreach (var session in sessions)
+                session.Dispose();
+        }
+    }
+
+    public static void InputWaitIndicator(bool hostSpectates = false)
+    {
+        var network = new SimulatedNetwork(3, delayTicks: 1, jitterTicks: 0, lossPercent: 0, duplicatePercent: 0);
+        int[][] slots = hostSpectates
+            ?
+            [
+                [0],
+                [1, 2],
+                [3, 4],
+            ]
+            :
+            [
+                [0],
+                [1, 2],
+                [3],
+            ];
+        var sessions = Enumerable
+            .Range(0, 3)
+            .Select(peer =>
+            {
+                var world = MakeWorld(4);
+                return new NetworkSession(
+                    world,
+                    new SessionConfig(
+                        slots,
+                        peer,
+                        "wait-test",
+                        world,
+                        1,
+                        rollback: FixedTiming,
+                        inputPlayerSlots: hostSpectates ? [-1, 0, 1, 2, 3] : null
+                    ),
+                    network.Endpoint(peer)
+                );
+            })
+            .ToArray();
+        void Step()
+        {
+            network.Advance();
+            foreach (var session in sessions)
+            {
+                session.Poll();
+                session.TryAdvance(
+                    session
+                        .LocalSlots.Select(handle =>
+                            session.PlayerSlot(handle) < 0
+                                ? default
+                                : Input(session.World.TickNumber, session.PlayerSlot(handle))
+                        )
+                        .ToArray()
+                );
+                Check(session.Error == null, session.Error ?? "Unexpected wait-test error");
+            }
+        }
+        try
+        {
+            Check(
+                sessions.All(session => session.WaitingForInputPlayers.Count == 0),
+                "Handshake is not an input stall"
+            );
+            for (int tick = 0; tick < 150; tick++)
+                Step();
+            Check(
+                sessions
+                    .Where(session => !hostSpectates || session.LocalPeer != 0)
+                    .All(session => session.WaitingForInputPlayers.Count == 0),
+                "Ordinary prediction has no wait banner"
+            );
+            network.Blackout = true;
+            for (int tick = 0; tick < 60; tick++)
+                Step();
+            var host = sessions[0];
+            Check(
+                host.WaitingForInputPlayers.SequenceEqual(hostSpectates ? new[] { 1, 2, 3, 4 } : new[] { 1, 2, 3 }),
+                "Input stall identifies every remote player, including shared-machine guests"
+            );
+            long stopped = host.World.TickNumber;
+            Step();
+            Check(host.World.TickNumber == stopped, "The wait banner describes a stopped simulation");
+            host.StopAtTick(stopped);
+            Check(host.WaitingForInputPlayers.Count == 0, "A checkpoint pause hides a prior input wait");
+            host.StopAtTick(null);
+            network.Blackout = false;
+            bool cleared = false;
+            for (int tick = 0; tick < 150; tick++)
+            {
+                Step();
+                cleared |= host.WaitingForInputPlayers.Count == 0;
+            }
+            Check(host.World.TickNumber > stopped && cleared, "Input recovery clears the wait banner");
+        }
+        finally
+        {
+            foreach (var session in sessions)
+                session.Dispose();
+        }
+    }
+
     public static void ImpairedNetwork(int peers, bool mixed)
     {
         int players = mixed ? 8 : peers;
@@ -19,7 +157,11 @@ internal static class NetworkSessionTests
             .Select(p =>
             {
                 var w = MakeWorld(players);
-                return new NetworkSession(w, new SessionConfig(slots, p, "test-content", w, 1), network.Endpoint(p));
+                return new NetworkSession(
+                    w,
+                    new SessionConfig(slots, p, "test-content", w, 1, rollback: FixedTiming),
+                    network.Endpoint(p)
+                );
             })
             .ToArray();
         const int target = 1200;
@@ -103,7 +245,11 @@ internal static class NetworkSessionTests
             .Select(p =>
             {
                 var w = MakeWorld(2);
-                return new NetworkSession(w, new SessionConfig(slots, p, "clock", w, 1), network.Endpoint(p));
+                return new NetworkSession(
+                    w,
+                    new SessionConfig(slots, p, "clock", w, 1, rollback: FixedTiming),
+                    network.Endpoint(p)
+                );
             })
             .ToArray();
         int slowdowns = 0;
@@ -171,7 +317,7 @@ internal static class NetworkSessionTests
                     var world = MakeWorld(peers);
                     return new NetworkSession(
                         world,
-                        new SessionConfig(slots, peer, "fps", world, 1),
+                        new SessionConfig(slots, peer, "fps", world, 1, rollback: FixedTiming),
                         network.Endpoint(peer)
                     );
                 })
@@ -229,7 +375,7 @@ internal static class NetworkSessionTests
                 var world = MakeWorld(2);
                 return new NetworkSession(
                     world,
-                    new SessionConfig(slots, peer, "checkpoint", world, 10),
+                    new SessionConfig(slots, peer, "checkpoint", world, 10, rollback: FixedTiming),
                     wire.Endpoint(peer)
                 );
             })
@@ -258,7 +404,15 @@ internal static class NetworkSessionTests
                 world.Restore(checkpoints[peer]);
                 return new NetworkSession(
                     world,
-                    new SessionConfig(slots, peer, "checkpoint", world, 11, initialInputs: initialInputs),
+                    new SessionConfig(
+                        slots,
+                        peer,
+                        "checkpoint",
+                        world,
+                        11,
+                        initialInputs: initialInputs,
+                        rollback: FixedTiming
+                    ),
                     wire.Endpoint(peer)
                 );
             })
@@ -312,7 +466,7 @@ internal static class NetworkSessionTests
                 var world = MakeWorld(2);
                 return new NetworkSession(
                     world,
-                    new SessionConfig(slots, peer, "latching", world, 1),
+                    new SessionConfig(slots, peer, "latching", world, 1, rollback: FixedTiming),
                     wire.Endpoint(peer)
                 );
             })
@@ -373,7 +527,7 @@ internal static class NetworkSessionTests
                 var world = MakeWorld(peers);
                 return new NetworkSession(
                     world,
-                    new SessionConfig(slots, peer, "high-latency", world, 1),
+                    new SessionConfig(slots, peer, "high-latency", world, 1, rollback: FixedTiming),
                     wire.Endpoint(peer)
                 );
             })
@@ -419,7 +573,11 @@ internal static class NetworkSessionTests
             .Select(p =>
             {
                 var w = MakeWorld(peers);
-                return new NetworkSession(w, new SessionConfig(slots, p, "terminal", w, 1), network.Endpoint(p));
+                return new NetworkSession(
+                    w,
+                    new SessionConfig(slots, p, "terminal", w, 1, rollback: FixedTiming),
+                    network.Endpoint(p)
+                );
             })
             .ToArray();
         int firstFinished = -1;

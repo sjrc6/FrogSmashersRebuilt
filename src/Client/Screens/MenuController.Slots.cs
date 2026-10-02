@@ -7,7 +7,7 @@ internal sealed partial class MenuController
 {
     private readonly SlotEditGesture slotGesture = new();
     private SlotType? slotPreview;
-    public SlotType SelectedSlotType => slotPreview ?? game.Lobby.Roster.Slots[SelectedSeat].Type;
+    public SlotType SelectedSlotType => slotPreview ?? game.Lobby.GetSlotType(SelectedSeat);
 
     public static string SlotLabel(SlotType type) =>
         type switch

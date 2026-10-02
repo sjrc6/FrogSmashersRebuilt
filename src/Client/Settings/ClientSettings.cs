@@ -1,10 +1,12 @@
 using System.Text.Json;
+using FrogSmashers.Network;
 using Microsoft.Xna.Framework.Input;
 
 namespace FrogSmashers.Client;
 
 public sealed class ClientSettings
 {
+    public RollbackPreferences Rollback { get; set; } = new();
     public bool Fullscreen { get; set; }
     public bool VSync { get; set; } = true;
     public int FrameLimit { get; set; } = 240;
@@ -65,6 +67,7 @@ public sealed class ClientSettings
     internal static ClientSettings Parse(string json)
     {
         var value = JsonSerializer.Deserialize<ClientSettings>(json) ?? new();
+        value.Rollback = (value.Rollback ?? new()).Normalize();
         value.FrameLimit = Math.Clamp(value.FrameLimit, 30, 1000);
         value.Volume = Math.Clamp(value.Volume, 0, 1);
         if (value.Keyboard == null || value.Keyboard.Length != 2 || value.Keyboard.Any(k => k == null))

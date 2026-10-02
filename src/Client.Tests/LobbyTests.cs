@@ -67,7 +67,7 @@ internal static class LobbyTests
         {
             inputs[0] = tick < 3 ? new(0, 0, InputButtons.Attack) : default;
             world.Tick(inputs);
-            bots.Observe(world, roster);
+            bots.Observe(world, roster.Membership());
             hit = world.Events.Any(item => item.Kind == SimulationEventKind.Hit && item.Player == 1 && item.Other == 0);
         }
         check(hit, "Lobby retaliation fixture delivers a real bat hit");
@@ -79,7 +79,7 @@ internal static class LobbyTests
         world.SetLobbySlot(0, false, 0);
         world.SetLobbySlot(0, true, 0);
         check(bots.Read(world, 1) == default, "Attacker respawn clears lobby retaliation");
-        bots.Observe(world, roster);
+        bots.Observe(world, roster.Membership());
         world.SetLobbySlot(1, false, 1);
         world.SetLobbySlot(1, true, 1);
         check(bots.Read(world, 1) == default, "CPU respawn clears lobby retaliation");

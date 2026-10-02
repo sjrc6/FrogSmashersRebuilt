@@ -16,6 +16,8 @@ public sealed class NetworkSession : IDisposable
     private long? stopAtTick;
     private int unknownPackets;
     private bool disposed;
+    private RollbackPreferences rollback;
+    private AdvanceStatus lastAdvanceStatus = AdvanceStatus.Synchronizing;
 
     public World World => simulation.World;
     public byte[] PreviousSnapshot { get; private set; }
@@ -23,18 +25,57 @@ public sealed class NetworkSession : IDisposable
     public bool IsTransportFailure { get; private set; }
     public int LocalPeer => config.LocalPeer;
     public int[] LocalSlots => config.PeerSlots[LocalPeer];
+
+    public int PlayerSlot(int handle) => config.InputPlayerSlots[handle];
+
+    public int InputHandle(int slot) => Array.IndexOf(config.InputPlayerSlots, slot);
+
+    public int HostCommandHandle => Array.IndexOf(config.InputPlayerSlots, -1);
     public long ConfirmedFrame => initialTick + (playing?.ConfirmedFrame ?? spectator!.CurrentFrame - 1);
     public int PredictionDepth => playing?.PredictionDepth ?? 0;
+    public int MaxPrediction => config.MaxPrediction;
+    private bool CanShowInputWait =>
+        Error == null && State == SessionState.Running && (!stopAtTick.HasValue || World.TickNumber < stopAtTick.Value);
+    public IReadOnlyList<int> WaitingForInputPlayers
+    {
+        get
+        {
+            if (!CanShowInputWait)
+                return [];
+            return lastAdvanceStatus == AdvanceStatus.PredictionLimit
+                ? Enumerable
+                    .Range(0, config.InputCount)
+                    .Where(handle => PredictionForPlayer(handle) >= config.MaxPrediction)
+                    .ToArray()
+                : [];
+        }
+    }
+    public bool WaitingForHostInputs =>
+        CanShowInputWait
+        && spectator != null
+        && lastAdvanceStatus == AdvanceStatus.WaitingForInput
+        && spectator.BufferedFrames == 0;
+
+    public int PlayerPeer(int handle) => Array.FindIndex(config.PeerSlots, slots => slots.Contains(handle));
+
+    public int PredictionForPlayer(int handle)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(handle);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(handle, config.InputCount);
+        return playing?.PredictionForPlayer(handle) ?? 0;
+    }
+
     public long RollbackCount { get; private set; }
     public long ResimulatedTicks { get; private set; }
     public long LastRollbackFromFrame { get; private set; } = -1;
     public int FramesAheadOfPeers => playing?.FramesAhead ?? 0;
     public double FrameDurationMultiplier =>
-        playing is { IsInputObserver: false } ? playing.RecommendedFrameDurationMultiplier
+        playing != null ? playing.RecommendedFrameDurationMultiplier
         : BufferedFrames > 2 ? 0.5
         : 1;
     public int BufferedFrames => playing?.ConfirmedInputFramesAvailable ?? spectator!.BufferedFrames;
-    public bool LocalInputSubmitted { get; private set; }
+    public IReadOnlyList<int> AcceptedLocalSlots { get; private set; } = [];
+    public bool LocalInputSubmitted => AcceptedLocalSlots.Count > 0;
     public long LastSubmittedTick => initialTick + (playing?.LastSubmittedFrame ?? -1);
     public long StartTick => initialTick;
     public string WaitReason { get; private set; } = "SYNCHRONIZING";
@@ -43,28 +84,26 @@ public sealed class NetworkSession : IDisposable
     public int RejectedPackets => unknownPackets + (int)PeerStats.Sum(stats => stats.InvalidPackets);
 
     public NetworkSession(World world, SessionConfig config, IPeerTransport transport)
-        : this(new MatchSimulation(world), config, transport)
-    {
-        if (world.Players.Length != config.PlayerCount)
-            throw new ArgumentException("Match roster must own every frog");
-    }
+        : this(new MatchSimulation(world, config.InputPlayerSlots), config, transport) { }
 
     public NetworkSession(IRollbackSimulation simulation, SessionConfig config, IPeerTransport transport)
     {
         this.simulation = simulation;
         this.config = config;
+        rollback = config.Rollback;
         this.transport = transport;
         initialTick = World.TickNumber;
         PreviousSnapshot = World.Capture();
         var options = new SessionOptions
         {
             FramesPerSecond = World.TickRate,
-            InputDelay = config.InputDelay,
-            MaxInputDelay = 12,
+            InputDelay = config.Rollback.Delay,
+            MaxInputDelay = RollbackPreferences.InputCapacityFrames,
             MaxPredictionFrames = config.MaxPrediction,
             HistoryFrames = config.HistoryFrames,
             ChecksumInterval = 60,
             MaxPacketBytes = 1185,
+            SynchronizationRoundTrips = 1,
         };
         var players = config
             .PeerSlots.SelectMany((slots, peer) => slots.Select(slot => new Player(slot, peer)))
@@ -75,7 +114,7 @@ public sealed class NetworkSession : IDisposable
         var codec = new RollbackInputCodec();
         string schema =
             Convert.ToHexString(config.Fingerprint) + Convert.ToHexString(SHA256.HashData(simulation.Capture()));
-        if (LocalSlots.Length > 0 || LocalPeer == 0)
+        if (LocalSlots.Length > 0)
         {
             playing = new(
                 config.Generation,
@@ -89,12 +128,16 @@ public sealed class NetworkSession : IDisposable
                 (input, _) => new(input.Gameplay),
                 schema
             );
-            if (LocalPeer != 0 && config.PeerSlots[0].Length == 0)
-                playing.AddInputObserver(0);
             if (LocalPeer == 0)
                 foreach (int peer in config.ActivePeers)
                     if (peer != 0 && config.PeerSlots[peer].Length == 0)
                         playing.AddSpectator(peer);
+            playing.SetTiming(config.Rollback.Timing);
+            int pendingDelay = LocalSlots
+                .Select(handle => config.InitialInputs.GetValueOrDefault(handle)?.Length ?? 0)
+                .DefaultIfEmpty()
+                .Max();
+            playing.RestoreExtraDelay(Math.Clamp(pendingDelay - rollback.Delay, 0, rollback.MaxExtraDelay));
             foreach (int handle in LocalSlots)
                 if (config.InitialInputs.TryGetValue(handle, out var inputs))
                     playing.SeedLocalInputDelay(handle, inputs);
@@ -108,11 +151,24 @@ public sealed class NetworkSession : IDisposable
     public IEnumerable<SimulationEvent> EventsSince(long frame) =>
         eventJournal.Where(pair => pair.Key >= frame).SelectMany(pair => pair.Value);
 
+    public RollbackPreferences RollbackSettings => rollback;
+    public int ExtraDelayFrames => playing?.ExtraDelayFrames ?? 0;
+    public int EffectiveDelayFrames => playing?.EffectiveDelayFrames ?? 0;
+
+    public void SetTiming(RollbackPreferences preferences)
+    {
+        if (!preferences.IsValid)
+            throw new ArgumentException("Invalid rollback preferences", nameof(preferences));
+        rollback = preferences;
+        playing?.SetTiming(preferences.Timing);
+    }
+
     public void StopAtTick(long? stateTick)
     {
         if (stateTick < World.TickNumber)
             throw new ArgumentOutOfRangeException(nameof(stateTick), "A pause boundary cannot be in the past");
         stopAtTick = stateTick;
+        playing?.FreezeTiming(stateTick.HasValue);
     }
 
     public bool TryGetConfirmedCheckpoint(long stateTick, out byte[] snapshot)
@@ -148,8 +204,13 @@ public sealed class NetworkSession : IDisposable
         var result = new RollbackInput[LocalSlots.Length][];
         for (int player = 0; player < LocalSlots.Length; player++)
         {
-            result[player] = new RollbackInput[config.InputDelay];
-            for (int offset = 0; offset < config.InputDelay; offset++)
+            int count = playing!.PendingInputCount(LocalSlots[player], SessionFrame(boundaryStateTick));
+            if (boundaryStateTick == initialTick && count == 0)
+                count = config.InitialInputs.TryGetValue(LocalSlots[player], out var initial)
+                    ? initial.Length
+                    : EffectiveDelayFrames;
+            result[player] = new RollbackInput[count];
+            for (int offset = 0; offset < count; offset++)
                 if (
                     !playing!.TryGetSubmittedInput(
                         LocalSlots[player],
@@ -196,7 +257,6 @@ public sealed class NetworkSession : IDisposable
     {
         if (disposed || Error != null)
             return;
-        transport.Poll();
         if (transport.Error != null)
         {
             Error = transport.Error;
@@ -222,14 +282,16 @@ public sealed class NetworkSession : IDisposable
     {
         if (localInputs.Length != LocalSlots.Length)
             throw new ArgumentException("Pass inputs in LocalSlots order", nameof(localInputs));
-        LocalInputSubmitted = false;
-        Poll();
+        AcceptedLocalSlots = [];
         if (Error != null || stopAtTick.HasValue && World.TickNumber >= stopAtTick.Value)
             return false;
         int previousSubmission = playing?.LastSubmittedFrame ?? -1;
         AdvanceStatus result = playing?.AdvanceFrame(localInputs) ?? spectator!.AdvanceFrame(drain: true);
-        LocalInputSubmitted =
-            LocalSlots.Length > 0 && playing != null && playing.LastSubmittedFrame != previousSubmission;
+        lastAdvanceStatus = result;
+        if (playing != null && playing.LastSubmittedFrame != previousSubmission)
+            AcceptedLocalSlots = LocalSlots
+                .Where(handle => playing.LastAcceptedInputFrame(handle) == playing.LastSubmittedFrame)
+                .ToArray();
         WaitReason = result switch
         {
             AdvanceStatus.Advanced => "",

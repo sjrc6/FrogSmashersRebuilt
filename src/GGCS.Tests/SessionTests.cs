@@ -125,13 +125,13 @@ internal static class SessionTests
     {
         var rig = new SessionRig([0, 0, 1, 1]);
         rig.Network.Latency = 40;
-        rig.Nodes[0].Session.SetInputDelay(0, 5);
-        rig.Nodes[1].Session.SetInputDelay(3, 7);
+        rig.Nodes[0].Session.SetTiming(new() { DelayFrames = 5, MaxExtraDelayFrames = 0 });
+        rig.Nodes[1].Session.SetTiming(new() { DelayFrames = 7, MaxExtraDelayFrames = 0 });
         rig.Run(2000);
-        rig.Nodes[0].Session.SetInputDelay(0, 1);
-        rig.Nodes[1].Session.SetInputDelay(2, 6);
+        rig.Nodes[0].Session.SetTiming(new() { DelayFrames = 1, MaxExtraDelayFrames = 0 });
+        rig.Nodes[1].Session.SetTiming(new() { DelayFrames = 6, MaxExtraDelayFrames = 0 });
         rig.Run(2000);
-        rig.Nodes[1].Session.SetInputDelay(3, 0);
+        rig.Nodes[1].Session.SetTiming(new() { DelayFrames = 0, MaxExtraDelayFrames = 0 });
         rig.Run(2000);
         rig.CheckAgreement("multiple local players and dynamic delays");
         Check.True(rig.MinimumFrame > 600, "different delay queues never leave network gaps");

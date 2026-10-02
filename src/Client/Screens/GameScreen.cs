@@ -10,6 +10,7 @@ internal enum GameScreen
     Connecting,
     Playing,
     Settings,
+    Rollback,
     MatchSettings,
     LobbyMenu,
     SlotEditor,

@@ -8,14 +8,20 @@ internal sealed class DelayedInputQueue<TInput>
     private int lastUserFrame = -1;
     private int lastOutputFrame = -1;
     private TInput lastOutput;
+    private readonly Func<TInput, int, TInput> padInput;
 
-    public DelayedInputQueue(int delay, int maxDelay)
+    public DelayedInputQueue(int delay, int maxDelay, Func<TInput, int, TInput>? padInput = null)
     {
         if (maxDelay < 0)
             throw new ArgumentOutOfRangeException(nameof(maxDelay));
         maximumDelay = maxDelay;
+        this.padInput = padInput ?? ((input, _) => input);
         SetDelay(delay);
     }
+
+    public int Delay => delay;
+    public int LastOutputFrame => lastOutputFrame;
+    public int LastAcceptedUserFrame { get; private set; } = -1;
 
     public void SetDelay(int delay)
     {
@@ -26,8 +32,10 @@ internal sealed class DelayedInputQueue<TInput>
 
     public void Seed(ReadOnlySpan<TInput> inputs)
     {
-        if (lastUserFrame != -1 || lastOutputFrame != -1 || inputs.Length != delay)
-            throw new InvalidOperationException("Seed exactly the input delay before submitting any frame.");
+        if (lastUserFrame != -1 || lastOutputFrame != -1 || inputs.Length > maximumDelay)
+            throw new InvalidOperationException(
+                "Seed pending inputs within the delay capacity before submitting any frame."
+            );
         lastOutputFrame = inputs.Length - 1;
         lastOutput = inputs.IsEmpty ? default : inputs[^1];
     }
@@ -44,11 +52,12 @@ internal sealed class DelayedInputQueue<TInput>
 
         var output = new NumberedInput<TInput>[outputFrame - lastOutputFrame];
         for (int i = 0; i < output.Length - 1; i++)
-            output[i] = new NumberedInput<TInput>(lastOutputFrame + i + 1, lastOutput);
+            output[i] = new NumberedInput<TInput>(lastOutputFrame + i + 1, padInput(lastOutput, i + 1));
 
         output[^1] = new NumberedInput<TInput>(outputFrame, input);
         lastOutputFrame = outputFrame;
         lastOutput = input;
+        LastAcceptedUserFrame = userFrame;
         return output;
     }
 }

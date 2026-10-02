@@ -18,12 +18,13 @@ public sealed class LobbySimulation : IRollbackSimulation
     private uint pendingPreviews;
     private readonly List<SimulationEvent> events = new();
     private int[] inputRooms = [];
-    private LobbyPlayer[] inputPlayers = [];
+    private LobbyInputSource[] inputSources = [];
+    public int CpuRevision { get; private set; }
     public World World { get; }
-    public LobbyRoster Roster { get; private set; } = new();
+    public LobbyMembership Membership { get; private set; } = new(new LobbyPlayer?[LobbyRoster.MaxPlayers], []);
     public IReadOnlyList<SimulationEvent> Events => events;
     public IReadOnlyList<int> InputRooms => Array.AsReadOnly(inputRooms);
-    public IReadOnlyList<LobbyPlayer> InputPlayers => Array.AsReadOnly(inputPlayers);
+    public IReadOnlyList<LobbyInputSource> InputSources => Array.AsReadOnly(inputSources);
 
     public LobbySimulation(World world, LobbyRoster roster, uint colorSeed = 1)
     {
@@ -52,37 +53,33 @@ public sealed class LobbySimulation : IRollbackSimulation
 
     public void ApplyRoster(LobbyRoster requested)
     {
-        var next = requested.Slots.ToArray();
+        var next = requested.Slots.Select(slot => slot.Player).ToArray();
         var oldRooms = Enumerable.Repeat(-1, LobbyRoster.MaxPlayers).ToArray();
         var oldBodies = World.Players.ToArray();
         uint previousPreviews = pendingPreviews;
         var usedColors = new HashSet<int>();
         for (int room = 0; room < next.Length; room++)
         {
-            if (next[room].Player is not { } incoming)
+            if (next[room] is not { } incoming)
                 continue;
             int previous = FindRoom(incoming.Peer, incoming.Id);
             if (previous < 0)
                 continue;
-            var old = Roster.Slots[previous].Player!;
+            var old = Membership.Rooms[previous]!;
             oldRooms[room] = previous;
-            next[room] = next[room] with
-            {
-                Player = incoming with { Color = old.Color, Team = old.Team, Spawned = old.Spawned },
-            };
+            next[room] = incoming with { Color = old.Color, Team = old.Team, Spawned = old.Spawned };
             usedColors.Add(old.Color);
         }
         for (int room = 0; room < next.Length; room++)
         {
-            if (oldRooms[room] >= 0 || next[room].Player is not { } incoming)
+            if (oldRooms[room] >= 0 || next[room] is not { } incoming)
                 continue;
             int color = usedColors.Contains(incoming.Color)
                 ? Enumerable.Range(0, LobbyRoster.MaxPlayers).First(value => !usedColors.Contains(value))
                 : incoming.Color;
-            next[room] = next[room] with { Player = incoming with { Color = color } };
+            next[room] = incoming with { Color = color };
             usedColors.Add(color);
         }
-        var roster = new LobbyRoster();
         var spectators = requested
             .Spectators.Select(spectator =>
             {
@@ -91,17 +88,17 @@ public sealed class LobbySimulation : IRollbackSimulation
                     ? spectator
                     : spectator with
                     {
-                        Color = Roster.Slots[previous].Player!.Color,
-                        Team = Roster.Slots[previous].Player!.Team,
+                        Color = Membership.Rooms[previous]!.Color,
+                        Team = Membership.Rooms[previous]!.Team,
                     };
             })
             .ToArray();
-        roster.Replace(next, spectators);
+        var membership = new LobbyMembership(next, spectators);
         for (int room = 0; room < next.Length; room++)
-            World.SetLobbySlot(room, false, next[room].Player?.Color ?? room);
+            World.SetLobbySlot(room, false, next[room]?.Color ?? room);
         for (int room = 0; room < next.Length; room++)
         {
-            if (next[room].Player is not { } player)
+            if (next[room] is not { } player)
                 continue;
             if (oldRooms[room] is int previous && previous >= 0)
             {
@@ -117,49 +114,50 @@ public sealed class LobbySimulation : IRollbackSimulation
         pendingPreviews = 0;
         for (int room = 0; room < next.Length; room++)
             if (
-                next[room].Player is { Spawned: false }
+                next[room] is { Spawned: false }
                 && (oldRooms[room] < 0 || (previousPreviews & (1u << oldRooms[room])) != 0)
             )
                 pendingPreviews |= 1u << room;
-        Roster = roster;
+        Membership = membership;
         RebuildInputs();
     }
 
     public void Tick(ReadOnlySpan<RollbackInput> inputs)
     {
-        if (inputs.Length != inputRooms.Length && !(inputRooms.Length == 0 && inputs.Length == 1))
-            throw new ArgumentException("Supply one input per occupied lobby room", nameof(inputs));
-        foreach (var input in inputs)
+        if (inputs.Length != inputSources.Length)
+            throw new ArgumentException("Supply the host command stream followed by human inputs", nameof(inputs));
+        for (int handle = 0; handle < inputs.Length; handle++)
         {
+            var input = inputs[handle];
             _ = InputFrame.FromPacked(input.Gameplay.Packed);
             if (
                 (input.Actions & ~(byte)(LobbyInputActions.Spawn | LobbyInputActions.SelectColor)) != 0
                 || input.ColorStep is < -1 or > 1
                 || input.TeamStep is < -1 or > 1
+                || !input.Cpu.IsValid
+                || handle != 0 && input.Cpu != default
+                || handle == 0
+                    && (input.Gameplay != default || input.Actions != 0 || input.ColorStep != 0 || input.TeamStep != 0)
             )
                 throw new ArgumentException("Invalid lobby command", nameof(inputs));
         }
+        ApplyCpuCommand(inputs[0].Cpu);
         var gameplay = new InputFrame[LobbyRoster.MaxPlayers];
-        var slots = Roster.Slots.ToArray();
+        var players = Membership.Rooms.ToArray();
         bool changed = false;
-        for (int handle = 0; handle < inputRooms.Length; handle++)
+        for (int handle = 1; handle < inputRooms.Length; handle++)
         {
             int room = inputRooms[handle];
-            var player = slots[room].Player!;
+            var player = players[room]!;
             var input = inputs[handle];
             var actions = (LobbyInputActions)input.Actions;
-            if (
-                (actions & LobbyInputActions.SelectColor) != 0
-                && player.Spawned
-                && !player.Cpu
-                && OnStartingPlatform(World, room)
-            )
+            if ((actions & LobbyInputActions.SelectColor) != 0 && player.Spawned && OnStartingPlatform(World, room))
                 player = player with { Spawned = false };
-            if (!player.Spawned || player.Cpu)
+            if (!player.Spawned)
             {
                 if (input.ColorStep != 0)
                 {
-                    var colors = slots.Select(slot => slot.Player?.Color).ToHashSet();
+                    var colors = players.Select(player => player?.Color).ToHashSet();
                     int[] available = Enumerable
                         .Range(0, LobbyRoster.MaxPlayers)
                         .Where(color => !colors.Contains(color))
@@ -175,31 +173,37 @@ public sealed class LobbySimulation : IRollbackSimulation
                 if ((actions & LobbyInputActions.Spawn) != 0)
                     player = player with { Spawned = true };
             }
-            if (player != slots[room].Player)
+            if (player != players[room])
             {
-                if (player.Spawned != slots[room].Player!.Spawned)
+                if (player.Spawned != players[room]!.Spawned)
                     bots.ResetRoom(room);
-                slots[room] = slots[room] with { Player = player };
+                players[room] = player;
                 if (!player.Spawned)
                     pendingPreviews |= 1u << room;
                 changed = true;
             }
             World.SetLobbySlot(room, player.Spawned, player.Color);
             if (player.Spawned)
-                gameplay[room] = player.Cpu ? bots.Read(World, room) : input.Gameplay;
+                gameplay[room] = input.Gameplay;
         }
         if (changed)
         {
-            Roster.Replace(slots, Roster.Spectators);
+            Membership = new LobbyMembership(players, Membership.Spectators);
             RebuildInputs();
         }
+        for (int room = 0; room < LobbyRoster.MaxPlayers; room++)
+            if (Membership.Rooms[room] is { Cpu: true, Spawned: true } cpu)
+            {
+                World.SetLobbySlot(room, true, cpu.Color);
+                gameplay[room] = bots.Read(World, room);
+            }
         World.Tick(gameplay);
-        bots.Observe(World, Roster);
+        bots.Observe(World, Membership);
         events.Clear();
         events.AddRange(World.Events);
         for (int room = 0; room < LobbyRoster.MaxPlayers; room++)
         {
-            if ((pendingPreviews & (1u << room)) == 0 || Roster.Slots[room].Player is not { Spawned: false } player)
+            if ((pendingPreviews & (1u << room)) == 0 || Membership.Rooms[room] is not { Spawned: false } player)
                 continue;
             var spawn = World.Map.Spawns[room];
             events.Add(
@@ -223,21 +227,20 @@ public sealed class LobbySimulation : IRollbackSimulation
         using var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream);
         writer.Write(SnapshotMagic);
+        writer.Write(CpuRevision);
         writer.Write(randomState);
         writer.Write(pendingPreviews);
         byte[] world = World.Capture();
         writer.Write(world.Length);
         writer.Write(world);
-        foreach (var slot in Roster.Slots)
+        foreach (var player in Membership.Rooms)
         {
-            writer.Write((byte)slot.Type);
-            writer.Write(slot.Player != null);
-            if (slot.Player is { } player)
-                WritePlayer(writer, player);
+            writer.Write(player != null);
+            player?.WriteSnapshot(writer);
         }
-        writer.Write((byte)Roster.Spectators.Count);
-        foreach (var spectator in Roster.Spectators)
-            WritePlayer(writer, spectator);
+        writer.Write((byte)Membership.Spectators.Count);
+        foreach (var spectator in Membership.Spectators)
+            spectator.WriteSnapshot(writer);
         bots.Write(writer);
         return stream.ToArray();
     }
@@ -250,11 +253,13 @@ public sealed class LobbySimulation : IRollbackSimulation
         using var reader = new BinaryReader(stream);
         if (reader.ReadInt32() != SnapshotMagic)
             throw new InvalidDataException("Invalid lobby snapshot");
+        int cpuRevision = reader.ReadInt32();
         uint nextRandom = reader.ReadUInt32();
         uint nextPreviews = reader.ReadUInt32();
         int worldLength = reader.ReadInt32();
         if (
-            nextRandom == 0
+            cpuRevision < 0
+            || nextRandom == 0
             || nextPreviews >= 1u << LobbyRoster.MaxPlayers
             || worldLength < 0
             || worldLength > 64 * 1024
@@ -262,44 +267,98 @@ public sealed class LobbySimulation : IRollbackSimulation
         )
             throw new InvalidDataException("Invalid lobby snapshot state");
         byte[] world = reader.ReadBytes(worldLength);
-        var slots = new LobbySlot[LobbyRoster.MaxPlayers];
-        for (int room = 0; room < slots.Length; room++)
-            slots[room] = new((SlotType)reader.ReadByte(), reader.ReadBoolean() ? ReadPlayer(reader) : null);
+        var players = new LobbyPlayer?[LobbyRoster.MaxPlayers];
+        for (int room = 0; room < players.Length; room++)
+            players[room] = reader.ReadBoolean() ? LobbyPlayer.ReadSnapshot(reader) : null;
         int spectatorCount = reader.ReadByte();
         if (spectatorCount > LobbyRoster.MaxSpectators)
             throw new InvalidDataException("Invalid lobby spectators");
         var spectators = new LobbyPlayer[spectatorCount];
         for (int index = 0; index < spectators.Length; index++)
-            spectators[index] = ReadPlayer(reader);
+            spectators[index] = LobbyPlayer.ReadSnapshot(reader);
         var nextBots = LobbyBots.Read(reader);
         if (stream.Position != stream.Length)
             throw new InvalidDataException("Invalid lobby snapshot payload");
-        var nextRoster = new LobbyRoster();
-        nextRoster.Replace(slots, spectators);
+        var membership = new LobbyMembership(players, spectators);
         World.Restore(world);
         bots = nextBots;
+        CpuRevision = cpuRevision;
         randomState = nextRandom;
         pendingPreviews = nextPreviews;
-        Roster = nextRoster;
+        Membership = membership;
         events.Clear();
         RebuildInputs();
     }
 
     private int FindRoom(int peer, int id)
     {
-        for (int room = 0; room < Roster.Slots.Count; room++)
-            if (Roster.Slots[room].Player is { } player && player.Peer == peer && player.Id == id)
+        for (int room = 0; room < Membership.Rooms.Count; room++)
+            if (Membership.Rooms[room] is { } player && player.Peer == peer && player.Id == id)
                 return room;
         return -1;
     }
 
     private void RebuildInputs()
     {
-        inputRooms = Enumerable
-            .Range(0, LobbyRoster.MaxPlayers)
-            .Where(room => Roster.Slots[room].Player != null)
-            .ToArray();
-        inputPlayers = inputRooms.Select(room => Roster.Slots[room].Player!).ToArray();
+        inputSources =
+        [
+            new(0, -1, -1),
+            .. Membership
+                .Rooms.Select((player, room) => (player, room))
+                .Where(item => item.player is { Cpu: false })
+                .Select(item => new LobbyInputSource(item.player!.Peer, item.player.Id, item.room)),
+        ];
+        inputRooms = inputSources.Select(source => source.Room).ToArray();
+    }
+
+    internal static int ReadCpuRevision(byte[] snapshot)
+    {
+        using var reader = new BinaryReader(new MemoryStream(snapshot, false));
+        if (reader.ReadInt32() != SnapshotMagic)
+            throw new InvalidDataException("Invalid lobby snapshot");
+        return reader.ReadInt32();
+    }
+
+    private void ApplyCpuCommand(LobbyCpuCommand command)
+    {
+        if (command.Revision <= CpuRevision)
+            return;
+        var players = Membership.Rooms.ToArray();
+        for (int room = 0; room < players.Length; room++)
+        {
+            if ((command.Rooms & (1 << room)) == 0 || players[room] is { Cpu: false })
+                continue;
+            if ((command.Enabled & (1 << room)) == 0)
+            {
+                players[room] = null;
+                World.SetLobbySlot(room, false, room);
+                foreach (var body in World.Players)
+                    if (body.LastHitBy == room)
+                        body.LastHitBy = -1;
+                bots.ResetRoom(room);
+                pendingPreviews &= ~(1u << room);
+            }
+        }
+        for (int room = 0; room < players.Length; room++)
+        {
+            if ((command.Enabled & (1 << room)) == 0 || players[room] is { Cpu: false })
+                continue;
+            bool created = players[room] == null;
+            var used = players.Where((_, index) => index != room).Select(player => player?.Color).ToHashSet();
+            int color = command.Color(room);
+            if (used.Contains(color))
+                color = Enumerable.Range(0, LobbyRoster.MaxPlayers).First(value => !used.Contains(value));
+            players[room] = new(10 + room, Team: command.Team(room), Color: color, Spawned: true, Cpu: true);
+            if (created)
+            {
+                World.SetLobbySlot(room, false, color);
+                bots.ResetRoom(room);
+                pendingPreviews &= ~(1u << room);
+            }
+            World.SetLobbySlot(room, true, color);
+        }
+        Membership = new LobbyMembership(players, Membership.Spectators);
+        CpuRevision = command.Revision;
     }
 
     private int RandomIndex(int length)
@@ -309,24 +368,4 @@ public sealed class LobbySimulation : IRollbackSimulation
         randomState ^= randomState << 5;
         return (int)(randomState % (uint)length);
     }
-
-    private static void WritePlayer(BinaryWriter writer, LobbyPlayer player)
-    {
-        writer.Write(player.Id);
-        writer.Write(player.Peer);
-        writer.Write(player.Team);
-        writer.Write(player.Color);
-        writer.Write(player.Spawned);
-        writer.Write(player.Cpu);
-    }
-
-    private static LobbyPlayer ReadPlayer(BinaryReader reader) =>
-        new(
-            reader.ReadInt32(),
-            reader.ReadInt32(),
-            reader.ReadInt32(),
-            reader.ReadInt32(),
-            reader.ReadBoolean(),
-            reader.ReadBoolean()
-        );
 }

@@ -3,7 +3,7 @@ using GGCS.Protocol;
 
 namespace GGCS;
 
-public sealed class P2PSession<TInput, TState>
+public sealed partial class P2PSession<TInput, TState>
     where TInput : unmanaged
 {
     private readonly int localPeerId;
@@ -63,6 +63,7 @@ public sealed class P2PSession<TInput, TState>
         this.transport = transport;
         this.options = options ?? new();
         this.clock = clock ?? new MonotonicClock();
+        Timing = new() { DelayFrames = this.options.InputDelay, MaxExtraDelayFrames = 0 };
         wire = new(players, codec, this.options, inputSchema);
         engine = new(wire.Players.Length, this.options, game, predictor);
         statuses = Enumerable.Repeat(new ConnectionStatus(false, -1), wire.Players.Length).ToArray();
@@ -71,7 +72,7 @@ public sealed class P2PSession<TInput, TState>
             .ToDictionary(g => g.Key, g => g.Select(p => p.Handle).ToArray());
         localHandles = peerHandles.GetValueOrDefault(localPeerId) ?? [];
         foreach (int handle in localHandles)
-            delays.Add(handle, new(this.options.InputDelay, this.options.MaxInputDelay));
+            delays.Add(handle, new(this.options.InputDelay, this.options.MaxInputDelay, predictor));
         foreach (var (peerId, handles) in peerHandles)
         {
             if (peerId == localPeerId)
@@ -98,14 +99,40 @@ public sealed class P2PSession<TInput, TState>
         : SessionState.Running;
     public int FramesAhead =>
         peers.Values.Where(p => p.State == SessionState.Running).Select(p => p.FramesAhead).DefaultIfEmpty().Max();
-    public double RecommendedFrameDurationMultiplier => FramesAhead >= 3 ? 1.1 : 1.0;
+    public double RecommendedFrameDurationMultiplier => 1 + Math.Clamp((FramesAhead - 2) * .02, 0, .1);
     public int PredictionDepth =>
-        Enumerable
-            .Range(0, statuses.Length)
-            .Where(p => !statuses[p].Disconnected)
-            .Select(p => Math.Max(0, CurrentFrame - statuses[p].LastFrame - 1))
-            .DefaultIfEmpty()
-            .Max();
+        Enumerable.Range(0, statuses.Length).Select(PredictionForPlayer).DefaultIfEmpty().Max();
+
+    public int PredictionForPlayer(int playerHandle)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(playerHandle);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(playerHandle, statuses.Length);
+        var status = statuses[playerHandle];
+        return status.Disconnected ? 0 : Math.Max(0, CurrentFrame - status.LastFrame - 1);
+    }
+
+    public IReadOnlyList<int> InputObserverWaitPeers =>
+        !IsInputObserver
+            ? []
+            : missingObserverStreams
+                .Keys.Concat(
+                    peers
+                        .Where(pair =>
+                            !IsRemovingPeer(pair.Key)
+                            && (
+                                pair.Value.RemoteCommittedFrame < CurrentFrame
+                                || peerHandles[pair.Key]
+                                    .Any(handle =>
+                                        !statuses[handle].Disconnected && statuses[handle].LastFrame < CurrentFrame
+                                    )
+                            )
+                        )
+                        .Select(pair => pair.Key)
+                )
+                .Distinct()
+                .Order()
+                .ToArray();
+
     public long TotalResimulatedFrames { get; private set; }
     public int LargestRollback { get; private set; }
 
@@ -145,13 +172,6 @@ public sealed class P2PSession<TInput, TState>
 
     public IReadOnlyList<PeerNetworkStats> NetworkStats => AllPeers().Select(peer => peer.Stats).ToArray();
 
-    public void SetInputDelay(int playerHandle, int delay)
-    {
-        if (!delays.TryGetValue(playerHandle, out var queue))
-            throw new ArgumentException("Only a local player's input delay can be changed.", nameof(playerHandle));
-        queue.SetDelay(delay);
-    }
-
     public void SeedLocalInputDelay(int playerHandle, ReadOnlySpan<TInput> inputs)
     {
         if (CurrentFrame != 0 || submittedFrame >= 0 || !delays.TryGetValue(playerHandle, out var queue))
@@ -168,6 +188,11 @@ public sealed class P2PSession<TInput, TState>
             throw new ArgumentException("Only the owning peer can export its submitted inputs.", nameof(playerHandle));
         return engine.TryGetInput(playerHandle, frame, out input);
     }
+
+    public int LastAcceptedInputFrame(int playerHandle) =>
+        delays.TryGetValue(playerHandle, out var queue)
+            ? queue.LastAcceptedUserFrame
+            : throw new ArgumentException("Only local handles accept sampled input.", nameof(playerHandle));
 
     public void AddInputObserver(int peerId)
     {
@@ -265,6 +290,7 @@ public sealed class P2PSession<TInput, TState>
         RepairAndConfirm();
         PublishSpectators();
         CheckDesyncs();
+        UpdateTiming();
         foreach (var peer in AllPeers())
             SetPeerProgress(peer);
     }
@@ -456,8 +482,11 @@ public sealed class P2PSession<TInput, TState>
         }
     }
 
-    private void SetPeerProgress(PeerProtocol peer) =>
+    private void SetPeerProgress(PeerProtocol peer)
+    {
+        peer.SetTiming(Timing, ExtraDelayFrames);
         peer.SetSessionProgress(ConfirmedFrame, disconnectMask, disconnectFloor, disconnectReadyCut);
+    }
 
     private uint MaskForPeer(int peerId)
     {

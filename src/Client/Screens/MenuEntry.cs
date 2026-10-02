@@ -13,7 +13,8 @@ internal sealed record MenuEntry(
     string? DisabledReason = null,
     Buttons? Button = null,
     bool IsTitle = false,
-    bool SeparatorBefore = false
+    bool SeparatorBefore = false,
+    bool RepeatAdjust = false
 )
 {
     public string Text => Value == null ? Label : Label + ": " + Value;
