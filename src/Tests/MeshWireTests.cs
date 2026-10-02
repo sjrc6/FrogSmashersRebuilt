@@ -12,8 +12,49 @@ internal static class MeshWireTests
         FullMesh();
         NoncesAndMalformedPackets();
         QueueAndTimeoutBounds();
+        CompactDatagramsRejectStaleConnections();
         if (sockets)
             RealUdp();
+    }
+
+    private static void CompactDatagramsRejectStaleConnections()
+    {
+        var network = new Network(117, 0, 0, 0);
+        var a = network.Add("a");
+        var b = network.Add("b");
+        a.Send("b", [1], true);
+        for (int i = 0; i < 30; i++)
+            network.Step(10);
+        Check(b.Receive(out _), "Compact datagram fixture did not establish nonces");
+        a.Send("b", Payload(6, 1200), false);
+        byte[] captured = network.Packets.Single().Data.ToArray();
+        Check(captured.Length == 1221, "Small unreliable messages still carry reliable fragmentation fields");
+        network.Step(10);
+        Check(
+            b.Receive(out var received) && received.Data.SequenceEqual(Payload(6, 1200)),
+            "Compact datagram changed its payload"
+        );
+        b.Process("unrelated", captured);
+        Check(!b.Receive(out _), "Compact datagram bypassed endpoint validation");
+        byte[] wrongRecipient = captured.ToArray();
+        wrongRecipient[13] ^= 1;
+        b.Process("a", wrongRecipient);
+        Check(!b.Receive(out _), "Compact datagram bypassed recipient nonce validation");
+        for (int length = 0; length <= 21; length++)
+            b.Process("a", captured.AsSpan(0, length));
+        Check(!b.Receive(out _), "Truncated compact datagram reached delivery");
+        b = network.Add("b");
+        b.Process("a", captured);
+        Check(!b.Receive(out _), "An old compact datagram reached a restarted receiver");
+        b.Send("a", [2], true);
+        for (int i = 0; i < 30; i++)
+            network.Step(10);
+        a.Send("b", [3], false);
+        network.Step(10);
+        Check(
+            b.Receive(out var fresh) && fresh.Data.SequenceEqual(new byte[] { 3 }),
+            "Compact datagrams did not recover after nonce negotiation"
+        );
     }
 
     private static void ReliableLossAndOrdering()

@@ -7,6 +7,7 @@ internal sealed class DatagramReliability
 {
     private const uint Magic = 0x52435346;
     private const int HeaderSize = 32;
+    private const int DatagramHeaderSize = 21;
     private const int FragmentSize = 1200;
     private const int MaximumMessageSize = 8192;
     private const int MaximumPeers = 32;
@@ -58,6 +59,18 @@ internal sealed class DatagramReliability
         peer.LastActivity = clock();
         if (!reliable)
         {
+            if (peer.RemoteNonce != 0 && data.Length <= FragmentSize)
+            {
+                byte[] packet = new byte[DatagramHeaderSize + data.Length];
+                BinaryPrimitives.WriteUInt32LittleEndian(packet, Magic);
+                packet[4] = 4;
+                BinaryPrimitives.WriteUInt64LittleEndian(packet.AsSpan(5), peer.LocalNonce);
+                BinaryPrimitives.WriteUInt64LittleEndian(packet.AsSpan(13), peer.RemoteNonce);
+                data.CopyTo(packet, DatagramHeaderSize);
+                transmit(address, packet);
+                sent++;
+                return;
+            }
             SendFragments(address, peer, 1, peer.NextUnreliable++, data, 0);
             return;
         }
@@ -103,6 +116,11 @@ internal sealed class DatagramReliability
 
     public void Process(string address, ReadOnlySpan<byte> packet)
     {
+        if (packet.Length >= 5 && BinaryPrimitives.ReadUInt32LittleEndian(packet) == Magic && packet[4] == 4)
+        {
+            ProcessDatagram(address, packet);
+            return;
+        }
         if (packet.Length < HeaderSize || BinaryPrimitives.ReadUInt32LittleEndian(packet) != Magic)
         {
             ignored++;
@@ -237,6 +255,26 @@ internal sealed class DatagramReliability
                 ignored++;
             assemblies.Remove(sequence);
         }
+    }
+
+    private void ProcessDatagram(string address, ReadOnlySpan<byte> packet)
+    {
+        if (
+            packet.Length <= DatagramHeaderSize
+            || packet.Length > DatagramHeaderSize + FragmentSize
+            || !peers.TryGetValue(address, out var peer)
+            || peer.RemoteNonce == 0
+            || BinaryPrimitives.ReadUInt64LittleEndian(packet[5..]) != peer.RemoteNonce
+            || BinaryPrimitives.ReadUInt64LittleEndian(packet[13..]) != peer.LocalNonce
+            || incoming.Count >= 4096
+        )
+        {
+            ignored++;
+            return;
+        }
+        peer.LastActivity = clock();
+        received++;
+        incoming.Enqueue(new(address, packet[DatagramHeaderSize..].ToArray()));
     }
 
     private Peer? GetPeer(string address)

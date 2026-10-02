@@ -252,7 +252,7 @@ public sealed partial class P2PSession<TInput, TState>
         foreach (var (peerId, peer) in peers)
         {
             SetPeerProgress(peer);
-            peer.Poll(CurrentFrame, statuses);
+            peer.Poll(CurrentFrame, statuses, flushInputs: false);
             ReceivePlayerInputs(peerId, peer);
             ReceiveEvents(peerId, peer, true);
             if (stopped)
@@ -268,7 +268,7 @@ public sealed partial class P2PSession<TInput, TState>
         foreach (var (peerId, peer) in observers.Concat(spectators).ToArray())
         {
             SetPeerProgress(peer);
-            peer.Poll(CurrentFrame, statuses);
+            peer.Poll(CurrentFrame, statuses, flushInputs: false);
             ReceiveEvents(peerId, peer, false);
             if (remoteChecksums.TryGetValue(peerId, out var checksums))
             {
@@ -292,7 +292,10 @@ public sealed partial class P2PSession<TInput, TState>
         CheckDesyncs();
         UpdateTiming();
         foreach (var peer in AllPeers())
+        {
             SetPeerProgress(peer);
+            peer.Poll(CurrentFrame, statuses);
+        }
     }
 
     public AdvanceStatus AdvanceFrame(ReadOnlySpan<TInput> localInputs)
@@ -328,19 +331,24 @@ public sealed partial class P2PSession<TInput, TState>
         }
         SendReadyLocalInputs();
         RepairAndConfirm();
+        AdvanceStatus result;
         if (IsInputObserver && GloballyKnownFrame() < CurrentFrame)
-            return AdvanceStatus.WaitingForInput;
-        if (!engine.Advance())
-            return AdvanceStatus.PredictionLimit;
-        RepairAndConfirm();
-        PublishSpectators();
-        CheckDesyncs();
+            result = AdvanceStatus.WaitingForInput;
+        else if (!engine.Advance())
+            result = AdvanceStatus.PredictionLimit;
+        else
+        {
+            result = AdvanceStatus.Advanced;
+            RepairAndConfirm();
+            PublishSpectators();
+            CheckDesyncs();
+        }
         foreach (var peer in AllPeers())
         {
             SetPeerProgress(peer);
             peer.Poll(CurrentFrame, statuses);
         }
-        return AdvanceStatus.Advanced;
+        return result;
     }
 
     private PeerProtocol CreatePeer(int peerId, int sendSize, int receiveSize, int startFrame = 0) =>

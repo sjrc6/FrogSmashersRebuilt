@@ -22,6 +22,80 @@ internal static class ProtocolTests
         DisconnectProgressSurvivesPacketReordering();
         ExclusionIsDifferentFromVoluntaryDeparture();
         TimingMetadataIsBoundedAndOrdered();
+        CompressedPackingAndSendCoalescing();
+        ChecksumAcknowledgmentSurvivesLoss();
+    }
+
+    private static void CompressedPackingAndSendCoalescing()
+    {
+        var pair = new Pair(inputSize: 198, options: SmallOptions() with { HistoryFrames = 1024 });
+        pair.Synchronize();
+        pair.ClearPackets();
+        for (int frame = 0; frame < 400; frame++)
+            pair.A.QueueInput(frame, new byte[198]);
+        Check.Equal(0, pair.FromA.Packets.Count, "Queueing a batch does not transmit each partial prefix");
+        pair.A.Poll(400, pair.Statuses);
+        byte[][] packets = pair
+            .FromA.Packets.Where(p => p.Data[PacketCodec.HeaderSize - 1] == (byte)PacketKind.Inputs)
+            .Select(p => p.Data)
+            .ToArray();
+        Check.Equal(2, packets.Length, "Compressible history fills packets up to the decoded-size safety limit");
+        Check.True(packets.All(p => p.Length <= pair.Options.MaxPacketBytes), "Compressed packets obey the MTU");
+        foreach (byte[] data in packets)
+        {
+            Check.True(PacketCodec.TryDecode(data, 1, 9, 2, out var packet, out _), "Packed inputs decode");
+            Check.True(
+                (long)packet.InputCount * 198 <= InputCompression.MaximumDecodedBytes,
+                "Packet packing retains a bounded expansion size"
+            );
+            pair.B.HandlePacket(data);
+        }
+        Check.Equal(399, pair.B.LastReceivedFrame, "All packed frames arrive despite newest-first packet delivery");
+        pair.ClearPackets();
+        for (int poll = 0; poll < 100; poll++)
+            pair.A.Poll(400, pair.Statuses);
+        Check.Equal(0, pair.FromA.Packets.Count, "Repeated polls do not resend an unchanged batch");
+
+        var random = new Random(544);
+        byte[][] noise = Enumerable.Range(0, 80).Select(_ => new byte[198]).ToArray();
+        foreach (byte[] frame in noise)
+            random.NextBytes(frame);
+        for (int start = 0; start < noise.Length; )
+        {
+            byte[] data = InputCompression.EncodePacket(noise, start, 198, 900, out int count);
+            Check.True(data.Length <= 900 && count > 0, "Incompressible data still fits the packet budget");
+            Check.True(InputCompression.TryDecode(data, count, 198, out var decoded), "Incompressible chunks decode");
+            for (int frame = 0; frame < count; frame++)
+                Check.True(
+                    noise[start + frame].SequenceEqual(decoded[frame]),
+                    "Packet splitting preserves noisy inputs"
+                );
+            start += count;
+        }
+    }
+
+    private static void ChecksumAcknowledgmentSurvivesLoss()
+    {
+        var pair = new Pair();
+        pair.Synchronize();
+        pair.ClearPackets();
+        pair.A.QueueChecksum(0, 123);
+        pair.B.HandlePacket(pair.FromA.Packets.Single().Data);
+        Check.True(pair.B.TryReceiveChecksum(out _), "First checksum reaches its recipient");
+        pair.ClearPackets();
+        pair.Step(201);
+        Check.True(!pair.B.TryReceiveChecksum(out _), "A lost checksum acknowledgment does not duplicate delivery");
+        pair.ClearPackets();
+        pair.Clock.NowMilliseconds += 201;
+        pair.A.Poll(0, pair.Statuses);
+        Check.True(
+            pair.FromA.Packets.All(p => p.Data[PacketCodec.HeaderSize - 1] != (byte)PacketKind.Checksum),
+            "Acknowledged checksums leave the retry queue"
+        );
+        Check.Throws<InvalidOperationException>(
+            () => pair.A.QueueChecksum(0, 124),
+            "Acknowledgment does not discard checksum immutability history"
+        );
     }
 
     private static void TimingMetadataIsBoundedAndOrdered()
@@ -148,7 +222,7 @@ internal static class ProtocolTests
         pair.Clock.NowMilliseconds += 100;
         pair.A.Poll(90, pair.Statuses);
         byte[][] packets = pair.FromA.Packets.Select(p => p.Data).ToArray();
-        Check.True(packets.Length > 24, "Pending history is split to obey the packet limit");
+        Check.True(packets.Length > 1, "Pending history is split to obey the packet limit");
         Check.True(packets.All(packet => packet.Length <= 256), "Every pending-history chunk obeys the MTU");
         pair.B.HandlePacket(packets[0]);
         Check.Equal(
@@ -306,9 +380,8 @@ internal static class ProtocolTests
         var pair = new Pair(inputSize: 4, reverseSize: 0, initialFrame: 120);
         pair.Synchronize();
         pair.A.QueueInput(120, [1, 2, 3, 4]);
-        pair.Deliver();
-        pair.B.Poll(120, pair.Statuses);
-        pair.Deliver();
+        pair.Step(20);
+        pair.Step(20);
         Check.True(
             pair.B.TryReceiveInput(out InputPacket input),
             "A spectator receives a combined confirmed-input stream"
@@ -441,7 +514,7 @@ internal static class ProtocolTests
             byte[] packet = new byte[PacketCodec.HeaderSize + random.Next(300)];
             random.NextBytes(packet);
             header.CopyTo(packet, 0);
-            packet[20] = (byte)(iteration % 7);
+            packet[PacketCodec.HeaderSize - 1] = (byte)(iteration % 8);
             PacketCodec.TryDecode(packet, 1, 9, 2, out _, out _);
 
             byte[] compressed = new byte[random.Next(40)];
@@ -486,14 +559,19 @@ internal static class ProtocolTests
         pair.Synchronize();
         pair.ClearPackets();
         pair.A.SetSessionProgress(10, 2, 10);
+        pair.Clock.NowMilliseconds += 40;
         pair.A.Poll(11, pair.Statuses);
         pair.A.SetSessionProgress(10, 2, 10, 12);
+        pair.Clock.NowMilliseconds += 40;
         pair.A.Poll(13, pair.Statuses);
         pair.A.SetSessionProgress(12, 2, 10, 12);
+        pair.Clock.NowMilliseconds += 40;
         pair.A.Poll(13, pair.Statuses);
         pair.A.SetSessionProgress(12, 3, 12);
+        pair.Clock.NowMilliseconds += 40;
         pair.A.Poll(13, pair.Statuses);
         pair.A.SetSessionProgress(12, 3, 12, 12);
+        pair.Clock.NowMilliseconds += 40;
         pair.A.Poll(13, pair.Statuses);
         byte[][] packets = pair.FromA.Packets.Select(packet => packet.Data).ToArray();
         foreach (byte[] packet in packets.Reverse())

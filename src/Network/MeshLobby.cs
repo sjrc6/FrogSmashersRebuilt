@@ -1,4 +1,3 @@
-using System.Text.Json;
 using FrogSmashers.Core;
 
 namespace FrogSmashers.Network;
@@ -332,23 +331,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
                         );
             }
             else
-                SendControl(
-                    host!,
-                    new Control
-                    {
-                        Kind = ControlKind.Hello,
-                        Rollback = rollback,
-                        Hash = contentHash,
-                        Nonce = clientNonce,
-                        Players = requested,
-                        Spectating = requestedSpectating,
-                        Invited = invited,
-                        Version = requestVersion,
-                        Epoch = requestEpoch,
-                        Generation = Generation,
-                        Mesh = ReadyLinks(),
-                    }
-                );
+                SendHelloIfChanged();
             if (Connected)
                 foreach (int peer in RequiredPeers(LocalPeer))
                     SendPeerControl(
@@ -451,16 +434,15 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
         byte[] data = message.Data;
         if (data.Length is < 5 or > 8192 || BitConverter.ToUInt32(data) != Magic)
             return;
-        if (data[4] == 1)
+        if (data[4] is 1 or 3)
         {
             try
             {
-                var control = JsonSerializer.Deserialize<Control>(data.AsSpan(5));
-                if (control != null && Valid(control))
-                    HandleControl(message.Source, control);
+                if (TryDecodeControl(data, out var control))
+                    HandleControl(message.Source, control!);
             }
             catch (Exception exception)
-                when (exception is JsonException or ArgumentException or InvalidDataException or OverflowException) { }
+                when (exception is ArgumentException or InvalidDataException or OverflowException) { }
             return;
         }
         if (data[4] != 2 || !Connected || data.Length < 15 || BitConverter.ToUInt64(data, 5) != SessionId)
@@ -576,6 +558,8 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
             )
                 return;
             lastSeen[peer] = Now;
+            if (control.Kind == ControlKind.Heartbeat)
+                meshReports[peer] = control.Mesh;
             if (control.Kind == ControlKind.Leave)
                 RemovePeer(source);
             else
@@ -724,7 +708,6 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
             revision++;
         }
         lastSeen[peer] = Now;
-        meshReports[peer] = control.Mesh;
         if (
             !Starting
             && checkpoint == null
@@ -827,15 +810,8 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
             SendControl(address, control, reliable);
     }
 
-    private void SendControl(string address, Control control, bool reliable = true)
-    {
-        byte[] json = JsonSerializer.SerializeToUtf8Bytes(control);
-        byte[] data = new byte[json.Length + 5];
-        BitConverter.TryWriteBytes(data, Magic);
-        data[4] = 1;
-        json.CopyTo(data, 5);
-        wire.Send(address, data, reliable);
-    }
+    private void SendControl(string address, Control control, bool reliable = true) =>
+        wire.Send(address, EncodeControl(control), reliable);
 
     public IPeerTransport CreateTransport() =>
         Connected

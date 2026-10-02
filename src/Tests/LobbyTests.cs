@@ -41,6 +41,8 @@ internal static partial class LobbyTests
         SpectatorCanJoinDirectly(250);
         SpectatorCanJoinDirectly(500);
         RejectedJoinDoesNotPauseLobby();
+        SteadyLobbyUsesCompactControls();
+        CompactControlValidation();
     }
 
     private static void PersonalTimingSurvivesCheckpoints()

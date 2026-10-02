@@ -24,6 +24,7 @@ internal sealed class PeerProtocol
     private readonly Queue<InputPacket> receivedInputs = new();
     private readonly Queue<SessionEvent> events = new();
     private readonly SortedDictionary<int, ulong> sentChecksums = new();
+    private readonly Dictionary<int, long> pendingChecksums = new();
     private readonly SortedDictionary<int, ulong> receivedChecksumHistory = new();
     private readonly SortedSet<long> pendingPings = new();
     private readonly Queue<ChecksumPacket> receivedChecksums = new();
@@ -51,10 +52,11 @@ internal sealed class PeerProtocol
     private long challengeFirstSentAt = -1;
     private long lastInputSentAt;
     private long lastQualitySentAt;
-    private long lastChecksumSentAt;
     private long disconnectedAt;
     private bool interruptionReported;
     private bool statusesChanged;
+    private bool inputsChanged;
+    private bool urgentStatus;
     private bool acknowledgedInputs;
     private bool excludesRemote;
     private bool excludedByRemote;
@@ -93,7 +95,8 @@ internal sealed class PeerProtocol
             || receiveInputSize < 0
             || PacketCodec.HeaderSize
                 + PacketCodec.InputHeaderSize
-                + playerCount * 5
+                + PacketCodec.DisconnectProgressSize
+                + playerCount * 4
                 + 2L * Math.Max(sendInputSize, receiveInputSize)
                 > options.MaxPacketBytes
         )
@@ -114,7 +117,7 @@ internal sealed class PeerProtocol
         remoteStatuses = localStatuses.ToArray();
         lastReceivedAt = lastSentAt = clock.NowMilliseconds;
         lastSyncSentAt = lastReceivedAt - options.RetryMilliseconds;
-        lastInputSentAt = lastQualitySentAt = lastChecksumSentAt = lastReceivedAt;
+        lastInputSentAt = lastQualitySentAt = lastReceivedAt;
     }
 
     public SessionState State { get; private set; } = SessionState.Synchronizing;
@@ -170,6 +173,7 @@ internal sealed class PeerProtocol
             || mask != disconnectMask
             || floor != disconnectFloor
             || readyCut != disconnectReadyCut;
+        urgentStatus |= mask != disconnectMask || floor != disconnectFloor || readyCut != disconnectReadyCut;
         this.committedFrame = committedFrame;
         disconnectMask = mask;
         disconnectFloor = floor;
@@ -183,10 +187,10 @@ internal sealed class PeerProtocol
         timing = value;
         extraDelay = extra;
         timingRevision++;
-        statusesChanged = true;
+        lastQualitySentAt = clock.NowMilliseconds - options.QualityReportMilliseconds;
     }
 
-    public void Poll(int frame, ReadOnlySpan<ConnectionStatus> statuses)
+    public void Poll(int frame, ReadOnlySpan<ConnectionStatus> statuses, bool flushInputs = true)
     {
         if (frame < initialFrame || statuses.Length != localStatuses.Length)
             throw new ArgumentOutOfRangeException(nameof(frame));
@@ -196,6 +200,9 @@ internal sealed class PeerProtocol
             if (statuses[index].LastFrame < -1)
                 throw new ArgumentOutOfRangeException(nameof(statuses));
             statusesChanged |= localStatuses[index] != statuses[index];
+            urgentStatus |=
+                localStatuses[index] != statuses[index]
+                && (localStatuses[index].Disconnected || statuses[index].Disconnected);
             localStatuses[index] = statuses[index];
         }
 
@@ -231,11 +238,17 @@ internal sealed class PeerProtocol
             timeSync.Record(frame, LocalAdvantage(), remoteAdvantage);
             lastSampledFrame = frame;
         }
+        int feedbackInterval = (int)Math.Ceiling((sendInputSize == 0 ? 1000.0 : 2000.0) / options.FramesPerSecond);
+        bool feedbackDue = (statusesChanged || acknowledgedInputs) && now - lastInputSentAt >= feedbackInterval;
         if (
-            statusesChanged
-            || acknowledgedInputs
-            || now - lastInputSentAt >= options.RetryMilliseconds
-            || now - lastSentAt >= options.KeepAliveMilliseconds
+            flushInputs
+            && (
+                inputsChanged
+                || urgentStatus
+                || feedbackDue
+                || now - lastInputSentAt >= options.RetryMilliseconds
+                || now - lastSentAt >= options.KeepAliveMilliseconds
+            )
         )
             SendInputs();
         if (now - lastQualitySentAt >= options.QualityReportMilliseconds)
@@ -257,19 +270,10 @@ internal sealed class PeerProtocol
                 );
             }
         }
-        if (now - lastChecksumSentAt >= options.KeepAliveMilliseconds)
-        {
-            lastChecksumSentAt = now;
-            foreach ((int checksumFrame, ulong checksum) in sentChecksums)
-                Send(
-                    new ProtocolPacket
-                    {
-                        Kind = PacketKind.Checksum,
-                        Frame = checksumFrame,
-                        Checksum = checksum,
-                    }
-                );
-        }
+        double checksumRetry = Math.Max(options.KeepAliveMilliseconds, roundTripMilliseconds * 1.5);
+        foreach (var (checksumFrame, sentAt) in pendingChecksums.ToArray())
+            if (now - sentAt >= checksumRetry)
+                SendChecksum(checksumFrame);
     }
 
     public void QueueInput(int frame, ReadOnlySpan<byte> input)
@@ -288,8 +292,7 @@ internal sealed class PeerProtocol
             throw new InvalidOperationException("The peer input buffer is full or disconnected.");
         pendingInputs.Add(frame, input.ToArray());
         LastQueuedFrame = frame;
-        if (State == SessionState.Running)
-            SendInputs();
+        inputsChanged = true;
     }
 
     public bool TryReceiveInput(out InputPacket input) => receivedInputs.TryDequeue(out input);
@@ -302,20 +305,35 @@ internal sealed class PeerProtocol
     {
         if (frame < initialFrame || frame == int.MaxValue)
             throw new ArgumentOutOfRangeException(nameof(frame));
-        if (sentChecksums.TryGetValue(frame, out ulong previous) && previous != checksum)
-            throw new InvalidOperationException("A confirmed frame's checksum cannot change.");
+        if (sentChecksums.TryGetValue(frame, out ulong previous))
+        {
+            if (previous != checksum)
+                throw new InvalidOperationException("A confirmed frame's checksum cannot change.");
+            return;
+        }
         sentChecksums[frame] = checksum;
+        pendingChecksums[frame] = clock.NowMilliseconds - options.KeepAliveMilliseconds;
         while (sentChecksums.Count > 32)
-            sentChecksums.Remove(sentChecksums.First().Key);
+        {
+            int oldest = sentChecksums.First().Key;
+            sentChecksums.Remove(oldest);
+            pendingChecksums.Remove(oldest);
+        }
         if (State == SessionState.Running)
-            Send(
-                new ProtocolPacket
-                {
-                    Kind = PacketKind.Checksum,
-                    Frame = frame,
-                    Checksum = checksum,
-                }
-            );
+            SendChecksum(frame);
+    }
+
+    private void SendChecksum(int frame)
+    {
+        Send(
+            new ProtocolPacket
+            {
+                Kind = PacketKind.Checksum,
+                Frame = frame,
+                Checksum = sentChecksums[frame],
+            }
+        );
+        pendingChecksums[frame] = clock.NowMilliseconds;
     }
 
     public void Disconnect(bool excludeRemote = false)
@@ -380,6 +398,7 @@ internal sealed class PeerProtocol
             PacketKind.Ping when State == SessionState.Running => HandlePing(packet),
             PacketKind.Pong when State == SessionState.Running => HandlePong(packet),
             PacketKind.Checksum when State == SessionState.Running => HandleChecksum(packet),
+            PacketKind.ChecksumAck when State == SessionState.Running => HandleChecksumAck(packet),
             PacketKind.Disconnect => HandleDisconnect(packet),
             _ => false,
         };
@@ -424,6 +443,7 @@ internal sealed class PeerProtocol
             State = SessionState.Running;
             AddEvent(SessionEventKind.Synchronized);
             SendInputs();
+            lastQualitySentAt = clock.NowMilliseconds - options.QualityReportMilliseconds;
         }
         else
         {
@@ -459,7 +479,7 @@ internal sealed class PeerProtocol
             if (
                 receiveInputSize == 0
                 || packet.StartFrame < initialFrame
-                || packet.InputCount > FramesPerPacket(receiveInputSize)
+                || packet.InputCount > options.InputCapacity
                 || (long)packet.StartFrame + packet.InputCount - 1 > (long)LastReceivedFrame + options.InputCapacity
                 || (long)packet.StartFrame + packet.InputCount - 1 >= int.MaxValue
                 || !InputCompression.TryDecode(packet.InputData, packet.InputCount, receiveInputSize, out inputs)
@@ -510,7 +530,7 @@ internal sealed class PeerProtocol
 
     private bool HandlePing(ProtocolPacket packet)
     {
-        if (packet.Timestamp < 0 || !ValidRemoteFrame(packet))
+        if (packet.Timestamp < 0 || !ValidRemoteFrame(packet) || !ValidRemoteTiming(packet))
             return false;
         UpdateRemoteFrame(packet);
         Send(new ProtocolPacket { Kind = PacketKind.Pong, Timestamp = packet.Timestamp });
@@ -582,21 +602,23 @@ internal sealed class PeerProtocol
             options.InputCapacity + (long)options.FramesPerSecond * options.DisconnectTimeoutMilliseconds / 1000;
         return packet.Frame >= initialFrame
             && packet.Frame != int.MaxValue
-            && Math.Abs((long)packet.Advantage) <= maximumAdvantage
-            && packet.TimingRevision >= 0
-            && packet.ResponseDelay >= 0
-            && packet.ResponseDelay <= options.MaxInputDelay
-            && packet.Donation >= 0
-            && packet.Donation <= 10000
-            && packet.ExtraDelay >= 0
-            && packet.ExtraDelay <= packet.MaxExtraDelay
-            && packet.MaxExtraDelay >= 0
-            && (long)packet.ResponseDelay + packet.MaxExtraDelay <= options.MaxInputDelay;
+            && Math.Abs((long)packet.Advantage) <= maximumAdvantage;
     }
+
+    private bool ValidRemoteTiming(ProtocolPacket packet) =>
+        packet.TimingRevision >= 0
+        && packet.ResponseDelay >= 0
+        && packet.ResponseDelay <= options.MaxInputDelay
+        && packet.Donation >= 0
+        && packet.Donation <= 10000
+        && packet.ExtraDelay >= 0
+        && packet.ExtraDelay <= packet.MaxExtraDelay
+        && packet.MaxExtraDelay >= 0
+        && (long)packet.ResponseDelay + packet.MaxExtraDelay <= options.MaxInputDelay;
 
     private void UpdateRemoteFrame(ProtocolPacket packet)
     {
-        if (packet.TimingRevision >= remoteTimingRevision)
+        if (packet.Kind == PacketKind.Ping && packet.TimingRevision >= remoteTimingRevision)
         {
             remoteTimingRevision = packet.TimingRevision;
             remoteResponseDelay = packet.ResponseDelay;
@@ -631,6 +653,7 @@ internal sealed class PeerProtocol
                 Fail("A peer changed a confirmed checksum.");
                 return false;
             }
+            Send(new ProtocolPacket { Kind = PacketKind.ChecksumAck, Frame = packet.Frame });
             return true;
         }
         receivedChecksumHistory[packet.Frame] = packet.Checksum;
@@ -639,6 +662,15 @@ internal sealed class PeerProtocol
         if (receivedChecksums.Count == 32)
             receivedChecksums.Dequeue();
         receivedChecksums.Enqueue(new ChecksumPacket(packet.Frame, packet.Checksum));
+        Send(new ProtocolPacket { Kind = PacketKind.ChecksumAck, Frame = packet.Frame });
+        return true;
+    }
+
+    private bool HandleChecksumAck(ProtocolPacket packet)
+    {
+        if (!sentChecksums.ContainsKey(packet.Frame))
+            return false;
+        pendingChecksums.Remove(packet.Frame);
         return true;
     }
 
@@ -684,22 +716,31 @@ internal sealed class PeerProtocol
     private void SendInputs()
     {
         lastInputSentAt = clock.NowMilliseconds;
-        acknowledgedInputs = statusesChanged = false;
+        inputsChanged = urgentStatus = acknowledgedInputs = statusesChanged = false;
         if (pendingInputs.Count == 0)
         {
             SendInputChunk(initialFrame, [], 0);
             return;
         }
-        int framesPerPacket = FramesPerPacket(sendInputSize);
+        int byteBudget =
+            options.MaxPacketBytes
+            - PacketCodec.HeaderSize
+            - PacketCodec.InputHeaderSize
+            - localStatuses.Length * 4
+            - (disconnectMask != 0 ? PacketCodec.DisconnectProgressSize : 0);
         byte[][] frames = pendingInputs.Values.ToArray();
         int firstFrame = pendingInputs.First().Key;
-        for (int end = frames.Length; end > 0; )
+        var chunks = new List<(int Start, int Count, byte[] Data)>();
+        for (int start = 0; start < frames.Length; )
         {
-            int count = Math.Min(end, framesPerPacket);
-            int start = end - count;
-            byte[] encoded = InputCompression.Encode(frames, start, count, sendInputSize);
-            SendInputChunk(firstFrame + start, encoded, count);
-            end = start;
+            byte[] encoded = InputCompression.EncodePacket(frames, start, sendInputSize, byteBudget, out int count);
+            chunks.Add((firstFrame + start, count, encoded));
+            start += count;
+        }
+        for (int index = chunks.Count - 1; index >= 0; index--)
+        {
+            var chunk = chunks[index];
+            SendInputChunk(chunk.Start, chunk.Data, chunk.Count);
         }
     }
 
@@ -722,13 +763,6 @@ internal sealed class PeerProtocol
                 InputData = data,
             }
         );
-    }
-
-    private int FramesPerPacket(int inputSize)
-    {
-        int bodyBytes =
-            options.MaxPacketBytes - PacketCodec.HeaderSize - PacketCodec.InputHeaderSize - localStatuses.Length * 5;
-        return Math.Max(1, bodyBytes / (inputSize * 2));
     }
 
     private int LocalAdvantage()

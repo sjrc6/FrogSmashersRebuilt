@@ -11,6 +11,7 @@ internal enum PacketKind : byte
     Pong,
     Checksum,
     Disconnect,
+    ChecksumAck,
 }
 
 internal enum PacketDecodeFailure
@@ -51,8 +52,9 @@ internal sealed class ProtocolPacket
 
 internal static class PacketCodec
 {
-    internal const int HeaderSize = 21;
-    internal const int InputHeaderSize = 58;
+    internal const int HeaderSize = 13;
+    internal const int InputHeaderSize = 25;
+    internal const int DisconnectProgressSize = 12;
     private const uint Magic = 0x53434747;
 
     internal static byte[] Encode(ulong sessionId, ulong configurationId, ProtocolPacket packet)
@@ -61,12 +63,12 @@ internal static class PacketCodec
         using var writer = new BinaryWriter(stream);
         writer.Write(Magic);
         writer.Write(sessionId);
-        writer.Write(configurationId);
         writer.Write((byte)packet.Kind);
         switch (packet.Kind)
         {
             case PacketKind.Synchronize:
             case PacketKind.SynchronizeReply:
+                writer.Write(configurationId);
                 writer.Write(packet.Challenge);
                 writer.Write(packet.SendInputSize);
                 writer.Write(packet.ReceiveInputSize);
@@ -74,24 +76,28 @@ internal static class PacketCodec
                 writer.Write(packet.InitialFrame);
                 break;
             case PacketKind.Inputs:
+                writer.Write(packet.DisconnectMask != 0);
                 writer.Write(packet.AcknowledgedFrame);
                 writer.Write(packet.Frame);
                 writer.Write(packet.Advantage);
                 writer.Write(packet.CommittedFrame);
-                writer.Write(packet.DisconnectMask);
-                writer.Write(packet.DisconnectFloor);
-                writer.Write(packet.DisconnectReadyCut);
-                writer.Write((ushort)packet.Statuses.Length);
+                if (packet.DisconnectMask != 0)
+                {
+                    writer.Write(packet.DisconnectMask);
+                    writer.Write(packet.DisconnectFloor);
+                    writer.Write(packet.DisconnectReadyCut);
+                }
                 foreach (ConnectionStatus status in packet.Statuses)
                 {
-                    writer.Write(status.Disconnected);
-                    writer.Write(status.LastFrame);
+                    uint packed = checked((uint)(status.LastFrame + 1));
+                    if (status.Disconnected)
+                        packed |= 0x80000000;
+                    writer.Write(packed);
                 }
                 writer.Write(packet.StartFrame);
                 writer.Write((ushort)packet.InputCount);
                 writer.Write((ushort)packet.InputData.Length);
                 writer.Write(packet.InputData);
-                WriteTiming(writer, packet);
                 break;
             case PacketKind.Ping:
                 writer.Write(packet.Timestamp);
@@ -105,6 +111,9 @@ internal static class PacketCodec
             case PacketKind.Checksum:
                 writer.Write(packet.Frame);
                 writer.Write(packet.Checksum);
+                break;
+            case PacketKind.ChecksumAck:
+                writer.Write(packet.Frame);
                 break;
             case PacketKind.Disconnect:
                 writer.Write(packet.ExcludeRemote);
@@ -131,20 +140,20 @@ internal static class PacketCodec
             failure = PacketDecodeFailure.StaleSession;
             return false;
         }
-        if (BinaryPrimitives.ReadUInt64LittleEndian(data[12..]) != configurationId)
-        {
-            failure = PacketDecodeFailure.ConfigurationMismatch;
-            return false;
-        }
-
-        packet.Kind = (PacketKind)data[20];
+        packet.Kind = (PacketKind)data[12];
         data = data[HeaderSize..];
         switch (packet.Kind)
         {
             case PacketKind.Synchronize:
             case PacketKind.SynchronizeReply:
-                if (data.Length != 20)
+                if (data.Length != 28)
                     return false;
+                if (BinaryPrimitives.ReadUInt64LittleEndian(data) != configurationId)
+                {
+                    failure = PacketDecodeFailure.ConfigurationMismatch;
+                    return false;
+                }
+                data = data[8..];
                 packet.Challenge = BinaryPrimitives.ReadUInt32LittleEndian(data);
                 packet.SendInputSize = BinaryPrimitives.ReadInt32LittleEndian(data[4..]);
                 packet.ReceiveInputSize = BinaryPrimitives.ReadInt32LittleEndian(data[8..]);
@@ -152,38 +161,44 @@ internal static class PacketCodec
                 packet.InitialFrame = BinaryPrimitives.ReadInt32LittleEndian(data[16..]);
                 return true;
             case PacketKind.Inputs:
-                if (data.Length < InputHeaderSize || BinaryPrimitives.ReadUInt16LittleEndian(data[28..]) != playerCount)
+                if (playerCount is < 1 or > 64 || data.Length < InputHeaderSize || data[0] > 1)
                     return false;
-                int fixedSize = InputHeaderSize + playerCount * 5;
+                bool disconnecting = data[0] != 0;
+                int fixedSize = InputHeaderSize + playerCount * 4 + (disconnecting ? DisconnectProgressSize : 0);
                 if (data.Length < fixedSize)
                     return false;
+                data = data[1..];
                 packet.AcknowledgedFrame = BinaryPrimitives.ReadInt32LittleEndian(data);
                 packet.Frame = BinaryPrimitives.ReadInt32LittleEndian(data[4..]);
                 packet.Advantage = BinaryPrimitives.ReadInt32LittleEndian(data[8..]);
                 packet.CommittedFrame = BinaryPrimitives.ReadInt32LittleEndian(data[12..]);
-                packet.DisconnectMask = BinaryPrimitives.ReadUInt32LittleEndian(data[16..]);
-                packet.DisconnectFloor = BinaryPrimitives.ReadInt32LittleEndian(data[20..]);
-                packet.DisconnectReadyCut = BinaryPrimitives.ReadInt32LittleEndian(data[24..]);
+                data = data[16..];
+                if (disconnecting)
+                {
+                    packet.DisconnectMask = BinaryPrimitives.ReadUInt32LittleEndian(data);
+                    packet.DisconnectFloor = BinaryPrimitives.ReadInt32LittleEndian(data[4..]);
+                    packet.DisconnectReadyCut = BinaryPrimitives.ReadInt32LittleEndian(data[8..]);
+                    if (packet.DisconnectMask == 0)
+                        return false;
+                    data = data[DisconnectProgressSize..];
+                }
                 packet.Statuses = new ConnectionStatus[playerCount];
-                data = data[30..];
                 for (int index = 0; index < playerCount; index++)
                 {
-                    if (data[0] > 1)
-                        return false;
+                    uint packed = BinaryPrimitives.ReadUInt32LittleEndian(data);
                     packet.Statuses[index] = new ConnectionStatus(
-                        data[0] != 0,
-                        BinaryPrimitives.ReadInt32LittleEndian(data[1..])
+                        (packed & 0x80000000) != 0,
+                        (int)(packed & 0x7fffffff) - 1
                     );
-                    data = data[5..];
+                    data = data[4..];
                 }
                 packet.StartFrame = BinaryPrimitives.ReadInt32LittleEndian(data);
                 packet.InputCount = BinaryPrimitives.ReadUInt16LittleEndian(data[4..]);
                 int length = BinaryPrimitives.ReadUInt16LittleEndian(data[6..]);
                 data = data[8..];
-                if (length + 20 != data.Length)
+                if (length != data.Length)
                     return false;
-                packet.InputData = data[..length].ToArray();
-                ReadTiming(data[length..], packet);
+                packet.InputData = data.ToArray();
                 return true;
             case PacketKind.Ping:
                 if (data.Length != 36)
@@ -203,6 +218,11 @@ internal static class PacketCodec
                     return false;
                 packet.Frame = BinaryPrimitives.ReadInt32LittleEndian(data);
                 packet.Checksum = BinaryPrimitives.ReadUInt64LittleEndian(data[4..]);
+                return true;
+            case PacketKind.ChecksumAck:
+                if (data.Length != 4)
+                    return false;
+                packet.Frame = BinaryPrimitives.ReadInt32LittleEndian(data);
                 return true;
             case PacketKind.Disconnect:
                 if (data.Length != 1 || data[0] > 1)

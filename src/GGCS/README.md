@@ -144,9 +144,10 @@ Primary baseline: [GGRS e97e3d2](https://github.com/gschup/ggrs/tree/e97e3d2416c
 Deliberate C# differences:
 
 - Synchronous save/load/advance callbacks replace Rust request cells and locks. Every simulated frame is saved; there is no sparse-saving mode.
-- Inputs have a fixed explicit codec. The wire format uses bounded byte RLE after XOR deltas, independently decodable MTU-sized chunks and a session generation. It does not port Serde, Bincode or bitfield-rle, or interoperate with old protocols.
+- Inputs have a fixed explicit codec. The wire format uses bounded byte RLE after XOR deltas, independently decodable MTU-sized chunks and a session generation. Chunks are packed by encoded size with a 65,507-byte decoded limit. Queued inputs flush after session work, including stalled advance attempts; new inputs do not wait for another tick. It does not port Serde, Bincode or bitfield-rle, or interoperate with old protocols.
 - History and pending-input capacity follow configured limits, independently of the prediction limit. All pending inputs are eligible for transmission; newer chunks are not hidden behind an old fixed-size send window.
-- Globally final confirmation is separate from local prediction, protecting observer streams and disconnect corrections.
+- Globally final confirmation is separate from local prediction, protecting observer streams and disconnect corrections. Checksum delivery uses exact-frame acknowledgments and RTT-aware retries; acknowledgment alone does not establish matching confirmed state. The bounded immutable history is retained after delivery.
+- Configuration fingerprints travel in the handshake. Input messages pack each receipt/disconnect status into four bytes and include removal-agreement fields only when needed. Timing preferences travel in periodic quality reports and on changes. Paused-peer feedback remains available without resending on every poll.
 - Observer buffers are bounded. A host with no local frog is supported explicitly.
 - Personal response delay, voluntary simulation lead and bounded automatic delay share an adjusted pacing horizon. Timing uses an injected monotonic clock; there are no spin waits, browser bindings or native code.
 
