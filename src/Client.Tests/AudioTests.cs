@@ -8,9 +8,81 @@ internal static class AudioTests
     public static void Run(bool backend, Action<bool, string> check)
     {
         Spatial(check);
+        SpatialStreaming(check);
         Loops(check);
         if (backend)
+        {
             StreamBackend(check);
+            SpatialBackend(check);
+        }
+    }
+
+    private static void SpatialStreaming(Action<bool, string> check)
+    {
+        var random = new Random(731);
+        foreach (int channels in new[] { 1, 2 })
+        {
+            var samples = Enumerable
+                .Range(0, 7001 * channels)
+                .Select(_ => (short)random.Next(short.MinValue, short.MaxValue))
+                .ToArray();
+            var decoded = new DecodedSound(Pcm(samples), 48000, channels);
+            var data = new SpatialSoundData(decoded);
+            foreach (var gains in new[] { Vector2.Zero, new Vector2(.7f), new Vector2(.2f, .9f), new Vector2(1f, .1f) })
+            {
+                var expected = AudioSpatializer.SpatialPcm(decoded, gains);
+                var actual = new byte[expected.Length];
+                int frame = 0;
+                while (frame < data.Frames)
+                {
+                    int count = Math.Min(random.Next(1, 700), data.Frames - frame);
+                    int rendered = data.Render(frame, gains, actual.AsSpan(frame * 4, count * 4));
+                    check(rendered == count, "spatial stream fills each requested chunk");
+                    frame += rendered;
+                }
+                check(actual.SequenceEqual(expected), "streamed positional audio preserves every mixed PCM sample");
+            }
+        }
+    }
+
+    private static void SpatialBackend(Action<bool, string> check)
+    {
+        var samples = Enumerable
+            .Range(0, 24001)
+            .Select(i => (short)(Math.Sin(i * Math.Tau * 440 / 48000) * 1000))
+            .ToArray();
+        var data = new SpatialSoundData(new(Pcm(samples), 48000, 1));
+        using var first = new SpatialSoundInstance(data, new(.2f, .4f));
+        using var second = new SpatialSoundInstance(data, new(.4f, .2f));
+        first.Instance.Volume = second.Instance.Volume = 0;
+        first.Instance.Pitch = second.Instance.Pitch = 1;
+        first.Instance.Play();
+        second.Instance.Play();
+        check(
+            first.Instance.State == SoundState.Playing && second.Instance.State == SoundState.Playing,
+            "positional instances overlap"
+        );
+        first.Instance.Pause();
+        check(
+            first.Instance.State == SoundState.Paused && second.Instance.State == SoundState.Playing,
+            "pausing one positional voice leaves the other playing"
+        );
+        first.Instance.Resume();
+        for (
+            int tick = 0;
+            tick < 150 && (first.Instance.State != SoundState.Stopped || second.Instance.State != SoundState.Stopped);
+            tick++
+        )
+        {
+            FrameworkDispatcher.Update();
+            first.Update();
+            second.Update();
+            Thread.Sleep(10);
+        }
+        check(
+            first.Instance.State == SoundState.Stopped && second.Instance.State == SoundState.Stopped,
+            "finite positional streams finish, including their partial last buffer"
+        );
     }
 
     private static void Spatial(Action<bool, string> check)

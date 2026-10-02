@@ -10,6 +10,7 @@ public sealed class Assets : IDisposable
     private readonly ContentManager content;
     private readonly Dictionary<string, SoundEffect> sounds = new();
     private readonly Dictionary<string, DecodedSound> soundData = new();
+    private readonly Dictionary<string, SpatialSoundData> spatialSounds = new();
 
     public string Root { get; }
     public GameContent Data { get; }
@@ -68,6 +69,16 @@ public sealed class Assets : IDisposable
         return data;
     }
 
+    internal SpatialSoundData SpatialSound(string path)
+    {
+        if (!spatialSounds.TryGetValue(path, out var data))
+        {
+            data = new(SoundPcm(path));
+            spatialSounds.Add(path, data);
+        }
+        return data;
+    }
+
     private BitmapFont LoadFont(string name, int displayHeight, bool pixelAligned)
     {
         var definition = FontDefinition.Load(Path.Combine(Root, "UI", name + ".json"));
@@ -83,5 +94,6 @@ public sealed class Assets : IDisposable
 
         sounds.Clear();
         soundData.Clear();
+        spatialSounds.Clear();
     }
 }

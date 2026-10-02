@@ -8,7 +8,11 @@ internal static class MenuLayout
     private const int LineThickness = 2;
     private const int SectionSpacing = RowPadding * 2 + LineThickness;
 
-    public static Rectangle Panel(
+    public sealed record Measurement(Rectangle Panel, MeasuredRow[] Rows);
+
+    public readonly record struct MeasuredRow(Rectangle Bounds, MenuText Text);
+
+    public static Measurement Measure(
         GameScreen screen,
         IReadOnlyList<MenuEntry> entries,
         BitmapFont font,
@@ -16,38 +20,32 @@ internal static class MenuLayout
     )
     {
         int width = PanelWidth(screen);
-        int rows = entries.Where(entry => !entry.IsTitle).Sum(entry => RowHeight(entry, width, font));
-        int sections = entries.Count(entry => entry.SeparatorBefore) * SectionSpacing;
-        int height = RowsOffset(screen) + rows + sections + (showSticks ? 32 : 0) + RowPadding + FooterHeight(screen);
+        var rows = new MeasuredRow[entries.Count];
+        int offset = RowsOffset(screen);
+        for (int index = 0; index < entries.Count; index++)
+        {
+            var entry = entries[index];
+            var text = Text(entry, width, font);
+            if (entry.SeparatorBefore)
+                offset += SectionSpacing;
+            int rowHeight = (int)MathF.Ceiling(text.Height) + RowPadding * 2;
+            var bounds = entry.IsTitle
+                ? new Rectangle(12, 12, width - 24, 72)
+                : new Rectangle(12, offset, width - 24, rowHeight);
+            rows[index] = new(bounds, text);
+            if (!entry.IsTitle)
+                offset += rowHeight;
+        }
+        int height = offset + (showSticks ? 32 : 0) + RowPadding + FooterHeight(screen);
         int top = screen == GameScreen.Main ? 324 : (Renderer.Height - height) / 4 * 2;
-        return new((Renderer.Width - width) / 2, top, width, height);
-    }
-
-    public static Rectangle Row(
-        GameScreen screen,
-        int index,
-        IReadOnlyList<MenuEntry> entries,
-        BitmapFont font,
-        int room = 0,
-        bool showSticks = false
-    )
-    {
-        if (screen == GameScreen.SlotEditor)
-            return SlotRow(room, index);
-        var panel = Panel(screen, entries, font, showSticks);
-        int sections = entries.Take(index + 1).Count(entry => entry.SeparatorBefore) * SectionSpacing;
-        if (entries[index].IsTitle)
-            return new(panel.Left + 12, panel.Top + 12, panel.Width - 24, 72);
-        int offset = entries
-            .Take(index)
-            .Where(entry => !entry.IsTitle)
-            .Sum(entry => RowHeight(entry, panel.Width, font));
-        return new(
-            panel.X + 12,
-            panel.Y + RowsOffset(screen) + offset + sections,
-            panel.Width - 24,
-            RowHeight(entries[index], panel.Width, font)
-        );
+        var panel = new Rectangle((Renderer.Width - width) / 2, top, width, height);
+        for (int index = 0; index < rows.Length; index++)
+        {
+            var bounds = rows[index].Bounds;
+            bounds.Offset(panel.Location);
+            rows[index] = rows[index] with { Bounds = bounds };
+        }
+        return new(panel, rows);
     }
 
     private static int PanelWidth(GameScreen screen) =>
@@ -58,10 +56,7 @@ internal static class MenuLayout
             _ => 400,
         };
 
-    private static int RowHeight(MenuEntry entry, int panelWidth, BitmapFont font) =>
-        (int)MathF.Ceiling(Text(entry, panelWidth, font).Height) + RowPadding * 2;
-
-    public static MenuText Text(MenuEntry entry, int panelWidth, BitmapFont font)
+    private static MenuText Text(MenuEntry entry, int panelWidth, BitmapFont font)
     {
         float width = panelWidth - 64;
         string label;
@@ -117,12 +112,6 @@ internal static class MenuLayout
 
     public static Rectangle FooterBack(Rectangle panel) =>
         new(panel.Center.X, panel.Bottom - 48, panel.Width / 2 - 18, 36);
-
-    private static Rectangle SlotRow(int room, int index)
-    {
-        var interior = RoomInterior(room);
-        return new(interior.X + 12, interior.Y + 49 + index * 34, interior.Width - 24, 30);
-    }
 
     public static int RoomCell(int room) => LobbyLayout.Cell(room);
 

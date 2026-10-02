@@ -35,47 +35,40 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             return;
         if (menu.Screen == GameScreen.Playing && !game.Match.Paused)
             return;
-        var entries = menu.Entries();
-        bool editingSlots = menu.Screen == GameScreen.SlotEditor;
-        var panel = MenuLayout.Panel(menu.Screen, entries, game.Assets.Font, menu.ShowStickInputs);
-        if (editingSlots)
+        if (menu.Screen == GameScreen.SlotEditor)
+        {
             DrawSlotEditor();
+            return;
+        }
+        var entries = menu.Entries();
+        var layout = MenuLayout.Measure(menu.Screen, entries, game.Assets.Font, menu.ShowStickInputs);
+        var panel = layout.Panel;
+        game.Renderer.MenuPanel(panel);
+        if (menu.Screen == GameScreen.Main)
+            game.Renderer.Image(
+                "Textures/Sprites/logo_rebuilt",
+                new Rectangle(50, 39, 160, 97),
+                new Vector2(640, 22),
+                480
+            );
         else
         {
-            game.Renderer.MenuPanel(panel);
-            if (menu.Screen == GameScreen.Main)
-                game.Renderer.Image(
-                    "Textures/Sprites/logo_rebuilt",
-                    new Rectangle(50, 39, 160, 97),
-                    new Vector2(640, 22),
-                    480
-                );
-            else
-            {
-                bool bindings = menu.Screen == GameScreen.Bindings;
-                game.Renderer.CenteredText(
-                    game.Assets.Font.Wrap(Title(), panel.Width - (bindings ? 104 : 40), 2),
-                    panel.Center.X,
-                    panel.Top + (bindings ? 48 : 36),
-                    bindings && menu.Selected == 0 ? Selected : Color.White,
-                    center: true
-                );
-                Separator(panel, MenuLayout.HeaderLine(menu.Screen, panel));
-                if (bindings && menu.Selected == 0)
-                    DrawDeviceArrows(panel);
-            }
-            Separator(panel, MenuLayout.FooterLine(menu.Screen, panel));
+            bool bindings = menu.Screen == GameScreen.Bindings;
+            game.Renderer.CenteredText(
+                game.Assets.Font.Wrap(Title(), panel.Width - (bindings ? 104 : 40), 2),
+                panel.Center.X,
+                panel.Top + (bindings ? 48 : 36),
+                bindings && menu.Selected == 0 ? Selected : Color.White,
+                center: true
+            );
+            Separator(panel, MenuLayout.HeaderLine(menu.Screen, panel));
+            if (bindings && menu.Selected == 0)
+                DrawDeviceArrows(panel);
         }
+        Separator(panel, MenuLayout.FooterLine(menu.Screen, panel));
         for (int i = 0; i < entries.Count; i++)
         {
-            var rect = MenuLayout.Row(
-                menu.Screen,
-                i,
-                entries,
-                game.Assets.Font,
-                menu.SelectedSeat,
-                menu.ShowStickInputs
-            );
+            var rect = layout.Rows[i].Bounds;
             var entry = entries[i];
             if (entry.SeparatorBefore)
                 Separator(panel, MenuLayout.SectionLine(rect));
@@ -87,25 +80,23 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
                 color = new Color(135, 145, 136);
             else if (selected)
                 color = entry.Color.HasValue ? Color.Lerp(color, Color.White, .55f) : Selected;
-            DrawEntry(entry, rect, panel, color, editingSlots);
-            if (selected && !editingSlots)
+            DrawEntry(entry, layout.Rows[i], panel, color);
+            if (selected)
                 DrawArrows(panel, rect.Center.Y);
         }
-        if (editingSlots)
-            return;
         if (menu.ShowStickInputs)
             DrawStickInputs(panel);
         DrawFooter(panel);
     }
 
-    private void DrawEntry(MenuEntry entry, Rectangle row, Rectangle panel, Color color, bool editingSlots)
+    private void DrawEntry(MenuEntry entry, MenuLayout.MeasuredRow measured, Rectangle panel, Color color)
     {
         var font = game.Assets.Font;
-        var text = MenuLayout.Text(entry, panel.Width, font);
-        if (editingSlots || menu.Screen == GameScreen.Main)
+        var row = measured.Bounds;
+        var text = measured.Text;
+        if (menu.Screen == GameScreen.Main)
         {
-            string label = editingSlots ? font.Wrap(entry.Text, row.Width - 48, 1) : text.Label;
-            game.Renderer.CenteredText(label, row.Center.X, row.Center.Y, color, center: true);
+            game.Renderer.CenteredText(text.Label, row.Center.X, row.Center.Y, color, center: true);
             return;
         }
         float left = panel.Left + 32;

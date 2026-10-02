@@ -86,7 +86,8 @@ internal sealed partial class MenuController
         FollowSelectedPlayer();
         var entries = PlayerRows();
         SelectRow(Wrap(Selected + input.Vertical, entries.Count));
-        bool clickedRow = ClickRow(entries);
+        var layout = MeasurePointer(entries);
+        bool clickedRow = ClickRow(entries, layout);
         var player = ListedPlayers().ElementAtOrDefault(Selected);
         selectedPlayer = player == null ? null : (player.Peer, player.Id);
         if (clickedRow)
@@ -101,7 +102,7 @@ internal sealed partial class MenuController
             ActivateEntry(actions.Remove);
         else if (game.Controls.MousePressed && Pointer() is { } point)
         {
-            var panel = MenuLayout.Panel(Screen, entries, game.Assets.Font);
+            var panel = layout!.Panel;
             bool paired = actions.Accept != null && actions.Remove != null;
             if (MenuLayout.PlayerBack(panel, paired).Contains(point))
                 Back();

@@ -294,22 +294,24 @@ internal sealed class MatchController : IDisposable
             }
         }
 
+        bool corrected = Reconcile();
         if (!advanced)
             return false;
 
-        PreviousWorld!.Restore(network.PreviousSnapshot);
-        Reconcile();
+        if (!corrected)
+            PreviousWorld!.Restore(network.PreviousSnapshot);
         return true;
     }
 
-    private void Reconcile()
+    private bool Reconcile()
     {
         if (Network == null || World == null)
         {
-            return;
+            return false;
         }
 
-        if (Network.RollbackCount != rollbackCount)
+        bool corrected = Network.RollbackCount != rollbackCount;
+        if (corrected)
         {
             rollbackCount = Network.RollbackCount;
             renderer.Rewind(Network.LastRollbackFromFrame);
@@ -326,6 +328,7 @@ internal sealed class MatchController : IDisposable
         lastVisualTick = World.TickNumber - 1;
         audio.PlayEvents(Network.EventsSince(lastAudioTick + 1).Where(item => item.Tick <= Network.ConfirmedFrame));
         lastAudioTick = Network.ConfirmedFrame;
+        return corrected;
     }
 
     public void SaveReplay()

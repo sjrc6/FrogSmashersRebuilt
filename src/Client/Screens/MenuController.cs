@@ -214,16 +214,17 @@ internal sealed partial class MenuController
 
     private void UpdateRows(MenuInput input)
     {
-        if (input.Back || ClickBackHint())
+        var entries = Entries();
+        var layout = MeasurePointer(entries);
+        if (input.Back || ClickBackHint(layout))
         {
             Back();
             return;
         }
-        var entries = Entries();
         if (entries.Count == 0)
             return;
         SelectRow(Wrap(Math.Min(Selected, entries.Count - 1) + input.Vertical, entries.Count));
-        if (ClickRow(entries))
+        if (ClickRow(entries, layout))
             return;
         if (input.Horizontal != 0)
         {
@@ -260,21 +261,18 @@ internal sealed partial class MenuController
         menuSoundPending = true;
     }
 
-    private bool ClickRow(IReadOnlyList<MenuEntry> entries)
+    private bool ClickRow(IReadOnlyList<MenuEntry> entries, MenuLayout.Measurement? layout)
     {
-        if (
-            !(game.Controls.MousePressed || game.Controls.MouseRightPressed || game.Controls.MouseMoved)
-            || Pointer() is not Point point
-        )
+        if (layout == null || Pointer() is not Point point)
             return false;
         for (int i = 0; i < entries.Count; i++)
         {
-            if (!MenuLayout.Row(Screen, i, entries, game.Assets.Font, SelectedSeat, ShowStickInputs).Contains(point))
+            if (!layout.Rows[i].Bounds.Contains(point))
                 continue;
             SelectRow(i);
             if (game.Controls.MousePressed)
             {
-                var panel = MenuLayout.Panel(Screen, entries, game.Assets.Font, ShowStickInputs);
+                var panel = layout.Panel;
                 if (entries[i].IsTitle && MenuLayout.BindingPageButton(panel, -1).Contains(point))
                     ChangeEntry(entries[i], -1);
                 else
@@ -296,13 +294,17 @@ internal sealed partial class MenuController
             game.Window.ClientBounds.Height
         );
 
-    private bool ClickBackHint() =>
-        Screen != GameScreen.Main
+    private MenuLayout.Measurement? MeasurePointer(IReadOnlyList<MenuEntry> entries) =>
+        game.Controls.MousePressed || game.Controls.MouseRightPressed || game.Controls.MouseMoved
+            ? MenuLayout.Measure(Screen, entries, game.Assets.Font, ShowStickInputs)
+            : null;
+
+    private bool ClickBackHint(MenuLayout.Measurement? layout) =>
+        layout != null
+        && Screen != GameScreen.Main
         && game.Controls.MousePressed
         && Pointer() is { } point
-        && MenuLayout
-            .FooterBack(MenuLayout.Panel(Screen, Entries(), game.Assets.Font, ShowStickInputs))
-            .Contains(point);
+        && MenuLayout.FooterBack(layout.Panel).Contains(point);
 
     private void UpdateSeats()
     {
@@ -413,7 +415,8 @@ internal sealed partial class MenuController
 
     private void UpdateAddress(MenuInput input)
     {
-        if (ClickRow(Entries()))
+        var entries = Entries();
+        if (ClickRow(entries, MeasurePointer(entries)))
             return;
         if (input.Back)
         {

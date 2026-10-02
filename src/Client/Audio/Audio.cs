@@ -12,7 +12,7 @@ public sealed class Audio : IDisposable
     private readonly AudioSpatializer spatializer;
     private readonly HashSet<long> played = new();
     private readonly Queue<long> order = new();
-    private readonly List<(SoundEffectInstance Instance, SoundEffect? OwnedEffect, float BaseVolume)> shots = new();
+    private readonly List<Shot> shots = new();
     private readonly List<(SoundEffectInstance Instance, float BaseVolume)> ambient = new();
     private readonly DynamicFlightLoop?[] flight = new DynamicFlightLoop?[8];
     private readonly int[] flightLevel = Enumerable.Repeat(-1, 8).ToArray();
@@ -145,27 +145,21 @@ public sealed class Audio : IDisposable
             }
 
             float baseVolume = Math.Clamp(sourceVolume * info.Volume, 0, 1);
-            SoundEffect? owned = null;
-            SoundEffect sound;
-            if (position.HasValue)
-            {
-                var data = assets.SoundPcm(path);
-                var pcm = AudioSpatializer.SpatialPcm(
-                    data,
-                    spatializer.Gains(position.Value, ListenerPosition) * baseVolume
-                );
-                owned = sound = new SoundEffect(pcm, data.SampleRate, AudioChannels.Stereo);
-                baseVolume = 1;
-            }
-            else
-            {
-                sound = assets.Sound(path);
-            }
-
+            SpatialSoundInstance? spatial = null;
             SoundEffectInstance? instance = null;
             try
             {
-                instance = sound.CreateInstance();
+                if (position.HasValue)
+                {
+                    spatial = new(
+                        assets.SpatialSound(path),
+                        spatializer.Gains(position.Value, ListenerPosition) * baseVolume
+                    );
+                    instance = spatial.Instance;
+                    baseVolume = 1;
+                }
+                else
+                    instance = assets.Sound(path).CreateInstance();
                 instance.Volume = baseVolume * Volume;
                 instance.Pitch = Pitch(ratio);
                 instance.Pan = 0;
@@ -175,12 +169,14 @@ public sealed class Audio : IDisposable
                     instance.Pause();
                 }
 
-                shots.Add((instance, owned, baseVolume));
+                shots.Add(new(instance, spatial, baseVolume));
             }
             catch
             {
-                instance?.Dispose();
-                owned?.Dispose();
+                if (spatial != null)
+                    spatial.Dispose();
+                else
+                    instance?.Dispose();
                 throw;
             }
         }
@@ -223,10 +219,10 @@ public sealed class Audio : IDisposable
         }
         for (int i = shots.Count - 1; i >= 0; i--)
         {
+            shots[i].Stream?.Update();
             if (shots[i].Instance.State == SoundState.Stopped)
             {
-                shots[i].Instance.Dispose();
-                shots[i].OwnedEffect?.Dispose();
+                shots[i].Dispose();
                 shots.RemoveAt(i);
             }
         }
@@ -422,8 +418,7 @@ public sealed class Audio : IDisposable
         {
             foreach (var sound in shots)
             {
-                sound.Instance.Dispose();
-                sound.OwnedEffect?.Dispose();
+                sound.Dispose();
             }
 
             shots.Clear();
@@ -549,8 +544,7 @@ public sealed class Audio : IDisposable
         paused = false;
         foreach (var sound in shots)
         {
-            sound.Instance.Dispose();
-            sound.OwnedEffect?.Dispose();
+            sound.Dispose();
         }
 
         shots.Clear();
@@ -580,5 +574,17 @@ public sealed class Audio : IDisposable
             sound.Dispose();
         menuSounds.Clear();
         lastMenuSoundTime = null;
+    }
+
+    private sealed record Shot(SoundEffectInstance Instance, SpatialSoundInstance? Stream, float BaseVolume)
+        : IDisposable
+    {
+        public void Dispose()
+        {
+            if (Stream != null)
+                Stream.Dispose();
+            else
+                Instance.Dispose();
+        }
     }
 }

@@ -298,9 +298,9 @@ internal sealed partial class LobbyController(FrogGame game)
         bool advanced = network.TryAdvance(ReadInputs(network.LocalSlots));
         if (network.LocalInputSubmitted)
             ConsumeInputs(network.AcceptedLocalSlots);
-        if (advanced)
+        bool corrected = Reconcile();
+        if (advanced && !corrected)
             PreviousWorld!.Restore(network.PreviousSnapshot);
-        Reconcile();
         return advanced;
     }
 
@@ -351,12 +351,13 @@ internal sealed partial class LobbyController(FrogGame game)
         game.Renderer.Rewind(World.TickNumber);
     }
 
-    private void Reconcile()
+    private bool Reconcile()
     {
         var network = Network;
         if (network == null)
-            return;
-        if (network.RollbackCount != rollbackCount)
+            return false;
+        bool corrected = network.RollbackCount != rollbackCount;
+        if (corrected)
         {
             rollbackCount = network.RollbackCount;
             game.Renderer.Rewind(network.LastRollbackFromFrame);
@@ -368,6 +369,7 @@ internal sealed partial class LobbyController(FrogGame game)
         PresentAudio(network.EventsSince(lastAudioTick + 1).Where(item => item.Tick <= network.ConfirmedFrame));
         lastAudioTick = network.ConfirmedFrame;
         Presentation.Confirm(network.ConfirmedFrame);
+        return corrected;
     }
 
     private void PresentVisuals(IEnumerable<SimulationEvent> events)

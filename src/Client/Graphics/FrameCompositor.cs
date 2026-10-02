@@ -45,11 +45,8 @@ internal sealed class FrameCompositor : IDisposable
 
     public void ComposeScene()
     {
+        (scene, output) = (output, scene);
         device.SetRenderTarget(output);
-        device.Clear(Color.Black);
-        batch.Begin(samplerState: SamplerState.PointClamp, blendState: BlendState.Opaque);
-        batch.Draw(scene, Vector2.Zero, Color.White);
-        batch.End();
         assets.DistortionEffect.Parameters["Shimmer"].SetValue(0f);
     }
 
@@ -63,10 +60,7 @@ internal sealed class FrameCompositor : IDisposable
         batch.Begin(effect: effect, samplerState: SamplerState.LinearClamp, blendState: BlendState.Opaque);
         batch.Draw(output, new Rectangle(0, 0, Width, Height), Color.White);
         batch.End();
-        device.SetRenderTarget(output);
-        batch.Begin(samplerState: SamplerState.PointClamp, blendState: BlendState.Opaque);
-        batch.Draw(scratch, Vector2.Zero, Color.White);
-        batch.End();
+        (output, scratch) = (scratch, output);
     }
 
     private RenderTarget2D NewTarget(int width, int height) =>
@@ -122,10 +116,7 @@ internal sealed class FrameCompositor : IDisposable
         batch.Begin(effect: fx, samplerState: SamplerState.LinearClamp, blendState: BlendState.Opaque);
         batch.Draw(scene, new Rectangle(0, 0, Width, Height), Color.White);
         batch.End();
-        device.SetRenderTarget(scene);
-        batch.Begin(blendState: BlendState.Opaque);
-        batch.Draw(scratch, Vector2.Zero, Color.White);
-        batch.End();
+        (scene, scratch) = (scratch, scene);
     }
 
     public void DrawPresentation(Texture2D texture)

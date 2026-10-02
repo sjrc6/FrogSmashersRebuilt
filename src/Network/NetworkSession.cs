@@ -345,15 +345,20 @@ public sealed class NetworkSession : IDisposable
 
     private sealed class GameAdapter(NetworkSession owner) : IRollbackGame<RollbackInput, byte[]>
     {
+        private byte[]? capturedWorld;
+        private long capturedTick = -1;
+
         public SavedState<byte[]> SaveState()
         {
-            byte[] snapshot = owner.simulation.Capture();
+            byte[] snapshot = owner.simulation.Capture(out capturedWorld);
+            capturedTick = owner.World.TickNumber;
             return new(snapshot, World.Hash(snapshot));
         }
 
         public void LoadState(byte[] state)
         {
-            owner.simulation.Restore(state);
+            owner.simulation.Restore(state, out capturedWorld);
+            capturedTick = owner.World.TickNumber;
             owner.RollbackCount++;
             owner.LastRollbackFromFrame = owner.World.TickNumber;
         }
@@ -365,7 +370,7 @@ public sealed class NetworkSession : IDisposable
             var commands = new RollbackInput[inputs.Length];
             for (int index = 0; index < inputs.Length; index++)
                 commands[index] = inputs[index].Status == InputStatus.Disconnected ? default : inputs[index].Input;
-            owner.PreviousSnapshot = owner.World.Capture();
+            owner.PreviousSnapshot = capturedTick == owner.World.TickNumber ? capturedWorld! : owner.World.Capture();
             long tick = owner.World.TickNumber;
             owner.simulation.Tick(commands);
             owner.eventJournal[tick] = owner.simulation.Events.ToArray();

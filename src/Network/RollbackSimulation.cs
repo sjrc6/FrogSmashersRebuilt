@@ -7,7 +7,9 @@ public interface IRollbackSimulation
     World World { get; }
     IReadOnlyList<SimulationEvent> Events => World.Events;
     byte[] Capture();
+    byte[] Capture(out byte[] worldSnapshot);
     void Restore(byte[] snapshot);
+    void Restore(byte[] snapshot, out byte[] worldSnapshot);
     void Tick(ReadOnlySpan<RollbackInput> inputs);
 }
 
@@ -29,7 +31,15 @@ internal sealed class MatchSimulation : IRollbackSimulation
 
     public byte[] Capture() => World.Capture();
 
+    public byte[] Capture(out byte[] worldSnapshot) => worldSnapshot = World.Capture();
+
     public void Restore(byte[] snapshot) => World.Restore(snapshot);
+
+    public void Restore(byte[] snapshot, out byte[] worldSnapshot)
+    {
+        World.Restore(snapshot);
+        worldSnapshot = snapshot;
+    }
 
     public void Tick(ReadOnlySpan<RollbackInput> inputs)
     {

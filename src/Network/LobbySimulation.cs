@@ -222,7 +222,9 @@ public sealed class LobbySimulation : IRollbackSimulation
         pendingPreviews = 0;
     }
 
-    public byte[] Capture()
+    public byte[] Capture() => Capture(out _);
+
+    public byte[] Capture(out byte[] worldSnapshot)
     {
         using var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream);
@@ -230,9 +232,9 @@ public sealed class LobbySimulation : IRollbackSimulation
         writer.Write(CpuRevision);
         writer.Write(randomState);
         writer.Write(pendingPreviews);
-        byte[] world = World.Capture();
-        writer.Write(world.Length);
-        writer.Write(world);
+        worldSnapshot = World.Capture();
+        writer.Write(worldSnapshot.Length);
+        writer.Write(worldSnapshot);
         foreach (var player in Membership.Rooms)
         {
             writer.Write(player != null);
@@ -245,7 +247,9 @@ public sealed class LobbySimulation : IRollbackSimulation
         return stream.ToArray();
     }
 
-    public void Restore(byte[] snapshot)
+    public void Restore(byte[] snapshot) => Restore(snapshot, out _);
+
+    public void Restore(byte[] snapshot, out byte[] worldSnapshot)
     {
         if (snapshot.Length > 128 * 1024)
             throw new InvalidDataException("Oversized lobby snapshot");
@@ -281,6 +285,7 @@ public sealed class LobbySimulation : IRollbackSimulation
             throw new InvalidDataException("Invalid lobby snapshot payload");
         var membership = new LobbyMembership(players, spectators);
         World.Restore(world);
+        worldSnapshot = world;
         bots = nextBots;
         CpuRevision = cpuRevision;
         randomState = nextRandom;

@@ -63,6 +63,7 @@ internal static class Program
 
             var timer = Stopwatch.StartNew();
             SnapshotCoverageTests.Run();
+            InterpolationSnapshotTests.Run();
             ReplayTests.ReplayAndSnapshots();
             PhysicsTests.FixedArithmetic();
             PhysicsTests.Movement();

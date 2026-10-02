@@ -17,7 +17,7 @@ internal sealed partial class MenuController
             game.Settings.Rollback = update(game.Settings.Rollback).Normalize();
             lobby?.SetRollbackSettings(game.Settings.Rollback);
             game.Match.Network?.SetTiming(game.Settings.Rollback);
-            game.SaveSettings();
+            game.ScheduleSettingsSave();
         }
 
         rows.Add(

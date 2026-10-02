@@ -42,9 +42,11 @@ public class FrogGame : Game
     protected virtual bool LimitFrameRate => true;
     protected virtual bool SaveSettingsOnExit => true;
     protected virtual long TickLimit => long.MaxValue;
+    private readonly SettingsSaveQueue settingsSave;
 
     public FrogGame(LaunchOptions options)
     {
+        settingsSave = new(WriteSettings);
         Options = options;
         if (options.LocalTestCount > 0)
             Settings.Fullscreen = false;
@@ -169,6 +171,7 @@ public class FrogGame : Game
             Cinematics.Update((float)elapsedSeconds);
         }
 
+        settingsSave.Update(elapsedSeconds);
         Menus.Update(elapsedSeconds);
         if (Match.IsMenuBackground)
         {
@@ -408,6 +411,14 @@ public class FrogGame : Game
         Online.Lobby?.SetMatchSettings(
             System.Text.Json.JsonSerializer.Serialize(Setup.CreateOptions(Options.MapOrder))
         );
+        ScheduleSettingsSave();
+        settingsSave.Flush();
+    }
+
+    internal void ScheduleSettingsSave() => settingsSave.Request();
+
+    private void WriteSettings()
+    {
         if (Options.LocalTestCount > 0)
             return;
         try
