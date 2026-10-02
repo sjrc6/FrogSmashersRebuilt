@@ -8,8 +8,11 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 4
 
-[*.{csproj,props,targets,json,yml,yaml}]
+[*.{config,csproj,props,slnx,targets,xaml,xml,json,yml,yaml}]
 indent_size = 2
+
+[*.{cs,csx}]
+max_line_length = 120
 
 [*.cs]
 csharp_new_line_before_open_brace = all
