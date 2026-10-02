@@ -138,12 +138,10 @@ internal sealed partial class LobbyController(FrogGame game)
             return;
         }
         var players = Online?.PendingLocalPlayers.ToArray() ?? LocalPlayers;
-        var player = players.FirstOrDefault(player => player.Id == device);
-        if (player != null)
+        if (players.Any(player => player.Id == device))
         {
-            if (!LocalPlayers.Any(value => value.Id == device))
-                return;
-            if (!player.Spawned)
+            var player = LocalPlayers.FirstOrDefault(player => player.Id == device);
+            if (player is { Spawned: false })
                 QueueCommand(device, new(default, (byte)LobbyInputActions.Spawn));
             return;
         }
@@ -264,9 +262,11 @@ internal sealed partial class LobbyController(FrogGame game)
         UpdateSessionPresentation();
         Reconcile();
         accumulator += elapsed;
-        double duration = TickSeconds * (Network?.FrameDurationMultiplier ?? 1);
-        for (int step = 0; step < 30 && accumulator + 1e-9 >= duration; step++)
+        for (int step = 0; step < 30; step++)
         {
+            double duration = TickSeconds * (Network?.FrameDurationMultiplier ?? 1);
+            if (accumulator + 1e-9 < duration)
+                break;
             bool advanced = Network == null ? AdvanceLocal() : AdvanceNetwork();
             if (!advanced)
             {

@@ -8,8 +8,6 @@ internal sealed partial class MenuController
     {
         var lobby = game.Online.Lobby;
         var preferences = game.Settings.Rollback;
-        var session = game.Match.Network ?? game.Lobby.Network;
-        int? extra = session?.ExtraDelayFrames;
         var rows = new List<MenuEntry>();
 
         void Change(Func<RollbackPreferences, RollbackPreferences> update)
@@ -44,8 +42,6 @@ internal sealed partial class MenuController
                 Change: amount => Change(value => value with { MaxExtraDelay = value.MaxExtraDelay + amount })
             )
         );
-        if (extra.HasValue)
-            rows.Add(new("EXTRA DELAY", Value: RollbackPreferences.Milliseconds(extra.Value)));
         rows.Add(new("BACK", Back));
         return rows;
     }

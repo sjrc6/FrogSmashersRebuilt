@@ -20,6 +20,7 @@ internal static partial class LobbyTests
         LeavingKeepsPeerIdentityStable();
         MatchStartAndReturn();
         HostCanSpectate();
+        SpectatorTransitionAtLatency();
         InvalidClientsAndPackets();
         LateSimulationAndLatestSettings();
         DisconnectDuringAdmission();
@@ -43,6 +44,29 @@ internal static partial class LobbyTests
         RejectedJoinDoesNotPauseLobby();
         SteadyLobbyUsesCompactControls();
         CompactControlValidation();
+    }
+
+    private static void SpectatorTransitionAtLatency()
+    {
+        using var rig = new Rig { Delay = 100, Jitter = 16 };
+        var host = rig.Add("host", [new(0, Spawned: true)]);
+        var guest = rig.Add("guest", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Spectator transition fixture did not synchronize");
+        ulong previous = host.Lobby.SessionId;
+        Check(guest.Lobby.SetSpectating(guest.Lobby.LocalPeer, true), "Guest can become a spectator at 200 ms RTT");
+        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId != previous, "Spectator transition did not finish");
+        Check(guest.Lobby.LobbySession!.LocalSlots.Length == 0, "The former player uses the host's spectator stream");
+        rig.Steps(120);
+        long started = guest.Simulation.World.TickNumber;
+        int waits = 0;
+        for (int frame = 0; frame < 600; frame++)
+        {
+            rig.Steps(1);
+            waits += guest.Lobby.LobbySession.WaitingForHostInputs ? 1 : 0;
+        }
+        Check(waits == 0, "A healthy stream after changing to spectator does not repeatedly show input waits");
+        Check(guest.Simulation.World.TickNumber >= started + 599, "Spectator transition retains smooth playback");
+        rig.AssertConfirmedStates();
     }
 
     private static void PersonalTimingSurvivesCheckpoints()

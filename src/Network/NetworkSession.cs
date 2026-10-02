@@ -11,6 +11,7 @@ public sealed class NetworkSession : IDisposable
     private readonly IRollbackSimulation simulation;
     private readonly P2PSession<RollbackInput, byte[]>? playing;
     private readonly SpectatorSession<RollbackInput, byte[]>? spectator;
+    private readonly SpectatorPlayback? spectatorPlayback;
     private readonly SortedDictionary<long, SimulationEvent[]> eventJournal = new();
     private readonly long initialTick;
     private long? stopAtTick;
@@ -70,9 +71,9 @@ public sealed class NetworkSession : IDisposable
     public long LastRollbackFromFrame { get; private set; } = -1;
     public int FramesAheadOfPeers => playing?.FramesAhead ?? 0;
     public double FrameDurationMultiplier =>
-        playing != null ? playing.RecommendedFrameDurationMultiplier
-        : BufferedFrames > 2 ? 0.5
-        : 1;
+        playing != null
+            ? playing.RecommendedFrameDurationMultiplier
+            : spectatorPlayback!.FrameDurationMultiplier(spectator!.BufferedFrames);
     public int BufferedFrames => playing?.ConfirmedInputFramesAvailable ?? spectator!.BufferedFrames;
     public IReadOnlyList<int> AcceptedLocalSlots { get; private set; } = [];
     public bool LocalInputSubmitted => AcceptedLocalSlots.Count > 0;
@@ -145,6 +146,7 @@ public sealed class NetworkSession : IDisposable
         else
         {
             spectator = new(config.Generation, 0, players, game, codec, adapter, options, adapter, inputSchema: schema);
+            spectatorPlayback = new();
         }
     }
 
@@ -286,7 +288,7 @@ public sealed class NetworkSession : IDisposable
         if (Error != null || stopAtTick.HasValue && World.TickNumber >= stopAtTick.Value)
             return false;
         int previousSubmission = playing?.LastSubmittedFrame ?? -1;
-        AdvanceStatus result = playing?.AdvanceFrame(localInputs) ?? spectator!.AdvanceFrame(drain: true);
+        AdvanceStatus result = playing?.AdvanceFrame(localInputs) ?? AdvanceSpectator();
         lastAdvanceStatus = result;
         if (playing != null && playing.LastSubmittedFrame != previousSubmission)
             AcceptedLocalSlots = LocalSlots
@@ -304,6 +306,22 @@ public sealed class NetworkSession : IDisposable
         };
         DrainEvents();
         return result == AdvanceStatus.Advanced && Error == null;
+    }
+
+    private AdvanceStatus AdvanceSpectator()
+    {
+        spectator!.Poll();
+        if (
+            spectator.State == SessionState.Running
+            && !spectatorPlayback!.Ready(
+                spectator.CurrentFrame,
+                spectator.BufferedFrames,
+                transport.TimeMilliseconds,
+                stopAtTick.HasValue
+            )
+        )
+            return AdvanceStatus.WaitingForInput;
+        return spectator.AdvanceFrame(drain: true);
     }
 
     private int SessionFrame(long tick) => checked((int)(tick - initialTick));

@@ -8,11 +8,143 @@ internal static class SpectatorNetworkTests
 {
     public static void Run()
     {
+        PlaybackBufferBoundaries();
+        SmoothPlayback(60, 60, 0);
+        SmoothPlayback(60, 60, 2);
+        SmoothPlayback(30, 120, 0);
+        SmoothPlayback(30, 120, 2);
         UnlinkedSpectatorsDoNotRemovePlayingPeers();
         Verify(false, false);
         Verify(true, false);
         Verify(false, true);
         Verify(false, false, 8);
+    }
+
+    private static void PlaybackBufferBoundaries()
+    {
+        var playback = new SpectatorPlayback();
+        Check(!playback.Ready(0, 0, 0, false), "An empty spectator waits for inputs");
+        Check(!playback.Ready(0, 2, 10, false), "Playback gathers a small reserve before starting");
+        Check(playback.Ready(0, 6, 30, false), "Six queued ticks start spectator playback");
+        Check(playback.Ready(5, 1, 40, false), "Running playback can consume its reserve through the final tick");
+        Check(!playback.Ready(6, 0, 50, false), "An underrun starts buffering again");
+        Check(!playback.Ready(6, 2, 60, false), "An underrun does not restart on each tiny packet");
+        Check(!playback.Ready(6, 2, 159, false), "Polling alone does not reset the input arrival timer");
+        Check(playback.Ready(6, 2, 160, false), "A short final stream drains after its bounded wait");
+        Check(!playback.Ready(8, 0, 170, false), "Drained playback waits for new inputs");
+        Check(playback.Ready(8, 1, 180, true), "A coordinated pause drains its remaining input immediately");
+        Check(playback.FrameDurationMultiplier(3) == 1, "A normal packet burst cannot trigger double speed");
+        Check(playback.FrameDurationMultiplier(20) < 1, "A large spectator backlog can still catch up");
+    }
+
+    private static void SmoothPlayback(int hostFps, int spectatorFps, int jitter)
+    {
+        int[][] slots =
+        [
+            [0, 1],
+            [],
+        ];
+        var wire = new SimulatedNetwork(2, 83, 12, jitter, 0, 0);
+        var hostWorld = MakeWorld(2);
+        var spectatorWorld = MakeWorld(2);
+        using var host = new NetworkSession(
+            hostWorld,
+            new SessionConfig(slots, 0, "spectator-playback", hostWorld, 1),
+            wire.Endpoint(0)
+        );
+        using var spectator = new NetworkSession(
+            spectatorWorld,
+            new SessionConfig(slots, 1, "spectator-playback", spectatorWorld, 1),
+            wire.Endpoint(1)
+        );
+        int hostStride = 120 / hostFps;
+        int spectatorStride = 120 / spectatorFps;
+        double hostDebt = 0,
+            spectatorDebt = 0;
+        int warnings = 0,
+            emptyUpdates = 0;
+        long start = 0;
+        for (int wall = 0; wall < 3000; wall++)
+        {
+            wire.Advance();
+            if (wall % hostStride == 0)
+                Advance(host, ref hostDebt, hostStride);
+            if (wall % spectatorStride != 0)
+                continue;
+            long previous = spectatorWorld.TickNumber;
+            Advance(spectator, ref spectatorDebt, spectatorStride);
+            if (wall == 600)
+                start = spectatorWorld.TickNumber;
+            if (wall >= 600)
+            {
+                warnings += spectator.WaitingForHostInputs ? 1 : 0;
+                emptyUpdates += spectatorWorld.TickNumber == previous ? 1 : 0;
+            }
+        }
+        string scenario = $"200 ms RTT, host {hostFps} FPS, spectator {spectatorFps} FPS, jitter {jitter} ticks";
+        Check(warnings == 0, $"Healthy spectator stream must not show input waits: {scenario}, warnings={warnings}");
+        Check(emptyUpdates == 0, $"Buffered playback must not repeatedly stop: {scenario}, stops={emptyUpdates}");
+        Check(spectatorWorld.TickNumber - start >= 2390, "Buffered spectators sustain 120 simulation ticks per second");
+        Check(hostWorld.TickNumber - spectatorWorld.TickNumber < 40, "Spectator playback delay stays bounded");
+        Check(
+            host.TryGetConfirmedCheckpoint(spectatorWorld.TickNumber, out var snapshot)
+                && snapshot.SequenceEqual(spectatorWorld.Capture()),
+            "Spectator buffering preserves the exact confirmed simulation"
+        );
+
+        wire.Blackout = true;
+        bool waited = false;
+        for (int wall = 0; wall < 100; wall++)
+        {
+            wire.Advance();
+            Advance(host, ref hostDebt, 1);
+            Advance(spectator, ref spectatorDebt, 1);
+            waited |= spectator.WaitingForHostInputs;
+        }
+        Check(waited, "A genuine spectator outage still displays the input wait warning");
+        wire.Blackout = false;
+        for (int wall = 0; wall < 300; wall++)
+        {
+            wire.Advance();
+            Advance(host, ref hostDebt, 1);
+            Advance(spectator, ref spectatorDebt, 1);
+        }
+        Check(!spectator.WaitingForHostInputs, "Spectator playback recovers after an outage");
+
+        long finalTick = hostWorld.TickNumber;
+        spectator.StopAtTick(finalTick);
+        for (int wall = 0; wall < 300 && spectatorWorld.TickNumber < finalTick; wall++)
+        {
+            wire.Advance();
+            host.Poll();
+            Advance(spectator, ref spectatorDebt, 1);
+        }
+        Check(spectatorWorld.TickNumber == finalTick, "Spectator buffering cannot block a checkpoint boundary");
+        Check(
+            spectatorWorld.HashState() == hostWorld.HashState(),
+            "The drained spectator reaches the final host state"
+        );
+        Check(!spectator.WaitingForHostInputs, "A completed spectator checkpoint is not an input stall");
+        Console.WriteLine($"Spectator playback: {scenario}; no steady-stream warnings or missed updates");
+    }
+
+    private static void Advance(NetworkSession session, ref double debt, int elapsedTicks)
+    {
+        session.Poll();
+        debt += elapsedTicks;
+        for (int step = 0; step < 30; step++)
+        {
+            double duration = session.FrameDurationMultiplier;
+            if (debt + 1e-9 < duration)
+                break;
+            if (!session.TryAdvance(new RollbackInput[session.LocalSlots.Length]))
+            {
+                debt = Math.Min(debt, duration);
+                break;
+            }
+            debt -= duration;
+        }
+        Check(session.Error == null, session.Error ?? "Spectator playback network failure");
     }
 
     private static void UnlinkedSpectatorsDoNotRemovePlayingPeers()

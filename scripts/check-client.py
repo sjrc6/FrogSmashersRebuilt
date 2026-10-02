@@ -590,6 +590,35 @@ def verify_lobby_network():
             if p.poll() is None:p.kill();p.wait()
 
 
+def verify_lobby_color_respawn():
+    script = out / "lobby-color-respawn-input.json"
+    script.write_text(json.dumps([
+        dict(From=frame, To=frame + 1, Keys=[key])
+        for frame, key in [(240, "U"), (300, "Y"), (360, "U"),
+                           (480, "U"), (540, "Y"), (600, "U")]
+    ]))
+    for name, frames, spawned in [("lobby-guest-choosing", 330, False),
+                                  ("lobby-guest-respawned", 720, True)]:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as reserve:
+            reserve.bind(("127.0.0.1", 0))
+            port = reserve.getsockname()[1]
+        host = subprocess.Popen(command(name + "-host", ["--host", "udp", "--port", str(port)]),
+                                cwd=root, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            value = run(name, ["--join", "udp:127.0.0.1", "--port", str(port),
+                               "--input-script", str(script), "--frames", str(frames)])
+            assert value["Page"] == "Seats" and value["LobbyProgress"] is None, value
+            guests = [(room, slot["Player"]) for room, slot in enumerate(value["LobbySlots"])
+                      if slot["Player"] is not None and slot["Player"]["Peer"] == 1]
+            assert len(guests) == 1, value
+            room, player = guests[0]
+            assert player["Spawned"] == spawned and value["LobbyPlayers"][room]["Alive"] == spawned, value
+        finally:
+            host.kill()
+            host.wait()
+    print("PASS: an already spawned guest can choose colors and respawn repeatedly without changing membership.")
+
+
 def verify_spectator_direct_join():
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as reserve:
         reserve.bind(("127.0.0.1", 0))
@@ -728,6 +757,7 @@ def main():
         verify_player_network_actions()
         verify_online_creation()
         verify_lobby_network()
+        verify_lobby_color_respawn()
         verify_spectator_direct_join()
         verify_cpu_network()
         verify_network()
