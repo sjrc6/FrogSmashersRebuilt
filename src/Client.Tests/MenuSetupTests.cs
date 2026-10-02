@@ -109,6 +109,19 @@ internal static class MenuSetupTests
 
         setup.ResetPreferences();
         check(setup.Preferences == new MatchPreferences(), "resetting the lobby clears every match preference");
+        var customStart = new MatchSetup(7, firstMap: 4);
+        check(customStart.CreateOptions().Rules.MapOrder[0] == 4, "launch map supplies the initial arena");
+        customStart.FirstMap = 2;
+        customStart.Preferences.TeamMode = true;
+        customStart.Preferences.WinScore = 12;
+        customStart.Preferences.ShuffleMaps = true;
+        check(customStart.CreateOptions().Rules.MapOrder[0] == 2, "lobby map edits override the launch default");
+        customStart.ResetPreferences();
+        check(
+            customStart.Preferences == new MatchPreferences { FirstMap = 4 }
+                && customStart.CreateOptions().Rules.MapOrder[0] == 4,
+            "lobby reset clears edits and restores the explicit launch map"
+        );
         check(
             settings.Volume == .35f && settings.Keyboard[1].Strafe == Keys.N,
             "lobby reset leaves personal settings intact"

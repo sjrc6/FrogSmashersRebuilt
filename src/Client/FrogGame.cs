@@ -29,7 +29,7 @@ public class FrogGame : Game
     internal Renderer Renderer { get; private set; } = null!;
     internal Audio Audio { get; private set; } = null!;
     internal CinematicPlayer Cinematics { get; private set; } = null!;
-    internal MatchSetup Setup { get; }
+    internal MatchSetup Setup { get; private set; } = null!;
     internal LobbyController Lobby { get; private set; } = null!;
     internal MatchController Match { get; private set; } = null!;
     internal OnlineController Online { get; private set; } = null!;
@@ -54,7 +54,6 @@ public class FrogGame : Game
             ? LocalTestLauncher.TileBounds(DesktopArea.Primary(), options.LocalTestCount, options.LocalTestIndex)
             : null;
         Controls = new Controls(Settings);
-        Setup = new MatchSetup(options.Seed);
         graphics = new GraphicsDeviceManager(this)
         {
             PreferredBackBufferWidth = tile?.Width ?? Renderer.Width,
@@ -86,6 +85,7 @@ public class FrogGame : Game
         if (OperatingSystem.IsWindows())
             windowIcons = new WindowsWindowIcons(Window.Handle);
         Assets = new Assets(Content, Content.RootDirectory);
+        Setup = new MatchSetup(Options.Seed, ResolveFirstMap());
         Renderer = new Renderer(GraphicsDevice, Assets) { ShakeEnabled = Settings.ScreenShake };
         Audio = new Audio(Assets, !Options.NoAudio) { Volume = Settings.Volume };
         Cinematics = new CinematicPlayer(GraphicsDevice, Assets, Audio) { ShakeEnabled = Settings.ScreenShake };
@@ -102,19 +102,20 @@ public class FrogGame : Game
         contentLoaded = true;
     }
 
+    private int ResolveFirstMap()
+    {
+        if (Options.Map == null)
+            return 0;
+        int firstMap = int.TryParse(Options.Map, out int index)
+            ? index
+            : Assets.Data.Maps.FindIndex(map => map.Id.Equals(Options.Map, StringComparison.OrdinalIgnoreCase));
+        if (firstMap < 0 || firstMap >= Assets.Data.Maps.Count)
+            throw new ArgumentException("Unknown map: " + Options.Map);
+        return firstMap;
+    }
+
     private void ConfigureLaunch()
     {
-        if (Options.Map != null)
-        {
-            Setup.FirstMap = int.TryParse(Options.Map, out int index)
-                ? index
-                : Assets.Data.Maps.FindIndex(map => map.Id.Equals(Options.Map, StringComparison.OrdinalIgnoreCase));
-            if (Setup.FirstMap < 0 || Setup.FirstMap >= Assets.Data.Maps.Count)
-            {
-                throw new ArgumentException("Unknown map: " + Options.Map);
-            }
-        }
-
         if (Options.Host != null || Options.Join != null)
         {
             for (int index = 0; index < Options.LocalPlayers; index++)

@@ -175,19 +175,21 @@ def verify_smoke_pause(pause_script):
 
 
 def verify_title_menu():
-    for name, keys, expected in [
-        ("title-only", [(1, 2, ["Enter"])], "Title"),
-        ("title-to-menu", [(1, 2, ["Enter"]), (5, 6, ["Enter"])], "Main"),
+    for name, keys, expected, options in [
+        ("title-only", [(1, 2, ["Enter"])], "Title", []),
+        ("title-to-menu", [(1, 2, ["Enter"]), (5, 6, ["Enter"])], "Main", []),
+        ("title-map-to-menu", [(1, 2, ["Enter"]), (5, 6, ["Enter"])], "Main", ["--map", "5Skyline"]),
     ]:
         title_script = out / (name + "-input.json")
         title_script.write_text(json.dumps([dict(From=a, To=b, Keys=c) for a, b, c in keys]))
         value = run(
             name,
-            ["--input-script", str(title_script), "--frames", "60", "--capture", str(out / (name + ".png"))],
+            options + ["--input-script", str(title_script), "--frames", "60", "--capture", str(out / (name + ".png"))],
         )
         assert value["Page"] == expected, value
         if expected == "Main":
             assert value["MenuBackground"] and value["Map"] == "2DownSmash" and value["Players"] == 4, value
+        assert value["MatchSettings"]["FirstMap"] == (4 if options else 0), value
 
 
 def verify_menu_background():
@@ -208,6 +210,7 @@ def verify_menu_background():
         assert (
             value["Page"] == "Main" and value["MenuBackground"] and value["Map"] == "2DownSmash"
             and value["Players"] == 4 and value["TickNumber"] == 360 and value["Phase"] == "Playing"
+            and value["MatchSettings"]["FirstMap"] == 4
         ), value
         hashes.append(value["Hash"])
     assert len(set(hashes)) == 1, "Menu CPUs depend on keyboard input or render rate"
@@ -221,6 +224,7 @@ def verify_menu_background():
     assert value["Page"] == "Playing" and not value["MenuBackground"] and value["Map"] == "5Skyline", value
     value = run("menu-return", options + ["--frames", "180"], sound=True)
     assert value["Page"] == "Main" and value["MenuBackground"] and value["Map"] == "2DownSmash", value
+    assert value["MatchSettings"]["FirstMap"] == 4, value
 
 
 def verify_local_replay():
