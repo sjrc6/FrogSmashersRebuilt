@@ -14,6 +14,7 @@ internal static class SnapshotCoverageTests
         "collisionMaps",
         "tuning",
         "events",
+        "snapshotBuffer",
         "<Rules>k__BackingField",
         "<ConfigurationHash>k__BackingField",
     ];
@@ -58,8 +59,16 @@ internal static class SnapshotCoverageTests
             CompareWorld(source, target);
             byte[] isolated = source.Capture();
             source.Players[0].X += 1;
+            byte[] updated = source.Capture();
             target.Restore(isolated);
-            Check(target.Players[0].X != source.Players[0].X, "Snapshot storage is isolated from live player state");
+            Check(
+                target.Players[0].X != source.Players[0].X,
+                "Snapshot storage is isolated from live state and later captures"
+            );
+            target.Restore(updated);
+            CompareWorld(source, target);
+            source.Restore(isolated);
+            Check(source.Capture().SequenceEqual(isolated), "Recapturing restored history preserves its exact bytes");
         }
 
         var bots = new LobbyBots();

@@ -345,6 +345,7 @@ public sealed class NetworkSession : IDisposable
 
     private sealed class GameAdapter(NetworkSession owner) : IRollbackGame<RollbackInput, byte[]>
     {
+        private readonly RollbackInput[] commands = new RollbackInput[owner.config.InputCount];
         private byte[]? capturedWorld;
         private long capturedTick = -1;
 
@@ -367,7 +368,8 @@ public sealed class NetworkSession : IDisposable
         {
             if (owner.World.TickNumber != owner.initialTick + frame)
                 throw new InvalidOperationException("Rollback frame and world tick disagree");
-            var commands = new RollbackInput[inputs.Length];
+            if (inputs.Length != commands.Length)
+                throw new ArgumentException("Supply one input per session handle", nameof(inputs));
             for (int index = 0; index < inputs.Length; index++)
                 commands[index] = inputs[index].Status == InputStatus.Disconnected ? default : inputs[index].Input;
             owner.PreviousSnapshot = capturedTick == owner.World.TickNumber ? capturedWorld! : owner.World.Capture();

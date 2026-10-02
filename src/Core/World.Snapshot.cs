@@ -7,11 +7,12 @@ public sealed partial class World
 {
     private const int SnapshotMagic = 0x46535253;
     private const int SnapshotVersion = 3;
+    private readonly MemoryStream snapshotBuffer = new(4096);
 
     public byte[] Capture()
     {
-        using var stream = new MemoryStream(4096);
-        using var writer = new BinaryWriter(stream, Encoding.UTF8, true);
+        snapshotBuffer.SetLength(0);
+        using var writer = new BinaryWriter(snapshotBuffer, Encoding.UTF8, true);
         writer.Write(SnapshotMagic);
         writer.Write(SnapshotVersion);
         writer.Write(ConfigurationHash);
@@ -30,7 +31,7 @@ public sealed partial class World
         }
 
         Fly.WriteSnapshot(writer);
-        return stream.ToArray();
+        return snapshotBuffer.ToArray();
     }
 
     public void Restore(byte[] snapshot)
