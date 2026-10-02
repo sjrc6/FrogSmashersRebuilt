@@ -11,6 +11,18 @@ internal static class Program
     {
         try
         {
+            if (args.Contains("--lobby"))
+            {
+                LobbyTests.Run(Check);
+                Console.WriteLine($"PASS: {TestAssert.Count} lobby checks");
+                return 0;
+            }
+            if (args.Contains("--live-lobby"))
+            {
+                LobbyTests.RunLive();
+                Console.WriteLine($"PASS: {TestAssert.Count} live lobby checks");
+                return 0;
+            }
             if (args.Length > 0 && args[0] == "--udp-peer")
             {
                 return UdpProcessTests.UdpPeer(args);
@@ -104,6 +116,7 @@ internal static class Program
             SpectatorNetworkTests.Run();
             MeshWireTests.Run(!args.Contains("--no-sockets"));
             LobbyTests.Run(Check);
+            LobbyTests.RunLive();
             if (!args.Contains("--no-sockets"))
             {
                 UdpProcessTests.LocalhostProcesses();

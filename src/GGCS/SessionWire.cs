@@ -8,16 +8,18 @@ internal sealed class SessionWire<TInput>
     where TInput : unmanaged
 {
     private readonly IInputCodec<TInput> codec;
+    private readonly ISpectatorInputCodec<TInput>? spectatorCodec;
     public Player[] Players { get; }
     public int InputSize => codec.Size;
-    public int SpectatorInputSize => Players.Length * (InputSize + 1);
+    public int SpectatorInputSize => spectatorCodec?.Size ?? Players.Length * (InputSize + 1);
     public ulong ConfigurationId { get; }
 
     public SessionWire(
         IReadOnlyList<Player> players,
         IInputCodec<TInput> codec,
         SessionOptions options,
-        string inputSchema
+        string inputSchema,
+        ISpectatorInputCodec<TInput>? spectatorCodec = null
     )
     {
         ArgumentNullException.ThrowIfNull(players);
@@ -39,10 +41,12 @@ internal sealed class SessionWire<TInput>
                     nameof(players)
                 );
         this.codec = codec;
+        this.spectatorCodec = spectatorCodec;
         using var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream, Encoding.UTF8, true);
         writer.Write(options.FramesPerSecond);
         writer.Write(codec.Size);
+        writer.Write(SpectatorInputSize);
         writer.Write(inputSchema);
         foreach (var player in Players)
         {
@@ -73,6 +77,11 @@ internal sealed class SessionWire<TInput>
     public byte[] EncodeSpectator(ReadOnlySpan<PlayerInput<TInput>> inputs)
     {
         var bytes = new byte[SpectatorInputSize];
+        if (spectatorCodec != null)
+        {
+            spectatorCodec.Encode(inputs, bytes);
+            return bytes;
+        }
         for (int i = 0; i < Players.Length; i++)
         {
             bytes[i * (InputSize + 1)] = (byte)inputs[i].Status;
@@ -86,6 +95,11 @@ internal sealed class SessionWire<TInput>
         if (bytes.Length != SpectatorInputSize)
             throw new ArgumentException("Spectator bundle has an incorrect length.", nameof(bytes));
         var inputs = new PlayerInput<TInput>[Players.Length];
+        if (spectatorCodec != null)
+        {
+            spectatorCodec.Decode(bytes, inputs);
+            return inputs;
+        }
         for (int i = 0; i < inputs.Length; i++)
         {
             var status = (InputStatus)bytes[i * (InputSize + 1)];

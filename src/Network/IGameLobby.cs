@@ -38,7 +38,7 @@ public interface IGameLobby : IDisposable
     bool ReturnToLobby();
     ulong SessionId { get; }
     IReadOnlyList<int> PeerIds { get; }
-    NetworkSession? LobbySession { get; }
+    IRollbackSession? LobbySession { get; }
     bool SimulationReady { get; }
     bool Transitioning { get; }
     RollbackPreferences RollbackSettings { get; }

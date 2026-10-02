@@ -54,7 +54,7 @@ internal static partial class LobbyTests
         rig.WaitFor(() => rig.Ready, "Spectator transition fixture did not synchronize");
         ulong previous = host.Lobby.SessionId;
         Check(guest.Lobby.SetSpectating(guest.Lobby.LocalPeer, true), "Guest can become a spectator at 200 ms RTT");
-        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId != previous, "Spectator transition did not finish");
+        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId == previous, "Spectator transition did not finish");
         Check(guest.Lobby.LobbySession!.LocalSlots.Length == 0, "The former player uses the host's spectator stream");
         rig.Steps(120);
         long started = guest.Simulation.World.TickNumber;
@@ -195,7 +195,7 @@ internal static partial class LobbyTests
                 "Pending party edits mutated the committed simulation before its checkpoint"
             );
             rig.WaitFor(
-                () => rig.Ready && host.Lobby.SessionId != previousSession,
+                () => rig.Ready && host.Lobby.SessionId == previousSession,
                 "Same-render joins did not finish their checkpoint"
             );
             Check(
@@ -220,7 +220,7 @@ internal static partial class LobbyTests
             "A same-render back-out restored an earlier removed device"
         );
         rig.WaitFor(
-            () => rig.Ready && host.Lobby.SessionId != joinedSession,
+            () => rig.Ready && host.Lobby.SessionId == joinedSession,
             "Same-render back-outs did not finish their checkpoint"
         );
         Check(
@@ -246,8 +246,8 @@ internal static partial class LobbyTests
         );
         Check(host.Simulation.World.TickNumber >= beforeJoin, "Admission reset the incumbent world clock");
         Check(
-            host.Lobby.SessionId != firstSession && host.Lobby.SessionId == guest.Lobby.SessionId,
-            "Admission did not replace the rollback generation"
+            host.Lobby.SessionId == firstSession && host.Lobby.SessionId == guest.Lobby.SessionId,
+            "Admission replaced the running rollback session"
         );
         rig.Steps(100);
         rig.AssertConfirmedStates();
@@ -330,7 +330,7 @@ internal static partial class LobbyTests
         );
         Check(host.Lobby.SessionId == session, "Capacity change restarted rollback");
         Check(host.Lobby.SetPlayers([.. host.Lobby.Roster.Players(0), new(1)]), "Host could not add a human");
-        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId != session, "Human admission checkpoint did not complete");
+        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId == session, "Human admission checkpoint did not complete");
         rig.Steps(80);
         rig.AssertConfirmedStates();
         var old = rig.Sent.Last(packet =>
@@ -401,7 +401,7 @@ internal static partial class LobbyTests
         rig.Blocked.Add(("blocked", "existing"));
         var newcomer = rig.Add("blocked", [new(0, Spawned: true)]);
         newcomer.AllowError = true;
-        rig.WaitFor(() => host.Lobby.Transitioning, "New admission never paused the lobby");
+        rig.WaitFor(() => newcomer.Lobby.Connected, "New admission was not introduced");
         rig.WaitFor(
             () => host.Lobby.SimulationReady && !host.Lobby.PeerIds.Contains(newcomer.Lobby.LocalPeer),
             "Failed mesh admission did not resume the old lobby",
@@ -438,7 +438,10 @@ internal static partial class LobbyTests
         ulong oldSession = host.Lobby.SessionId;
         first.Lobby.Dispose();
         first.Active = false;
-        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId != oldSession, "Leave checkpoint failed");
+        rig.WaitFor(
+            () => rig.Ready && !host.Lobby.PeerIds.Contains(first.Lobby.LocalPeer),
+            "Departure did not converge"
+        );
         Check(
             second.Lobby.LocalPeer == survivingId && host.Lobby.PeerIds.SequenceEqual(new[] { 0, survivingId }),
             "Leaving a peer renumbered the surviving connection"
@@ -519,7 +522,7 @@ internal static partial class LobbyTests
         rig.Steps(80);
         ulong session = host.Lobby.SessionId;
         Check(host.Lobby.SetSpectating(0, true), "Host could not select spectating");
-        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId != session, "Spectating host checkpoint failed");
+        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId == session, "Spectating host checkpoint failed");
         Check(
             host.Lobby.LobbySession!.LocalSlots.SequenceEqual(new[] { 0 }) && host.Lobby.Roster.Spectator(0) != null,
             "Spectating host must retain only the host command stream"
@@ -528,11 +531,14 @@ internal static partial class LobbyTests
         rig.AssertConfirmedStates();
         session = host.Lobby.SessionId;
         Check(other.Lobby.SetSpectating(other.Lobby.LocalPeer, true), "Guest could not spectate");
-        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId != session, "Guest spectator checkpoint failed");
+        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId == session, "Guest spectator checkpoint failed");
+        rig.Steps(80);
+        int spectatorPackets = rig.Sent.Count;
         rig.Steps(180);
         Check(other.Lobby.LobbySession!.LocalSlots.Length == 0, "Spectator retained an active input slot");
         Check(
-            rig.Sent.Where(packet =>
+            rig.Sent.Skip(spectatorPackets)
+                .Where(packet =>
                     IsInput(packet)
                     && packet.Destination == "other"
                     && BitConverter.ToUInt64(packet.Data, 5) == host.Lobby.SessionId
@@ -549,7 +555,7 @@ internal static partial class LobbyTests
             other.Lobby.SetSpectating(other.Lobby.LocalPeer, false),
             "Spectator could not return to a free player slot"
         );
-        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId != session, "Unspectating checkpoint failed");
+        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId == session, "Unspectating checkpoint failed");
         rig.Steps(100);
         rig.AssertConfirmedStates();
     }
@@ -599,17 +605,17 @@ internal static partial class LobbyTests
         var guest = rig.Add("late-simulation", [new(0, Spawned: true)], attach: false);
         rig.Steps(180);
         Check(
-            host.Lobby.Transitioning && guest.Lobby.Connected && guest.Lobby.LobbySession == null,
+            !host.Lobby.Transitioning && guest.Lobby.Connected && guest.Lobby.LobbySession == null,
             "Late simulation fixture did not defer checkpoint installation"
         );
         host.Lobby.SetMatchSettings("{\"latest\":1}");
         long paused = host.Simulation.World.TickNumber;
         rig.Steps(80);
-        Check(host.Simulation.World.TickNumber == paused, "Host continued simulation while a new player was loading");
+        Check(host.Simulation.World.TickNumber >= paused + 79, "Loading a newcomer paused the host");
         guest.Lobby.AttachSimulation(guest.Simulation);
         rig.WaitFor(() => rig.Ready, "A client attaching after all snapshot chunks could not finish admission");
         Check(
-            host.Lobby.SessionId != original
+            host.Lobby.SessionId == original
                 && host.Lobby.MatchSettingsJson == "{\"latest\":1}"
                 && guest.Lobby.MatchSettingsJson == host.Lobby.MatchSettingsJson,
             "Settings edited during admission were lost on checkpoint commit"
@@ -637,7 +643,7 @@ internal static partial class LobbyTests
         rig.Blocked.Add(("newcomer", "existing"));
         var newcomer = rig.Add("newcomer", [new(0, Spawned: true)]);
         newcomer.AllowError = true;
-        rig.WaitFor(() => host.Lobby.Transitioning && newcomer.Lobby.Connected, "Admission fixture did not pause");
+        rig.WaitFor(() => newcomer.Lobby.Connected, "Admission fixture did not start");
         leaving.Lobby.Dispose();
         leaving.Active = false;
         rig.WaitFor(() => newcomer.Lobby.Error != null, "Disconnect did not cancel the pending newcomer");
@@ -664,7 +670,7 @@ internal static partial class LobbyTests
         rig.WaitFor(() => rig.Ready, "Observer admission failed");
         ulong original = host.Lobby.SessionId;
         Check(observer.Lobby.SetSpectating(observer.Lobby.LocalPeer, true), "Observer could not select spectating");
-        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId != original, "Observer transition failed");
+        rig.WaitFor(() => rig.Ready && host.Lobby.SessionId == original, "Observer transition failed");
         rig.Steps(80);
         original = host.Lobby.SessionId;
         rig.DeliveryDelay["observer"] = 2000;
@@ -676,7 +682,7 @@ internal static partial class LobbyTests
             () =>
                 host.Lobby.SimulationReady
                 && player.Lobby.SimulationReady
-                && host.Lobby.SessionId != original
+                && host.Lobby.SessionId == original
                 && player.Lobby.SessionId == host.Lobby.SessionId
                 && host.Lobby.LobbySession?.State == GGCS.SessionState.Running
                 && player.Lobby.LobbySession?.State == GGCS.SessionState.Running,
@@ -732,7 +738,7 @@ internal static partial class LobbyTests
         ulong oldSession = host.Lobby.SessionId;
         Check(observer.Lobby.SetSpectating(observer.Lobby.LocalPeer, true), "Observer could not enter spectate");
         rig.WaitFor(
-            () => rig.Ready && host.Lobby.SessionId != oldSession,
+            () => rig.Ready && host.Lobby.SessionId == oldSession,
             "Observer could not finish entering spectate"
         );
         rig.Steps(80);
@@ -768,7 +774,7 @@ internal static partial class LobbyTests
         rig.WaitFor(() => rig.Ready, "Kick fixture did not synchronize");
         rig.Steps(80);
         Check(host.Lobby.SetSpectating(0, true), "Kick fixture could not begin a roster change");
-        rig.WaitFor(() => host.Lobby.Transitioning, "Kick fixture did not enter its barrier");
+        rig.Steps(1);
         Check(host.Lobby.EditSlot(7, SlotType.Private), "Could not change a policy during a checkpoint");
         rig.Blocked.Add(("host", "kicked"));
         host.Lobby.Kick(kicked.Lobby.LocalPeer, false);
@@ -780,7 +786,10 @@ internal static partial class LobbyTests
         rig.Steps(240);
         Check(kicked.Lobby.Error == null, "Kick-loss fixture unexpectedly delivered the rejection");
         Check(
-            host.Lobby.PeerIds.SequenceEqual(new[] { 0 }) && host.Lobby.Roster.Count == 1 && !host.Lobby.Transitioning,
+            host.Lobby.PeerIds.SequenceEqual(new[] { 0 })
+                && host.Lobby.Roster.Count == 0
+                && host.Lobby.Roster.Spectator(0) != null
+                && !host.Lobby.Transitioning,
             "Periodic hello from a removed client automatically rejoined the lobby"
         );
         Check(
@@ -796,7 +805,10 @@ internal static partial class LobbyTests
         rig.Blocked.Remove(("host", "kicked"));
         var fresh = rig.Add("kicked", [new(0, Spawned: true)]);
         rig.WaitFor(() => rig.Ready, "A fresh explicit join was rejected after an ordinary kick");
-        Check(fresh.Lobby.Connected && host.Lobby.Roster.Count == 2, "Ordinary kick permanently banned the address");
+        Check(
+            fresh.Lobby.Connected && host.Lobby.Roster.Count == 1 && host.Lobby.Roster.Spectator(0) != null,
+            "Ordinary kick permanently banned the address"
+        );
         rig.Steps(80);
         rig.AssertConfirmedStates();
     }
@@ -811,7 +823,7 @@ internal static partial class LobbyTests
         rig.WaitFor(() => rig.Ready, "Spectate-disconnect fixture failed to admit its third peer");
         rig.Steps(80);
         Check(host.Lobby.SetSpectating(leaving.Lobby.LocalPeer, true), "Host could not begin the spectate transition");
-        rig.WaitFor(() => host.Lobby.Transitioning, "Spectate transition did not pause the active session");
+        rig.Steps(1);
         leaving.Lobby.Dispose();
         leaving.Active = false;
         rig.WaitFor(
@@ -850,6 +862,23 @@ internal static partial class LobbyTests
                 .Where(node => node.Active)
                 .All(node =>
                     node.Lobby.SimulationReady
+                    && !node.Lobby.LocalRequestPending
+                    && (
+                        node.Lobby.LocalPeer == 0
+                        || Nodes[0].Lobby.Roster.Spectator(node.Lobby.LocalPeer) == null
+                        || node.Lobby.LobbySession is LobbyNetworkSession { Spectating: true }
+                    )
+                    && node.Simulation.Membership.Rooms.Select(player =>
+                            player == null ? (-1, -1) : (player.Peer, player.Id)
+                        )
+                        .SequenceEqual(
+                            Nodes[0]
+                                .Lobby.Roster.Slots.Select(slot =>
+                                    slot.Player == null ? (-1, -1) : (slot.Player.Peer, slot.Player.Id)
+                                )
+                        )
+                    && node.Simulation.Membership.Spectators.Select(player => (player.Peer, player.Id))
+                        .SequenceEqual(Nodes[0].Lobby.Roster.Spectators.Select(player => (player.Peer, player.Id)))
                     && node.Lobby.LobbySession?.State == GGCS.SessionState.Running
                     && node.Lobby.SessionId == Nodes[0].Lobby.SessionId
                 );

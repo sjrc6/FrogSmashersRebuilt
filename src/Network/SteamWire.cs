@@ -296,7 +296,12 @@ internal sealed class SteamWire : IWire
             return;
         disposed = true;
         foreach (ulong id in connections.Keys.ToArray())
+        {
+            Flush(id);
+            if (connections.TryGetValue(id, out var connection))
+                SteamNetworkingSockets.FlushMessagesOnConnection(connection);
             Close(id, "Lobby closed");
+        }
         if (listener != HSteamListenSocket.Invalid)
             SteamNetworkingSockets.CloseListenSocket(listener);
         callback.Dispose();

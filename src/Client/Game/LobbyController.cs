@@ -16,13 +16,13 @@ internal sealed partial class LobbyController(FrogGame game)
     private long rollbackCount;
     private long lastAudioTick = -1;
     private long lastVisualTick = -1;
-    private NetworkSession? presentedSession;
+    private IRollbackSession? presentedSession;
     private readonly LobbyRoster displayedRoster = new();
     public bool TeamMode => IsHost ? game.Setup.Preferences.TeamMode : onlineTeams;
     public LobbySimulation? Simulation { get; private set; }
     public World? World => Simulation?.World;
     public World? PreviousWorld { get; private set; }
-    public NetworkSession? Network => Online?.LobbySession;
+    public IRollbackSession? Network => Online?.LobbySession;
     public float Interpolation => (float)Math.Clamp(accumulator / TickSeconds, 0, 1);
     public IGameLobby? Online => game.Online.Lobby;
     public bool IsHost => Online == null || Online.IsHost;
@@ -339,12 +339,12 @@ internal sealed partial class LobbyController(FrogGame game)
 
     private void UpdateSessionPresentation()
     {
-        if (ReferenceEquals(Network, presentedSession))
-            return;
-        presentedSession = Network;
         var devices = LocalPlayers.Select(player => player.Id).ToHashSet();
         foreach (int device in commands.Keys.Where(device => !devices.Contains(device)).ToArray())
             commands.Remove(device);
+        if (ReferenceEquals(Network, presentedSession))
+            return;
+        presentedSession = Network;
         rollbackCount = 0;
         lastAudioTick = lastVisualTick = World!.TickNumber - 1;
         PreviousWorld!.Restore(World.Capture());

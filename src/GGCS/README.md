@@ -7,7 +7,7 @@ A C# rollback networking library based on GGRS and GGPO. It targets .NET 10 and 
 
 ## What is implemented
 
-- A fixed roster of player inputs, grouped by owning machine. Playing machines communicate directly with each other. Multiple local players share one connection per remote machine.
+- Registered input handles grouped by owning machine, with optional authoritative participation for live admission. Playing machines communicate directly with each other. Multiple local players share one connection per remote machine.
 - Delayed local input, repeat-last prediction or a custom predictor, snapshot restore and resimulation, and bounded independent prediction/history windows.
 - Handshake, session generation and configuration checks, input acknowledgements and retransmission, packet reordering, duplication and loss recovery, bounded XOR/RLE compression, interruption/resume/timeout events, and disconnect cutoff agreement.
 - RTT measurements and GGRS's 30-frame smoothing of peer frame advantage. Pacing advice is separate from the prediction limit.
@@ -82,6 +82,18 @@ This timing policy extends GGPO/GGRS; it is not TF.EX's ordinary frame-delay set
 Missing inputs limit prediction. Global confirmation separately bounds retention and publishing. Receiving all inputs locally allows simulation to continue without waiting another RTT, while hashes and spectator inputs wait for all retained playing peers' receipt reports. Disconnect cutoffs must also agree across those peers. `HistoryFrames` must comfortably cover expected confirmation delays and repairs; exhausted history stops advancement rather than overwriting needed state.
 
 `DisconnectPeer` removes an entire remote machine, including all its local players. The surviving peers briefly pause advancement and confirmation, exchange their frozen confirmation floors, and agree a cutoff at least as high as every floor. Each survivor acknowledges that cutoff before any publishes later frames. They then resimulate later frames as disconnected. This prevents stale receipt reports from invalidating already-published spectator inputs. `AdvanceStatus.DisconnectAgreement` identifies this wait. A machine explicitly excluded by another participant stops that generation. This is a rollback membership mechanism, not a consensus or host migration system; the game still coordinates recovery from partitions and roster changes.
+
+## Live participation
+
+A normal session retains fixed input ownership. To support a live lobby, register its potential machine streams once and supply `SessionParticipation<TInput>`. Its authority handle must always participate; its selector reads a bitmask from the authority's input. The game carries versioned membership commands in that same input. Nonparticipating handles neither advance the prediction limit nor constrain confirmation/pacing. Their gameplay input status is Disconnected.
+
+Use `connectedPeers` to distinguish links already prepared from registered dormant handles. `ConnectPeer(peer, firstFrame)` prepares a previously absent or disconnected machine using retained input history; only activate it after all necessary links and its simulation are ready. The application transfers a confirmed game checkpoint and starts the newcomer with `initialFrame` equal to that checkpoint tick. Supply a matching initial authority input and the host's `CaptureDisconnects()` result. Completed disconnect state is part of admission, even when those old peers have no frogs. Wait for `CanPreparePeer` before starting an admission during disconnect agreement.
+
+Link IDs derive from the lobby session ID, the two peer IDs and their preparation tick. `SessionLink.Identity` exposes the same derivation for a separate spectator receiver. Prior incarnation packets cannot terminate replacement connections. The engine retains historical disconnected intervals when a handle is restarted, rather than changing finalized history.
+
+The application owns room assignment, checkpoint transport, catch-up and activation. GGCS supplies retained inputs and deterministic participation, not automatic peer admission. Retained history remains bounded: prepare a machine only once it can load/simulate, and reject or restart a preparation that falls outside that window. Prepared inactive links must never be used as a substitute for an active player's missing input.
+
+`ISpectatorInputCodec<TInput>` optionally packs only the active controls into a compact confirmed bundle. Its size contributes to the configuration fingerprint. The game uses this for twelve possible machine streams with at most eight frogs; generic sessions retain the default full-input encoding.
 
 ## Confirmed pauses and checkpoint continuation
 
@@ -158,7 +170,7 @@ The library stays independent of game content, transport APIs and UI. The applic
 - `NetworkSession` adapts GGCS frame numbers to persistent world ticks, captures/restores `IRollbackSimulation`, retains reversible events, and exposes diagnostics and confirmed checkpoints. Its `AcceptedLocalSlots` identifies which devices may consume pending button edges; `LocalInputSubmitted` means at least one local handle accepted a sample.
 - `RollbackInput` carries gameplay plus tick-stamped lobby spawn, selection, color and team commands. Its explicit codec validates every field. Prediction retains gameplay while clearing lobby command edges.
 - `LobbySimulation` snapshots the world, roster, cosmetic RNG, preview events and CPU retaliation state. Match simulation uses the regular world snapshot.
-- `MeshLobby` coordinates membership through a confirmed pause, snapshot transfer, direct-link readiness and a new session generation. Empty lobbies use a neutral host input stream to keep the simulation clock running without inventing a room occupant.
+- `MeshLobby` prepares new connections from confirmed history while existing machines keep running. `LobbyNetworkSession` carries machine controls and authority membership in stable streams; room changes use ordinary rollback. Match start alone uses a confirmed pause and a new generation. Empty lobbies retain a neutral host authority stream.
 - Steam playing machines use direct Steam Networking Sockets links. LAN/UDP uses direct datagrams; `DatagramReliability` supplies bounded, ordered reliable control messages independently from rollback input traffic. The host handles admission and sends spectators the combined confirmed stream.
 - Client accumulators apply GGCS's pacing multiplier to active players. Spectators and a spectating host catch up at twice the normal cadence while more than two confirmed frames are buffered. Polling continues during pauses and stalls.
 

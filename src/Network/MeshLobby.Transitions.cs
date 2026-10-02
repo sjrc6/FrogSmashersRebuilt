@@ -33,11 +33,14 @@ internal sealed partial class MeshLobby
         Paused,
         Confirm,
         Confirmed,
-        InputPrefix,
         Checkpoint,
         Chunk,
         Loaded,
         Commit,
         Cancel,
+        Bootstrap,
+        BootstrapChunk,
+        PreparePeer,
+        Prepared,
     }
 }

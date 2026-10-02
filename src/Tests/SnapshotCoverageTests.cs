@@ -107,7 +107,7 @@ internal static class SnapshotCoverageTests
         var target = new LobbySimulation(new World(TestFixtures.Map(), rules, 9), new LobbyRoster(), 456);
         foreach (var field in typeof(LobbySimulation).GetFields(Fields))
         {
-            if (field.Name == "<CpuRevision>k__BackingField")
+            if (field.Name is "<CpuRevision>k__BackingField" or "<RosterRevision>k__BackingField")
                 field.SetValue(source, 123);
             else if (field.FieldType == typeof(uint))
                 field.SetValue(source, field.Name == "pendingPreviews" ? 0x5au : 1234567u);
@@ -132,6 +132,7 @@ internal static class SnapshotCoverageTests
             source.Membership.Rooms.SequenceEqual(target.Membership.Rooms),
             "Lobby snapshot restores actual slot records"
         );
+        Check(source.RosterRevision == target.RosterRevision, "Lobby snapshot restores membership revision");
         Check(source.CpuRevision == target.CpuRevision, "Lobby snapshot restores applied CPU command revision");
         Check(source.InputSources.SequenceEqual(target.InputSources), "Lobby snapshot rebuilds input identities");
         Check(source.InputRooms.SequenceEqual(target.InputRooms), "Lobby snapshot rebuilds input rooms");

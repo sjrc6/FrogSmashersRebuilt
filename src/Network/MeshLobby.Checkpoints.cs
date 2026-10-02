@@ -20,7 +20,6 @@ internal sealed partial class MeshLobby
         public CheckpointPhase Stage { get; private set; } = CheckpointPhase.Pausing;
         public long Boundary { get; set; } = -1;
         public ulong Session { get; set; }
-        public bool Match { get; set; }
         public string Settings { get; set; } = "";
         public int[] PausePeers { get; set; } = [];
         public int[] RequiredPeers { get; set; } = [];
@@ -30,9 +29,6 @@ internal sealed partial class MeshLobby
         public Dictionary<int, byte[]> Chunks { get; } = new();
         public byte[]? Snapshot { get; set; }
         public byte[]? Previous { get; set; }
-        public PendingInput[] Inputs { get; set; } = [];
-        public Dictionary<(int Peer, int Id), PendingInput> Prefixes { get; } = new();
-        public int ExpectedInputs { get; set; }
         public PeerAddress[] Peers { get; set; } = [];
         public string Hash { get; set; } = "";
         public int Size { get; set; }
@@ -66,36 +62,22 @@ internal sealed partial class MeshLobby
             };
     }
 
-    private void CreateLobbySession(IReadOnlyDictionary<int, RollbackInput[]> initialInputs)
+    private void CreateLobbySession()
     {
         if (simulation == null)
             return;
-        var owners = simulation.InputSources.Select(player => player.Peer).ToArray();
-        PeerSlots = Enumerable
-            .Range(0, peerAddresses.Keys.Max() + 1)
-            .Select(peer =>
-                owners
-                    .Select((owner, index) => (owner, index))
-                    .Where(item => item.owner == peer)
-                    .Select(item => item.index)
-                    .ToArray()
-            )
-            .ToArray();
-        InputPlayerSlots = simulation.InputRooms.ToArray();
-        var config = new SessionConfig(
-            PeerSlots,
+        LobbySession = new LobbyNetworkSession(
+            simulation,
             LocalPeer,
-            contentHash,
-            simulation.World,
             SessionId,
-            rollback: rollback,
-            activePeers: PeerIds.ToArray(),
-            initialInputs: initialInputs,
-            inputPlayerSlots: simulation.InputRooms.ToArray()
+            contentHash,
+            CreateTransport(),
+            rollback,
+            false,
+            []
         );
-        LobbySession = new NetworkSession(simulation, config, CreateTransport());
         committedPeers = PeerIds.ToArray();
-        committedPlayers = owners.Distinct().Append(0).Distinct().Order().ToArray();
+        committedPlayers = [0];
     }
 
     private void UpdateCheckpoint()
@@ -108,7 +90,7 @@ internal sealed partial class MeshLobby
             return;
         }
         UpdateCpuEdits();
-        if (IsHost && checkpoint == null && rosterChanged)
+        if (IsHost && checkpoint == null && matchRequested)
             BeginCheckpoint();
         var pending = checkpoint;
         if (pending == null)
@@ -189,11 +171,17 @@ internal sealed partial class MeshLobby
     private void BeginCheckpoint()
     {
         RefreshSelections();
+        committedPeers = PeerIds.ToArray();
+        committedPlayers = simulation!
+            .InputSources.Select(source => source.Peer)
+            .Distinct()
+            .Append(0)
+            .Distinct()
+            .ToArray();
         rosterChanged = false;
         var pending = new LobbyCheckpoint(Guid.NewGuid().ToString("N"), ++changeVersion, Now)
         {
             Session = NewSessionId(),
-            Match = matchRequested,
             Settings = MatchSettingsJson,
             PausePeers = committedPlayers.Where(peerAddresses.ContainsKey).ToArray(),
             RequiredPeers = Roster
@@ -224,7 +212,6 @@ internal sealed partial class MeshLobby
         if (simulation!.World.TickNumber != pending.Boundary)
             return null;
         byte[] snapshot;
-        PendingInput[] inputs = [];
         if (LobbySession == null)
             snapshot = simulation.Capture();
         else
@@ -234,35 +221,18 @@ internal sealed partial class MeshLobby
                 || !LobbySession.TryGetConfirmedCheckpoint(pending.Boundary, out snapshot)
             )
                 return null;
-            var delayed = LobbySession.ExportPendingLocalInputs(pending.Boundary);
-            var result = new List<PendingInput>();
-            var codec = new RollbackInputCodec();
-            for (int index = 0; index < delayed.Length; index++)
-            {
-                int handle = LobbySession.LocalSlots[index];
-                if (handle >= simulation.InputSources.Count)
-                    continue;
-                var player = simulation.InputSources[handle];
-                byte[] data = new byte[delayed[index].Length * codec.Size];
-                for (int offset = 0; offset < delayed[index].Length; offset++)
-                    codec.Encode(delayed[index][offset], data.AsSpan(offset * codec.Size, codec.Size));
-                result.Add(new(player.Peer, player.Id, data));
-            }
-            inputs = result.ToArray();
         }
         var report = CheckpointControl(ControlKind.Confirmed, pending);
         report.Tick = pending.Boundary;
         report.Hash = Convert.ToHexString(SHA256.HashData(snapshot));
-        report.Inputs = inputs;
         return report;
     }
 
     private void PrepareCheckpoint(LobbyCheckpoint pending)
     {
         pending.Previous = simulation!.Capture();
-        pending.Inputs = pending.Confirmed.Values.SelectMany(report => report.Inputs).ToArray();
         simulation.ApplyRoster(Roster);
-        if (pending.Match && simulation.Membership.Rooms.Any(player => player is { Spawned: false }))
+        if (simulation.Membership.Rooms.Any(player => player is { Spawned: false }))
         {
             simulation.Restore(pending.Previous);
             CancelCheckpoint("SPAWN ALL PLAYERS");
@@ -290,7 +260,7 @@ internal sealed partial class MeshLobby
             Change = pending.Number,
             Tick = pending.Boundary,
             Session = pending.Session,
-            Starting = pending.Match,
+            Starting = true,
         };
 
     private void SendCheckpoint(LobbyCheckpoint pending)
@@ -301,10 +271,8 @@ internal sealed partial class MeshLobby
             offer.Size = pending.Size;
             offer.Hash = pending.Hash;
             offer.Settings = pending.Settings;
-            offer.InputCount = pending.Inputs.Length;
             offer.Peers = pending.Peers;
             SendPeerControl(peer, offer);
-            SendInputPrefixes(peer, pending, pending.Inputs);
             for (int offset = 0; offset < pending.Size; offset += CheckpointChunkSize)
             {
                 var chunk = CheckpointControl(ControlKind.Chunk, pending);
@@ -314,16 +282,6 @@ internal sealed partial class MeshLobby
                     .ToArray();
                 SendPeerControl(peer, chunk);
             }
-        }
-    }
-
-    private void SendInputPrefixes(int peer, LobbyCheckpoint pending, PendingInput[] inputs)
-    {
-        foreach (var input in inputs)
-        {
-            var message = CheckpointControl(ControlKind.InputPrefix, pending);
-            message.Inputs = [input];
-            SendPeerControl(peer, message);
         }
     }
 
@@ -356,8 +314,7 @@ internal sealed partial class MeshLobby
             && pending.Confirmed.TryGetValue(LocalPeer, out var report)
         )
         {
-            SendInputPrefixes(0, pending, report.Inputs);
-            SendPeerControl(0, report with { Inputs = [] });
+            SendPeerControl(0, report);
         }
         else if (pending.Stage == CheckpointPhase.AwaitingCommit && pending.Snapshot != null)
         {
@@ -383,27 +340,11 @@ internal sealed partial class MeshLobby
                 && control.Tick >= 0
             )
                 pending.Stopped.TryAdd(peer, control.Tick);
-            if (control.Kind == ControlKind.InputPrefix && pending.Stage == CheckpointPhase.Confirming)
-            {
-                foreach (var input in control.Inputs)
-                    if (
-                        input.Peer == peer
-                        && simulation!.InputSources.Any(player => player.Peer == peer && player.Id == input.Id)
-                    )
-                        pending.Prefixes[(peer, input.Id)] = input;
-                return;
-            }
-            if (control.Kind == ControlKind.Confirmed)
-                control = control with
-                {
-                    Inputs = pending.Prefixes.Values.Where(input => input.Peer == peer).ToArray(),
-                };
             if (
                 control.Kind == ControlKind.Confirmed
                 && pending.Stage == CheckpointPhase.Confirming
                 && pending.PausePeers.Contains(peer)
                 && control.Tick == pending.Boundary
-                && ValidPendingInputs(peer, control.Inputs)
             )
                 pending.Confirmed.TryAdd(peer, control);
             if (
@@ -440,7 +381,6 @@ internal sealed partial class MeshLobby
         if (change.Id != control.Transaction)
             return;
         change.Session = control.Session;
-        change.Match = control.Starting;
         if (control.Kind == ControlKind.Pause && change.Stage == CheckpointPhase.Pausing)
         {
             change.PausePeers = control.Mesh;
@@ -475,18 +415,8 @@ internal sealed partial class MeshLobby
             change.Boundary = control.Tick;
             change.Size = control.Size;
             change.Hash = control.Hash;
-            change.ExpectedInputs = control.InputCount;
             change.Peers = control.Peers;
             change.Settings = control.Settings;
-        }
-        else if (control.Kind == ControlKind.InputPrefix && change.Stage == CheckpointPhase.Loading)
-        {
-            foreach (var input in control.Inputs)
-                if (
-                    change.Prefixes.Count < SessionConfig.MaxInputs
-                    || change.Prefixes.ContainsKey((input.Peer, input.Id))
-                )
-                    change.Prefixes[(input.Peer, input.Id)] = input;
         }
         else if (
             control.Kind == ControlKind.Chunk
@@ -511,40 +441,10 @@ internal sealed partial class MeshLobby
         }
     }
 
-    private bool ValidPendingInputs(int peer, PendingInput[] inputs)
-    {
-        var expected = simulation!
-            .InputSources.Where(player => player.Peer == peer)
-            .Select(player => player.Id)
-            .Order();
-        if (
-            inputs.Any(input => input.Peer != peer) || !inputs.Select(input => input.Id).Order().SequenceEqual(expected)
-        )
-            return false;
-        var codec = new RollbackInputCodec();
-        foreach (var input in inputs)
-        {
-            if (
-                input.Data.Length % codec.Size != 0
-                || input.Data.Length / codec.Size > RollbackPreferences.InputCapacityFrames
-            )
-                return false;
-            for (int offset = 0; offset < input.Data.Length / codec.Size; offset++)
-                _ = codec.Decode(input.Data.AsSpan(offset * codec.Size, codec.Size));
-        }
-        return true;
-    }
-
     private void AssembleCheckpoint(LobbyCheckpoint change)
     {
         int count = (change.Size + CheckpointChunkSize - 1) / CheckpointChunkSize;
-        if (
-            simulation == null
-            || change.Size == 0
-            || change.Chunks.Count != count
-            || change.Snapshot != null
-            || change.Prefixes.Count != change.ExpectedInputs
-        )
+        if (simulation == null || change.Size == 0 || change.Chunks.Count != count || change.Snapshot != null)
             return;
         byte[] snapshot = change.Chunks.OrderBy(pair => pair.Key).SelectMany(pair => pair.Value).ToArray();
         if (Convert.ToHexString(SHA256.HashData(snapshot)) != change.Hash)
@@ -560,7 +460,6 @@ internal sealed partial class MeshLobby
         {
             simulation.Restore(previous);
         }
-        change.Inputs = change.Prefixes.Values.ToArray();
         change.Snapshot = snapshot;
         if (change.Stage == CheckpointPhase.Loading)
             change.MoveTo(CheckpointPhase.AwaitingCommit);
@@ -579,37 +478,13 @@ internal sealed partial class MeshLobby
             InstallAddresses(pending.Peers);
         simulation.Restore(pending.Snapshot);
         Roster.ApplyMembership(simulation.Membership);
-        if (pending.Match)
-            MatchSettingsJson = pending.Settings;
-        var seeds = new Dictionary<int, RollbackInput[]>();
-        var codec = new RollbackInputCodec();
-        for (int handle = 0; handle < simulation.InputSources.Count; handle++)
-        {
-            var player = simulation.InputSources[handle];
-            var seed = pending.Inputs.FirstOrDefault(input => input.Peer == player.Peer && input.Id == player.Id);
-            if (seed == null)
-                continue;
-            if (
-                seed.Data.Length % codec.Size != 0
-                || seed.Data.Length / codec.Size > RollbackPreferences.InputCapacityFrames
-            )
-                throw new InvalidDataException("Invalid delayed-input checkpoint");
-            seeds[handle] = Enumerable
-                .Range(0, seed.Data.Length / codec.Size)
-                .Select(offset => codec.Decode(seed.Data.AsSpan(offset * codec.Size, codec.Size)))
-                .ToArray();
-        }
+        MatchSettingsJson = pending.Settings;
         completedChange = pending.Number;
         checkpoint = null;
         phase = LobbyPhase.Lobby;
         matchRequested = false;
-        if (pending.Match)
-        {
-            FreezeRoster();
-            phase = LobbyPhase.Match;
-        }
-        else
-            CreateLobbySession(seeds);
+        FreezeRoster();
+        phase = LobbyPhase.Match;
         revision++;
         lastSend = -1000;
     }

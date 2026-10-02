@@ -31,6 +31,7 @@ internal sealed class PeerProtocol
     private readonly TimeSync timeSync = new();
     private readonly ConnectionStatus[] localStatuses;
     private readonly ConnectionStatus[] remoteStatuses;
+    private readonly int[] inputFloors;
     private uint challenge = (uint)Random.Shared.NextInt64(1, uint.MaxValue);
     private int synchronizedRoundTrips;
     private int currentFrame;
@@ -115,12 +116,14 @@ internal sealed class PeerProtocol
         LastQueuedFrame = LastReceivedFrame = LastAcknowledgedFrame = initialFrame - 1;
         localStatuses = Enumerable.Repeat(new ConnectionStatus(false, -1), playerCount).ToArray();
         remoteStatuses = localStatuses.ToArray();
+        inputFloors = new int[playerCount];
         lastReceivedAt = lastSentAt = clock.NowMilliseconds;
         lastSyncSentAt = lastReceivedAt - options.RetryMilliseconds;
         lastInputSentAt = lastQualitySentAt = lastReceivedAt;
     }
 
     public SessionState State { get; private set; } = SessionState.Synchronizing;
+    public int InitialFrame => initialFrame;
     public int LastReceivedFrame { get; private set; }
     public int LastAcknowledgedFrame { get; private set; }
     public int LastQueuedFrame { get; private set; }
@@ -130,6 +133,27 @@ internal sealed class PeerProtocol
     public int RemoteDisconnectReadyCut { get; private set; } = int.MinValue;
     public bool CanQueueInput => State != SessionState.Disconnected && pendingInputs.Count < options.InputCapacity;
     public ReadOnlySpan<ConnectionStatus> RemoteStatuses => remoteStatuses;
+
+    public void RestartInput(int handle, int firstFrame)
+    {
+        inputFloors[handle] = firstFrame;
+        localStatuses[handle] = remoteStatuses[handle] = new(false, firstFrame - 1);
+        uint mask = ~(1u << handle);
+        disconnectMask &= mask;
+        RemoteDisconnectMask &= mask;
+        if (disconnectMask == 0)
+        {
+            disconnectFloor = -1;
+            disconnectReadyCut = int.MinValue;
+        }
+        if (RemoteDisconnectMask == 0)
+        {
+            RemoteDisconnectFloor = -1;
+            RemoteDisconnectReadyCut = int.MinValue;
+        }
+        statusesChanged = urgentStatus = true;
+    }
+
     public int FramesAhead => timeSync.AverageFrameAdvantage;
     public PeerNetworkStats Stats =>
         new(
@@ -460,6 +484,14 @@ internal sealed class PeerProtocol
 
     private bool HandleInputs(ProtocolPacket packet)
     {
+        for (int handle = 0; handle < inputFloors.Length; handle++)
+            if (inputFloors[handle] > 0 && packet.DisconnectFloor < inputFloors[handle])
+                packet.DisconnectMask &= ~(1u << handle);
+        if (packet.DisconnectMask == 0)
+        {
+            packet.DisconnectFloor = -1;
+            packet.DisconnectReadyCut = int.MinValue;
+        }
         if (
             packet.AcknowledgedFrame < initialFrame - 1
             || packet.AcknowledgedFrame > LastQueuedFrame
@@ -694,6 +726,8 @@ internal sealed class PeerProtocol
         {
             ConnectionStatus old = remoteStatuses[index];
             ConnectionStatus incoming = statuses[index];
+            if (incoming.LastFrame < inputFloors[index] - 1)
+                continue;
             if (incoming.Disconnected)
                 remoteStatuses[index] = new ConnectionStatus(
                     true,

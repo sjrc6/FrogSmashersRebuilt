@@ -23,6 +23,7 @@ public class FrogGame : Game
     private double diagnosticTickRate;
     private bool contentLoaded;
     internal LaunchOptions Options { get; }
+    internal ShutdownSignal? Shutdown { get; set; }
     internal ClientSettings Settings { get; } = ClientSettings.Load();
     internal Controls Controls { get; }
     internal Assets Assets { get; private set; } = null!;
@@ -158,6 +159,11 @@ public class FrogGame : Game
 
     protected override void Update(GameTime gameTime)
     {
+        if (Shutdown?.Requested == true)
+        {
+            Exit();
+            return;
+        }
         Controls.Poll(IsActive || Options.Offscreen);
         double elapsedSeconds = ElapsedSeconds(gameTime);
         Toasts.Update(elapsedSeconds);
@@ -543,6 +549,8 @@ public class FrogGame : Game
 
     protected override void OnExiting(object sender, ExitingEventArgs args)
     {
+        Match?.Network?.Dispose();
+        Online?.CloseLobby();
         Match?.SaveReplay();
         if (contentLoaded && SaveSettingsOnExit)
         {
@@ -550,6 +558,7 @@ public class FrogGame : Game
         }
 
         base.OnExiting(sender, args);
+        Shutdown?.Complete();
     }
 
     protected override void Dispose(bool disposing)

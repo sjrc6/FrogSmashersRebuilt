@@ -10,6 +10,8 @@ try
     }
 
     using var game = new FrogGame(options);
+    using var shutdown = new ShutdownSignal();
+    game.Shutdown = shutdown;
     game.Run();
 }
 catch (Exception exception)

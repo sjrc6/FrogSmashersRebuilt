@@ -24,11 +24,12 @@ public sealed partial class P2PSession<TInput, TState>
     private readonly int[] localHandles;
     private readonly SessionEvents events = new();
     private int submittedFrame = -1;
-    private int nextOutgoingFrame;
     private int lastChecksumFrame = -1;
     private int requestedChecksumFrame = -1;
     private bool stopped;
     private bool hasSynchronized;
+    private readonly SessionParticipation<TInput>? participation;
+    private readonly int initialFrame;
     private uint disconnectMask;
     private uint committedDisconnectMask;
     private int disconnectFloor = -1;
@@ -46,7 +47,12 @@ public sealed partial class P2PSession<TInput, TState>
         SessionOptions? options = null,
         IClock? clock = null,
         Func<TInput, int, TInput>? predictor = null,
-        string inputSchema = ""
+        string inputSchema = "",
+        SessionParticipation<TInput>? participation = null,
+        int initialFrame = 0,
+        IReadOnlyList<int>? connectedPeers = null,
+        ISpectatorInputCodec<TInput>? spectatorCodec = null,
+        SessionDisconnectState? disconnectState = null
     )
     {
         if (sessionId == 0)
@@ -63,27 +69,41 @@ public sealed partial class P2PSession<TInput, TState>
         this.transport = transport;
         this.options = options ?? new();
         this.clock = clock ?? new MonotonicClock();
+        this.participation = participation;
+        this.initialFrame = initialFrame;
+        submittedFrame = initialFrame - 1;
         Timing = new() { DelayFrames = this.options.InputDelay, MaxExtraDelayFrames = 0 };
-        wire = new(players, codec, this.options, inputSchema);
-        engine = new(wire.Players.Length, this.options, game, predictor);
-        statuses = Enumerable.Repeat(new ConnectionStatus(false, -1), wire.Players.Length).ToArray();
+        wire = new(players, codec, this.options, inputSchema, spectatorCodec);
+        engine = new(wire.Players.Length, this.options, game, predictor, participation, initialFrame);
+        statuses = Enumerable.Repeat(new ConnectionStatus(false, initialFrame - 1), wire.Players.Length).ToArray();
         peerHandles = wire
             .Players.GroupBy(p => p.PeerId)
             .ToDictionary(g => g.Key, g => g.Select(p => p.Handle).ToArray());
         localHandles = peerHandles.GetValueOrDefault(localPeerId) ?? [];
         foreach (int handle in localHandles)
-            delays.Add(handle, new(this.options.InputDelay, this.options.MaxInputDelay, predictor));
+            delays.Add(
+                handle,
+                new(
+                    this.options.InputDelay,
+                    this.options.MaxInputDelay,
+                    predictor,
+                    initialFrame,
+                    participation?.AuthorityHandle == handle ? participation.InitialInput : default
+                )
+            );
         foreach (var (peerId, handles) in peerHandles)
         {
-            if (peerId == localPeerId)
+            if (peerId == localPeerId || connectedPeers != null && !connectedPeers.Contains(peerId))
                 continue;
             peers.Add(
                 peerId,
-                CreatePeer(peerId, localHandles.Length * wire.InputSize, handles.Length * wire.InputSize)
+                CreatePeer(peerId, localHandles.Length * wire.InputSize, handles.Length * wire.InputSize, initialFrame)
             );
             remoteChecksums.Add(peerId, new());
         }
         hasSynchronized = peers.Count == 0;
+        if (disconnectState != null)
+            RestoreDisconnects(disconnectState);
     }
 
     public int CurrentFrame => engine.CurrentFrame;
@@ -95,10 +115,14 @@ public sealed partial class P2PSession<TInput, TState>
         (int)Math.Clamp((long)GloballyKnownFrame() - CurrentFrame + 1, 0, options.HistoryFrames);
     public SessionState State =>
         stopped ? SessionState.Disconnected
-        : peers.Values.Any(p => p.State == SessionState.Synchronizing) ? SessionState.Synchronizing
+        : RequiredPeerLinks().Any(p => p.State == SessionState.Synchronizing) ? SessionState.Synchronizing
         : SessionState.Running;
     public int FramesAhead =>
-        peers.Values.Where(p => p.State == SessionState.Running).Select(p => p.FramesAhead).DefaultIfEmpty().Max();
+        RequiredPeerLinks()
+            .Where(p => p.State == SessionState.Running)
+            .Select(p => p.FramesAhead)
+            .DefaultIfEmpty()
+            .Max();
     public double RecommendedFrameDurationMultiplier => 1 + Math.Clamp((FramesAhead - 2) * .02, 0, .1);
     public int PredictionDepth =>
         Enumerable.Range(0, statuses.Length).Select(PredictionForPlayer).DefaultIfEmpty().Max();
@@ -108,7 +132,7 @@ public sealed partial class P2PSession<TInput, TState>
         ArgumentOutOfRangeException.ThrowIfNegative(playerHandle);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(playerHandle, statuses.Length);
         var status = statuses[playerHandle];
-        return status.Disconnected ? 0 : Math.Max(0, CurrentFrame - status.LastFrame - 1);
+        return status.Disconnected ? 0 : engine.PredictionForPlayer(playerHandle);
     }
 
     public IReadOnlyList<int> InputObserverWaitPeers =>
@@ -149,11 +173,13 @@ public sealed partial class P2PSession<TInput, TState>
         return !stopped
             && !HasPendingDisconnect
             && stateFrame <= ConfirmedFrame + 1
-            && peers.All(peer =>
-                peerHandles[peer.Key].All(handle => statuses[handle].Disconnected)
-                || peer.Value.State == SessionState.Running
-                    && verifiedStateFrames.GetValueOrDefault(peer.Key, -1) >= stateFrame
-            );
+            && peers
+                .Where(peer => PeerParticipates(peer.Key, stateFrame - 1))
+                .All(peer =>
+                    peerHandles[peer.Key].All(handle => statuses[handle].Disconnected)
+                    || peer.Value.State == SessionState.Running
+                        && verifiedStateFrames.GetValueOrDefault(peer.Key, -1) >= stateFrame
+                );
     }
 
     public bool TryGetConfirmedState(int stateFrame, out SavedState<TState> state)
@@ -214,6 +240,8 @@ public sealed partial class P2PSession<TInput, TState>
         spectators.Add(peerId, CreatePeer(peerId, wire.SpectatorInputSize, 0, startFrame));
     }
 
+    public void RemoveSpectator(int peerId) => spectators.Remove(peerId);
+
     public void DisconnectPeer(int peerId)
     {
         if (observers.Remove(peerId, out var observer))
@@ -249,12 +277,16 @@ public sealed partial class P2PSession<TInput, TState>
             if (TryFindPeer(datagram.PeerId, out var peer))
                 peer.HandlePacket(datagram.Data.Span);
         }
-        foreach (var (peerId, peer) in peers)
+        foreach (var (peerId, peer) in peers.ToArray())
         {
             SetPeerProgress(peer);
             peer.Poll(CurrentFrame, statuses, flushInputs: false);
             ReceivePlayerInputs(peerId, peer);
-            ReceiveEvents(peerId, peer, true);
+            ReceiveEvents(
+                peerId,
+                peer,
+                PeerParticipates(peerId, CurrentFrame) || PeerParticipates(peerId, ConfirmedFrame + 1)
+            );
             if (stopped)
                 return;
             var checksums = remoteChecksums[peerId];
@@ -316,7 +348,7 @@ public sealed partial class P2PSession<TInput, TState>
             );
         if (submittedFrame != CurrentFrame)
         {
-            if (peers.Values.Any(p => p.State == SessionState.Running && !p.CanQueueInput))
+            if (RequiredPeerLinks().Any(p => p.State == SessionState.Running && !p.CanQueueInput))
                 return AdvanceStatus.InputBufferFull;
             for (int i = 0; i < localHandles.Length; i++)
             {
@@ -354,7 +386,7 @@ public sealed partial class P2PSession<TInput, TState>
     private PeerProtocol CreatePeer(int peerId, int sendSize, int receiveSize, int startFrame = 0) =>
         new(
             peerId,
-            sessionId,
+            participation == null ? sessionId : SessionLink.Identity(sessionId, localPeerId, peerId, startFrame),
             wire.ConfigurationId,
             sendSize,
             receiveSize,
@@ -407,6 +439,15 @@ public sealed partial class P2PSession<TInput, TState>
                 int handle = handles[i];
                 if (statuses[handle].Disconnected)
                     continue;
+                if (packet.Frame <= engine.LastInputFrame(handle))
+                {
+                    if (
+                        engine.TryGetInput(handle, packet.Frame, out var previous)
+                        && !EqualityComparer<TInput>.Default.Equals(previous, inputs[i])
+                    )
+                        Fail(peerId, "A peer changed an already received input.");
+                    continue;
+                }
                 if (
                     (long)packet.Frame
                     >= Math.Max(0, CurrentFrame - options.HistoryFrames) + (long)options.InputCapacity
@@ -435,6 +476,8 @@ public sealed partial class P2PSession<TInput, TState>
                     peer.Disconnect();
                     observers.Remove(peerId);
                     spectators.Remove(peerId);
+                    if (participation != null)
+                        peers.Remove(peerId);
                 }
                 return;
             }
@@ -456,6 +499,8 @@ public sealed partial class P2PSession<TInput, TState>
             {
                 observers.Remove(peerId);
                 spectators.Remove(peerId);
+                if (participation != null)
+                    peers.Remove(peerId);
             }
         }
     }
@@ -466,27 +511,34 @@ public sealed partial class P2PSession<TInput, TState>
             return;
         int readyThrough = localHandles.Min(engine.LastInputFrame);
         var inputs = new TInput[localHandles.Length];
-        while (nextOutgoingFrame <= readyThrough)
+        foreach (var peer in peers.Values.Concat(observers.Values).ToArray())
         {
-            if (peers.Values.Any(p => p.State == SessionState.Running && !p.CanQueueInput))
-                return;
-            for (int i = 0; i < localHandles.Length; i++)
+            if (
+                peer.State == SessionState.Disconnected
+                || peer.State != SessionState.Running && !observers.ContainsKey(peer.Stats.PeerId)
+            )
+                continue;
+            while (peer.LastQueuedFrame < readyThrough && peer.CanQueueInput)
             {
-                if (!engine.TryGetInput(localHandles[i], nextOutgoingFrame, out inputs[i]))
-                    throw new InvalidOperationException("Local input history was overwritten before sending.");
+                int frame = peer.LastQueuedFrame + 1;
+                for (int i = 0; i < localHandles.Length; i++)
+                    if (!engine.TryGetInput(localHandles[i], frame, out inputs[i]))
+                    {
+                        peer.Disconnect();
+                        events.Add(
+                            new(
+                                SessionEventKind.ProtocolError,
+                                peer.Stats.PeerId,
+                                frame,
+                                "The connection fell behind retained input history."
+                            )
+                        );
+                        return;
+                    }
+                peer.QueueInput(frame, wire.Encode(inputs));
             }
-            var bytes = wire.Encode(inputs);
-            foreach (var peer in peers.Values)
-                if (peer.State == SessionState.Running)
-                    peer.QueueInput(nextOutgoingFrame, bytes);
-            foreach (var (peerId, peer) in observers.ToArray())
-            {
-                if (!peer.CanQueueInput)
-                    DropObserver(peerId, peer, "Input observer exceeded retained history.");
-                else
-                    peer.QueueInput(nextOutgoingFrame, bytes);
-            }
-            nextOutgoingFrame++;
+            if (peer.LastQueuedFrame < readyThrough && observers.ContainsKey(peer.Stats.PeerId))
+                DropObserver(peer.Stats.PeerId, peer, "Input observer exceeded retained history.");
         }
     }
 
@@ -590,7 +642,10 @@ public sealed partial class P2PSession<TInput, TState>
 
         if (!IsInputObserver && HasPendingDisconnect)
         {
-            var remaining = peers.Where(pair => !IsRemovingPeer(pair.Key)).Select(pair => pair.Value).ToArray();
+            var remaining = peers
+                .Where(pair => !IsRemovingPeer(pair.Key) && PeerParticipates(pair.Key, CurrentFrame))
+                .Select(pair => pair.Value)
+                .ToArray();
             if (
                 remaining.All(peer => peer.State == SessionState.Running && peer.RemoteDisconnectMask == disconnectMask)
             )
@@ -623,6 +678,8 @@ public sealed partial class P2PSession<TInput, TState>
 
     private int GloballyKnownFrame()
     {
+        if (participation != null)
+            return KnownParticipationFrame();
         int confirmed = int.MaxValue;
         for (int handle = 0; handle < statuses.Length; handle++)
         {

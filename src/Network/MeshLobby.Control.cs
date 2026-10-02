@@ -19,6 +19,7 @@ internal sealed partial class MeshLobby
             Players = requested,
             Spectating = requestedSpectating,
             Invited = invited,
+            CanSimulate = simulation != null,
             Version = requestVersion,
             Epoch = requestEpoch,
             Generation = Generation,

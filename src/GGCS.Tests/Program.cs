@@ -13,6 +13,7 @@ internal static class Program
             ProtocolTests.Run();
             ReferenceOracleTests.Run(Check.True);
             SessionTests.Run();
+            ParticipationTests.Run();
             TimingTests.Run();
             ReviewTests.Run();
             ProtocolIntegrationTests.Run();

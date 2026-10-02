@@ -4,7 +4,7 @@ using GGCS;
 
 namespace FrogSmashers.Network;
 
-public sealed class NetworkSession : IDisposable
+public sealed class NetworkSession : IRollbackSession
 {
     private readonly SessionConfig config;
     private readonly IPeerTransport transport;

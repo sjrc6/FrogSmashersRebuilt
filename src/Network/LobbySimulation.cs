@@ -20,6 +20,7 @@ public sealed class LobbySimulation : IRollbackSimulation
     private int[] inputRooms = [];
     private LobbyInputSource[] inputSources = [];
     public int CpuRevision { get; private set; }
+    public int RosterRevision { get; private set; } = 1;
     public World World { get; }
     public LobbyMembership Membership { get; private set; } = new(new LobbyPlayer?[LobbyRoster.MaxPlayers], []);
     public IReadOnlyList<SimulationEvent> Events => events;
@@ -222,6 +223,41 @@ public sealed class LobbySimulation : IRollbackSimulation
         pendingPreviews = 0;
     }
 
+    internal void TickFrame(ReadOnlySpan<GGCS.PlayerInput<LobbyFrame>> inputs)
+    {
+        var host = inputs[0].Input;
+        if (host.Membership.Revision > RosterRevision)
+        {
+            var next = host.Membership.Membership(Membership);
+            var roster = new LobbyRoster();
+            var slots = next
+                .Rooms.Select(
+                    (player, room) =>
+                    {
+                        var occupant =
+                            player is { Cpu: false } ? player
+                            : Membership.Rooms[room] is { Cpu: true } cpu ? cpu
+                            : null;
+                        return new LobbySlot(occupant is { Cpu: true } ? SlotType.Cpu : SlotType.Open, occupant);
+                    }
+                )
+                .ToArray();
+            roster.Replace(slots, next.Spectators);
+            ApplyRoster(roster);
+            RosterRevision = host.Membership.Revision;
+        }
+        var controls = new RollbackInput[inputSources.Length];
+        controls[0] = new(default, Cpu: host.Cpu);
+        for (int handle = 1; handle < controls.Length; handle++)
+        {
+            var player = inputSources[handle];
+            var frame = inputs[player.Peer];
+            if (frame.Status != GGCS.InputStatus.Disconnected)
+                controls[handle] = frame.Input.Controls[player.Id];
+        }
+        Tick(controls);
+    }
+
     public byte[] Capture() => Capture(out _);
 
     public byte[] Capture(out byte[] worldSnapshot)
@@ -229,6 +265,7 @@ public sealed class LobbySimulation : IRollbackSimulation
         using var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream);
         writer.Write(SnapshotMagic);
+        writer.Write(RosterRevision);
         writer.Write(CpuRevision);
         writer.Write(randomState);
         writer.Write(pendingPreviews);
@@ -257,12 +294,14 @@ public sealed class LobbySimulation : IRollbackSimulation
         using var reader = new BinaryReader(stream);
         if (reader.ReadInt32() != SnapshotMagic)
             throw new InvalidDataException("Invalid lobby snapshot");
+        int rosterRevision = reader.ReadInt32();
         int cpuRevision = reader.ReadInt32();
         uint nextRandom = reader.ReadUInt32();
         uint nextPreviews = reader.ReadUInt32();
         int worldLength = reader.ReadInt32();
         if (
-            cpuRevision < 0
+            rosterRevision < 1
+            || cpuRevision < 0
             || nextRandom == 0
             || nextPreviews >= 1u << LobbyRoster.MaxPlayers
             || worldLength < 0
@@ -288,6 +327,7 @@ public sealed class LobbySimulation : IRollbackSimulation
         worldSnapshot = world;
         bots = nextBots;
         CpuRevision = cpuRevision;
+        RosterRevision = rosterRevision;
         randomState = nextRandom;
         pendingPreviews = nextPreviews;
         Membership = membership;
@@ -321,8 +361,11 @@ public sealed class LobbySimulation : IRollbackSimulation
         using var reader = new BinaryReader(new MemoryStream(snapshot, false));
         if (reader.ReadInt32() != SnapshotMagic)
             throw new InvalidDataException("Invalid lobby snapshot");
+        reader.ReadInt32();
         return reader.ReadInt32();
     }
+
+    internal static int ReadRosterRevision(byte[] snapshot) => BitConverter.ToInt32(snapshot, 4);
 
     private void ApplyCpuCommand(LobbyCpuCommand command)
     {

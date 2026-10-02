@@ -10,6 +10,10 @@ internal sealed class RollbackEngine<TInput, TState>
         public int LastFrame = -1;
         public TInput LastInput;
         public int DisconnectFrame = int.MaxValue;
+        public readonly List<(int First, int Last)> PreviousDisconnects = new();
+
+        public bool DisconnectedAt(int frame) =>
+            frame > DisconnectFrame || PreviousDisconnects.Any(range => frame >= range.First && frame <= range.Last);
 
         public bool TryGet(int frame, out TInput input)
         {
@@ -22,6 +26,8 @@ internal sealed class RollbackEngine<TInput, TState>
     private readonly SessionOptions options;
     private readonly IRollbackGame<TInput, TState> game;
     private readonly Func<TInput, int, TInput> predictor;
+    private readonly SessionParticipation<TInput>? participation;
+    private readonly int initialFrame;
     private readonly InputHistory[] histories;
     private readonly int[] stateFrames;
     private readonly SavedState<TState>[] states;
@@ -37,18 +43,37 @@ internal sealed class RollbackEngine<TInput, TState>
         int playerCount,
         SessionOptions options,
         IRollbackGame<TInput, TState> game,
-        Func<TInput, int, TInput>? predictor = null
+        Func<TInput, int, TInput>? predictor = null,
+        SessionParticipation<TInput>? participation = null,
+        int initialFrame = 0
     )
     {
         if (playerCount < 1)
             throw new ArgumentOutOfRangeException(nameof(playerCount));
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(game);
+        if (
+            initialFrame < 0
+            || initialFrame == int.MaxValue
+            || participation != null
+                && (
+                    participation.AuthorityHandle < 0
+                    || participation.AuthorityHandle >= playerCount
+                    || participation.Players == null
+                )
+        )
+            throw new ArgumentException("Invalid initial frame or participation authority.");
         options.Validate();
         this.options = options;
         this.game = game;
         this.predictor = predictor ?? ((input, _) => input);
+        this.participation = participation;
+        this.initialFrame = initialFrame;
+        CurrentFrame = initialFrame;
+        ConfirmedFrame = initialFrame - 1;
         histories = Enumerable.Range(0, playerCount).Select(_ => new InputHistory(options.InputCapacity)).ToArray();
+        foreach (var history in histories)
+            history.LastFrame = initialFrame - 1;
         stateFrames = Enumerable.Repeat(-1, options.HistoryFrames + 1).ToArray();
         states = new SavedState<TState>[stateFrames.Length];
         usedFrames = Enumerable.Repeat(-1, options.HistoryFrames).ToArray();
@@ -56,15 +81,73 @@ internal sealed class RollbackEngine<TInput, TState>
             .Range(0, options.HistoryFrames)
             .Select(_ => new PlayerInput<TInput>[playerCount])
             .ToArray();
+        if (participation != null)
+            _ = Participates(participation.AuthorityHandle, initialFrame);
     }
 
     public int LastInputFrame(int player) => History(player).LastFrame;
+
+    public bool Participates(int player, int frame)
+    {
+        if (participation == null)
+            return true;
+        var authority = History(participation.AuthorityHandle);
+        TInput input =
+            authority.TryGet(frame, out var actual) ? actual
+            : frame > authority.LastFrame && authority.LastFrame >= initialFrame ? authority.LastInput
+            : participation.InitialInput;
+        uint mask = participation.Players(input);
+        if (
+            (mask & (1u << participation.AuthorityHandle)) == 0
+            || (histories.Length < 32 && mask >> histories.Length != 0)
+        )
+            throw new InvalidDataException(
+                "Participation must include its authority and contain only registered handles."
+            );
+        return (mask & (1u << player)) != 0;
+    }
+
+    public int PredictionForPlayer(int player)
+    {
+        var history = History(player);
+        if (participation == null)
+            return CurrentFrame > history.DisconnectFrame ? 0 : Math.Max(0, CurrentFrame - history.LastFrame - 1);
+        if (!Participates(player, CurrentFrame) || history.DisconnectedAt(CurrentFrame))
+            return 0;
+        int first = CurrentFrame;
+        while (first > Math.Max(initialFrame, history.LastFrame + 1) && Participates(player, first - 1))
+            first--;
+        return CurrentFrame - first;
+    }
+
+    public void StartInput(int player, int frame)
+    {
+        var history = History(player);
+        if (frame < Math.Max(initialFrame, OldestRetainedFrame))
+            throw new ArgumentOutOfRangeException(nameof(frame));
+        for (
+            int missing = Math.Min(frame, Math.Max(initialFrame, history.LastFrame + 1));
+            missing < CurrentFrame;
+            missing++
+        )
+            if (!history.DisconnectedAt(missing) && Participates(player, missing))
+                throw new InvalidOperationException("Cannot skip input from an active participant.");
+        if (history.DisconnectFrame != int.MaxValue)
+            history.PreviousDisconnects.Add((history.DisconnectFrame + 1, frame - 1));
+        history.PreviousDisconnects.RemoveAll(range => range.Last < OldestRetainedFrame);
+        for (int index = 0; index < history.Frames.Length; index++)
+            if (history.Frames[index] >= frame)
+                history.Frames[index] = -1;
+        history.LastFrame = frame - 1;
+        history.LastInput = default;
+        history.DisconnectFrame = int.MaxValue;
+    }
 
     public bool TryGetInput(int player, int frame, out TInput input)
     {
         InputHistory history = History(player);
         input = default;
-        return frame >= OldestRetainedFrame && frame <= history.DisconnectFrame && history.TryGet(frame, out input);
+        return frame >= OldestRetainedFrame && !history.DisconnectedAt(frame) && history.TryGet(frame, out input);
     }
 
     public void AddInput(int player, int frame, TInput input)
@@ -80,7 +163,7 @@ internal sealed class RollbackEngine<TInput, TState>
         if (frame < OldestRetainedFrame || (long)frame - OldestRetainedFrame >= history.Frames.Length)
             throw new InvalidOperationException("Input falls outside the retained history capacity.");
 
-        if (frame < CurrentFrame)
+        if (frame < CurrentFrame && Participates(player, frame))
         {
             int usedIndex = frame % usedFrames.Length;
             if (usedFrames[usedIndex] != frame)
@@ -117,6 +200,13 @@ internal sealed class RollbackEngine<TInput, TState>
             firstIncorrectFrame = Math.Min(firstIncorrectFrame, firstDisconnectedFrame);
     }
 
+    public void SeedDisconnect(int player, int cutoff)
+    {
+        if (CurrentFrame != initialFrame || cutoff < -1 || cutoff >= initialFrame)
+            throw new ArgumentOutOfRangeException(nameof(cutoff));
+        History(player).DisconnectFrame = cutoff;
+    }
+
     public void SetConfirmedFrame(int frame)
     {
         if (frame < ConfirmedFrame || frame >= CurrentFrame)
@@ -128,9 +218,10 @@ internal sealed class RollbackEngine<TInput, TState>
             throw new InvalidOperationException("Repair incorrect predictions before finalizing frames.");
         for (int next = ConfirmedFrame + 1; next <= frame; next++)
         {
-            foreach (InputHistory history in histories)
+            for (int player = 0; player < histories.Length; player++)
             {
-                if (next <= history.DisconnectFrame && !history.TryGet(next, out _))
+                var history = histories[player];
+                if (Participates(player, next) && !history.DisconnectedAt(next) && !history.TryGet(next, out _))
                     throw new InvalidOperationException("A predicted input cannot be finalized.");
             }
         }
@@ -164,11 +255,14 @@ internal sealed class RollbackEngine<TInput, TState>
         if (CurrentFrame - ConfirmedFrame - 1 >= options.HistoryFrames)
             return false;
 
-        foreach (InputHistory history in histories)
+        for (int player = 0; player < histories.Length; player++)
         {
+            var history = histories[player];
             if (
                 history.LastFrame < history.DisconnectFrame
-                && CurrentFrame - history.LastFrame - 1 >= options.MaxPredictionFrames
+                && history.LastFrame < CurrentFrame
+                && Participates(player, CurrentFrame)
+                && PredictionForPlayer(player) >= options.MaxPredictionFrames
             )
                 return false;
         }
@@ -187,7 +281,7 @@ internal sealed class RollbackEngine<TInput, TState>
         for (int player = 0; player < histories.Length; player++)
         {
             InputHistory history = histories[player];
-            if (frame > history.DisconnectFrame)
+            if (!Participates(player, frame) || history.DisconnectedAt(frame))
                 result[player] = new PlayerInput<TInput>(default, InputStatus.Disconnected);
             else if (history.TryGet(frame, out TInput input))
                 result[player] = new PlayerInput<TInput>(input, InputStatus.Confirmed);
@@ -195,6 +289,18 @@ internal sealed class RollbackEngine<TInput, TState>
                 return false;
         }
         inputs = result;
+        return true;
+    }
+
+    public bool HasConfirmedInputs(int frame)
+    {
+        for (int player = 0; player < histories.Length; player++)
+            if (
+                Participates(player, frame)
+                && !histories[player].DisconnectedAt(frame)
+                && !histories[player].TryGet(frame, out _)
+            )
+                return false;
         return true;
     }
 
@@ -229,7 +335,7 @@ internal sealed class RollbackEngine<TInput, TState>
         for (int player = 0; player < histories.Length; player++)
         {
             InputHistory history = histories[player];
-            if (CurrentFrame > history.DisconnectFrame)
+            if (!Participates(player, CurrentFrame) || history.DisconnectedAt(CurrentFrame))
                 inputs[player] = new PlayerInput<TInput>(default, InputStatus.Disconnected);
             else if (history.TryGet(CurrentFrame, out TInput input))
                 inputs[player] = new PlayerInput<TInput>(input, InputStatus.Confirmed);

@@ -9,6 +9,7 @@ internal sealed class AutomatedGame : FrogGame
     private readonly AutomationOptions automation;
     private double virtualClock;
     private bool requestedSpectating;
+    private bool resultWritten;
     private long? networkFinishMilliseconds;
     protected override bool LimitFrameRate => automation.Frames == 0;
     protected override bool SaveSettingsOnExit => false;
@@ -88,8 +89,17 @@ internal sealed class AutomatedGame : FrogGame
         Exit();
     }
 
+    protected override void OnExiting(object sender, ExitingEventArgs args)
+    {
+        WriteResult();
+        base.OnExiting(sender, args);
+    }
+
     private void WriteResult()
     {
+        if (resultWritten)
+            return;
+        resultWritten = true;
         Match.SaveReplay();
         if (automation.Result == null)
         {

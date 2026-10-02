@@ -63,7 +63,8 @@ internal static partial class LobbyTests
         leaving.Active = false;
         leaving.Lobby.Dispose();
         rig.WaitFor(
-            () => rig.Ready && host.Lobby.SessionId != session && !host.Lobby.IsSlotEditPending(7),
+            () =>
+                rig.Ready && !host.Lobby.PeerIds.Contains(leaving.Lobby.LocalPeer) && !host.Lobby.IsSlotEditPending(7),
             "Departure lost an outstanding CPU edit",
             4800
         );

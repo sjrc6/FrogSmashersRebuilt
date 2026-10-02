@@ -26,7 +26,8 @@ public sealed class SpectatorSession<TInput, TState>
         SessionOptions? options = null,
         IClock? clock = null,
         int startFrame = 0,
-        string inputSchema = ""
+        string inputSchema = "",
+        ISpectatorInputCodec<TInput>? spectatorCodec = null
     )
     {
         if (sessionId == 0 || hostPeerId < 0 || startFrame < 0)
@@ -37,7 +38,7 @@ public sealed class SpectatorSession<TInput, TState>
         this.game = game;
         this.transport = transport;
         this.options = options ?? new();
-        wire = new(players, codec, this.options, inputSchema);
+        wire = new(players, codec, this.options, inputSchema, spectatorCodec);
         CurrentFrame = startFrame;
         statuses = Enumerable.Repeat(new ConnectionStatus(false, -1), wire.Players.Length).ToArray();
         host = new(

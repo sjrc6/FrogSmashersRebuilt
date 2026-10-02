@@ -14,7 +14,7 @@ internal sealed class ConnectionOverlay(FrogGame game)
         && game.Controls.KeysNow.IsKeyDown(Keys.Tab)
         && (game.Menus.Screen == GameScreen.Seats || game.Menus.Screen == GameScreen.Playing && !game.Match.Paused);
 
-    private NetworkSession? Session => game.Menus.ShowingLobby ? game.Lobby.Network : game.Match.Network;
+    private IRollbackSession? Session => game.Menus.ShowingLobby ? game.Lobby.Network : game.Match.Network;
 
     public IReadOnlyList<PlayerRow> Rows()
     {
@@ -43,7 +43,7 @@ internal sealed class ConnectionOverlay(FrogGame game)
         return players;
     }
 
-    private PlayerRow Row(int handle, int slot, int peer, int color, bool cpu, NetworkSession? session)
+    private PlayerRow Row(int handle, int slot, int peer, int color, bool cpu, IRollbackSession? session)
     {
         if (cpu)
             return new(-1, $"CPU {slot + 1}", color, null, 0, 0);

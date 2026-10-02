@@ -41,7 +41,9 @@ internal static partial class LobbyTests
             () => rig.Ready && guest.Simulation.Membership.Humans(peer).Any(player => player.Id == 2),
             "Direct spectator join never completed"
         );
-        Console.WriteLine($"Slot join at ~{delay * 2} ms RTT: {rig.Now - started} ms including membership checkpoint");
+        Console.WriteLine(
+            $"Spectator promotion at ~{delay * 2} ms RTT: {rig.Now - started} ms including mesh preparation"
+        );
         Check(
             host.Lobby.Roster.Spectator(peer) == null && guest.Lobby.Roster.Spectator(peer) == null,
             "Direct joining left a duplicate spectator"

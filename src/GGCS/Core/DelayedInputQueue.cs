@@ -10,12 +10,20 @@ internal sealed class DelayedInputQueue<TInput>
     private TInput lastOutput;
     private readonly Func<TInput, int, TInput> padInput;
 
-    public DelayedInputQueue(int delay, int maxDelay, Func<TInput, int, TInput>? padInput = null)
+    public DelayedInputQueue(
+        int delay,
+        int maxDelay,
+        Func<TInput, int, TInput>? padInput = null,
+        int initialFrame = 0,
+        TInput initialInput = default
+    )
     {
         if (maxDelay < 0)
             throw new ArgumentOutOfRangeException(nameof(maxDelay));
         maximumDelay = maxDelay;
         this.padInput = padInput ?? ((input, _) => input);
+        lastUserFrame = lastOutputFrame = initialFrame - 1;
+        lastOutput = initialInput;
         SetDelay(delay);
     }
 

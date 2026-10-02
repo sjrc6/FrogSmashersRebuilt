@@ -51,7 +51,7 @@ public abstract class GameLobby : IGameLobby
 
     public ulong SessionId => Active?.SessionId ?? 0;
     public IReadOnlyList<int> PeerIds => Active?.PeerIds ?? [];
-    public NetworkSession? LobbySession => Active?.LobbySession;
+    public IRollbackSession? LobbySession => Active?.LobbySession;
     public bool SimulationReady => Active?.SimulationReady ?? false;
     public bool Transitioning => Active?.Transitioning ?? true;
     private LobbySimulation? pendingSimulation;

@@ -75,7 +75,7 @@ public sealed partial class P2PSession<TInput, TState>
         int reserve = Math.Min(4, options.MaxPredictionFrames);
         int estimatedDelay = 0;
         double roundTrip = 0;
-        foreach (var peer in peers.Values.Where(peer => peer.State == SessionState.Running))
+        foreach (var peer in RequiredPeerLinks().Where(peer => peer.State == SessionState.Running))
         {
             var stats = peer.Stats;
             roundTrip = Math.Max(roundTrip, stats.RoundTripMilliseconds);
