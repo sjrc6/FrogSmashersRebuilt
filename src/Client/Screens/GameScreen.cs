@@ -16,6 +16,7 @@ internal enum GameScreen
     SlotEditor,
     ViewPlayers,
     CreateLobby,
+    CreateLobbyAdvanced,
     JoinLobby,
     BrowseSteam,
     BrowseLan,

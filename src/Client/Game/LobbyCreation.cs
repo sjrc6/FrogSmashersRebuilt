@@ -4,7 +4,7 @@ namespace FrogSmashers.Client;
 
 internal sealed class LobbyCreation
 {
-    private int type;
+    private int type = 2;
     private int capacity = 8;
     public bool Lan => type == 3;
     public string TypeLabel => new[] { "PRIVATE", "FRIENDS", "PUBLIC", "LAN / UDP" }[type];

@@ -24,8 +24,6 @@ for rid in "${targets[@]}"; do
   mkdir -p "$out_dir/licenses"
   cp src/Notices/* "$out_dir/licenses/"
   cp LICENSE.md "$out_dir/"
-  mkdir -p "$out_dir/docs"
-  cp docs/*.md "$out_dir/docs/"
   build_dir="$repo_dir/.build/bin/FrogSmashers.Client/release_$rid"
   dotnet .build/bin/FrogSmashers.Tests/release/FrogSmashers.Tests.dll --describe-build "$build_dir" > "$build_dir/BuildInfo.json"
 done

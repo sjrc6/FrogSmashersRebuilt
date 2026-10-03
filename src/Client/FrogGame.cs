@@ -38,6 +38,7 @@ public class FrogGame : Game
     internal OnlineController Online { get; private set; } = null!;
     internal MenuController Menus { get; private set; } = null!;
     internal ToastController Toasts { get; } = new();
+    internal Task<bool?> FirewallCheck { get; set; } = Ipv6FirewallCheck.Start();
     internal string? LastError { get; private set; }
     internal int RenderedFrames { get; private set; }
     internal bool Fullscreen => graphics.IsFullScreen;
@@ -306,7 +307,8 @@ public class FrogGame : Game
                 Setup.CreateOptions(Options.MapOrder),
                 Menus.AllowLan,
                 Menus.HintDevice,
-                invited
+                invited,
+                Settings.SteamTransport
             );
             Lobby.Open();
             Menus.ShowConnecting();

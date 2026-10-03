@@ -1,0 +1,12 @@
+Input device: Keyboard one / Keyboard two / Controller
+
+Move: WASD / Arrows / Left stick or D-pad
+Jump: T / M/ A
+Attack:  U / Period / X
+Tongue: Y / Comma / B
+Strafe: R / N / Left shoulder
+Drop through platforms: Down + Jump
+
+F11 - fullscreen
+F3 - network information
+F4 - show collision

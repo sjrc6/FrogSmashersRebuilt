@@ -5,7 +5,7 @@ namespace FrogSmashers.Network;
 public sealed class SteamLobby : GameLobby
 {
     internal const string GameTag = "FrogSmashersRebuilt";
-    internal const string Protocol = "7";
+    internal const string Protocol = "8";
     private readonly bool hosting;
     private readonly bool invited;
     private readonly int capacity;
@@ -16,7 +16,9 @@ public sealed class SteamLobby : GameLobby
     private readonly List<IDisposable> callbacks = new();
     private readonly System.Diagnostics.Stopwatch startup = System.Diagnostics.Stopwatch.StartNew();
     private MeshLobby? coordinator;
-    private SteamWire? wire;
+    private IWire? wire;
+    private CSteamID owner;
+    public SteamTransport Transport { get; private set; }
     private CSteamID lobbyId;
     private bool initialized;
     private bool disposed;
@@ -36,8 +38,9 @@ public sealed class SteamLobby : GameLobby
         string contentHash,
         string settingsJson,
         uint appId = 480,
-        IReadOnlyList<LobbySlot>? initialRooms = null
-    ) => new(true, 0, capacity, players, contentHash, settingsJson, appId, initialRooms);
+        IReadOnlyList<LobbySlot>? initialRooms = null,
+        SteamTransport transport = SteamTransport.Sockets
+    ) => new(true, 0, capacity, players, contentHash, settingsJson, appId, initialRooms, transport: transport);
 
     public static SteamLobby Join(
         ulong lobbyId,
@@ -56,7 +59,8 @@ public sealed class SteamLobby : GameLobby
         string settings,
         uint appId,
         IReadOnlyList<LobbySlot>? initialRooms = null,
-        bool invited = false
+        bool invited = false,
+        SteamTransport transport = SteamTransport.Sockets
     )
     {
         var validation = new LobbyRoster();
@@ -74,6 +78,8 @@ public sealed class SteamLobby : GameLobby
         this.initialRooms = initialRooms?.ToArray();
         contentHash = hash;
         this.settings = settings;
+        SteamTransportMetadata.Name(transport);
+        Transport = transport;
         try
         {
             if (!SteamRuntime.TryAcquire(appId, out error))
@@ -156,6 +162,7 @@ public sealed class SteamLobby : GameLobby
         lobbyId = new CSteamID(c.m_ulSteamIDLobby);
         SteamMatchmaking.SetLobbyData(lobbyId, "game", GameTag);
         SteamMatchmaking.SetLobbyData(lobbyId, "protocol", Protocol);
+        SteamMatchmaking.SetLobbyData(lobbyId, "transport", SteamTransportMetadata.Name(Transport));
         SteamMatchmaking.SetLobbyData(
             lobbyId,
             "name",
@@ -196,6 +203,15 @@ public sealed class SteamLobby : GameLobby
             return;
         }
 
+        try
+        {
+            Transport = SteamTransportMetadata.Parse(SteamMatchmaking.GetLobbyData(lobbyId, "transport"));
+        }
+        catch (ArgumentException exception)
+        {
+            error = exception.Message;
+            return;
+        }
         StartCoordinator();
     }
 
@@ -206,8 +222,11 @@ public sealed class SteamLobby : GameLobby
             return;
         }
 
-        var owner = SteamMatchmaking.GetLobbyOwner(lobbyId);
-        wire = new SteamWire(lobbyId, hosting, owner);
+        owner = SteamMatchmaking.GetLobbyOwner(lobbyId);
+        wire =
+            Transport == SteamTransport.Legacy
+                ? new SteamLegacyWire(new SteamLegacyApi(lobbyId), hosting, owner.m_SteamID)
+                : new SteamWire(lobbyId, hosting, owner);
         coordinator = new MeshLobby(
             wire,
             hosting ? null : owner.m_SteamID.ToString(),
@@ -232,7 +251,7 @@ public sealed class SteamLobby : GameLobby
             return;
         }
 
-        if (SteamMatchmaking.GetLobbyOwner(lobbyId) != wire!.Owner)
+        if (SteamMatchmaking.GetLobbyOwner(lobbyId) != owner)
         {
             error = "Lobby host disconnected; host migration is not supported";
             return;

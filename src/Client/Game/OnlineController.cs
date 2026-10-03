@@ -56,7 +56,8 @@ internal sealed class OnlineController : IDisposable
         MatchOptions match,
         bool allowLan,
         int joinDevice,
-        bool invited = true
+        bool invited = true,
+        SteamTransport steamTransport = SteamTransport.Sockets
     )
     {
         StopBrowsing();
@@ -83,7 +84,14 @@ internal sealed class OnlineController : IDisposable
                     allowLan,
                     localRoster.Slots
                 ),
-                "steam" => SteamLobby.Host(capacity, players, fingerprint, settings, initialRooms: localRoster.Slots),
+                "steam" => SteamLobby.Host(
+                    capacity,
+                    players,
+                    fingerprint,
+                    settings,
+                    initialRooms: localRoster.Slots,
+                    transport: steamTransport
+                ),
                 _ => throw new ArgumentException("Host transport must be udp or steam"),
             };
         else if (target.StartsWith("steam:", StringComparison.Ordinal))

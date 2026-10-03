@@ -10,6 +10,19 @@
     <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.5.1" />
     <None Include="../Content/Content.mgcb" Link="Content.mgcb" />
     <None
+      Include="../docs/IPv6-issues.txt"
+      Condition="$(RuntimeIdentifier.StartsWith('win-')) Or ('$(RuntimeIdentifier)' == '' And $([MSBuild]::IsOSPlatform('Windows')))"
+      Link="docs/IPv6-issues.txt"
+      CopyToOutputDirectory="PreserveNewest"
+      CopyToPublishDirectory="PreserveNewest"
+    />
+    <None
+      Include="../../docs/controls.txt"
+      Link="docs/controls.txt"
+      CopyToOutputDirectory="PreserveNewest"
+      CopyToPublishDirectory="PreserveNewest"
+    />
+    <None
       Include="../../CREDITS.txt"
       Link="CREDITS.txt"
       CopyToOutputDirectory="PreserveNewest"

@@ -85,7 +85,7 @@ internal static class LobbyMenuTests
         check(creation.Capacity(roster) == 3, "Max Players cannot displace existing locals");
         creation.Apply(roster);
         check(roster.Count == 3 && roster.Capacity == 3, "Creating online retains the local party");
-        creation.CycleType(1);
+        creation.CycleType(-1);
         check(creation.SlotType == SlotType.Friend && !creation.Lan, "Friends creation selects friend admission");
         creation.CycleType(1);
         check(creation.SlotType == SlotType.Open, "Public creation selects open admission");

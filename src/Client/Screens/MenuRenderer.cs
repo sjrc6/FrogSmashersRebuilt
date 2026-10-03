@@ -87,6 +87,32 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
         if (menu.ShowStickInputs)
             DrawStickInputs(panel);
         DrawFooter(panel);
+        if (
+            menu.Screen == GameScreen.Main
+            && game.FirewallCheck.IsCompletedSuccessfully
+            && game.FirewallCheck.Result == true
+        )
+        {
+            var font = game.Assets.Font;
+            string warning = font.Wrap(Ipv6FirewallCheck.Warning, Renderer.Width - 32);
+            var size = font.Measure(warning);
+            game.Renderer.Panel(
+                new Rectangle(
+                    (Renderer.Width - (int)size.X) / 2 - 8,
+                    Renderer.Height - 22 - (int)size.Y,
+                    (int)size.X + 16,
+                    (int)size.Y + 12
+                ),
+                Color.Black * .8f
+            );
+            game.Renderer.Text(
+                warning,
+                Renderer.Width / 2,
+                Renderer.Height - 16 - size.Y,
+                new Color(255, 220, 130),
+                center: true
+            );
+        }
     }
 
     private void DrawEntry(MenuEntry entry, MenuLayout.MeasuredRow measured, Rectangle panel, Color color)
@@ -364,6 +390,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             GameScreen.Bindings => menu.BindingTitle,
             GameScreen.Online => "ONLINE OPTIONS",
             GameScreen.CreateLobby => "CREATE LOBBY",
+            GameScreen.CreateLobbyAdvanced => "ADVANCED",
             GameScreen.JoinLobby => "JOIN LOBBY",
             GameScreen.ViewPlayers => "PLAYERS",
             GameScreen.BrowseSteam => "STEAM LOBBIES",

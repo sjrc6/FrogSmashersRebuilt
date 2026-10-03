@@ -168,16 +168,36 @@ internal sealed partial class MenuController
                     BackRow(),
                 ];
             case GameScreen.CreateLobby:
-                return
-                [
-                    new("TYPE", Value: Creation.TypeLabel, Change: Creation.CycleType),
+                var creation = new List<MenuEntry>
+                {
                     new(
                         "MAX PLAYERS",
                         RepeatAdjust: true,
                         Value: Creation.Capacity(game.Lobby.Roster).ToString(),
                         Change: amount => Creation.ChangeCapacity(amount, game.Lobby.Roster)
                     ),
-                    new("CREATE LOBBY", CreateOnlineLobby),
+                    new("TYPE", Value: Creation.TypeLabel, Change: Creation.CycleType),
+                };
+                if (!Creation.Lan)
+                    creation.Add(Link("ADVANCED", GameScreen.CreateLobbyAdvanced));
+                creation.Add(new("CREATE LOBBY", CreateOnlineLobby));
+                creation.Add(BackRow());
+                return creation;
+            case GameScreen.CreateLobbyAdvanced:
+                return
+                [
+                    new(
+                        "STEAM API",
+                        Value: game.Settings.SteamTransport == SteamTransport.Legacy ? "LEGACY" : "SOCKETS",
+                        Change: _ =>
+                        {
+                            game.Settings.SteamTransport =
+                                game.Settings.SteamTransport == SteamTransport.Legacy
+                                    ? SteamTransport.Sockets
+                                    : SteamTransport.Legacy;
+                            game.ScheduleSettingsSave();
+                        }
+                    ),
                     BackRow(),
                 ];
             case GameScreen.JoinLobby:

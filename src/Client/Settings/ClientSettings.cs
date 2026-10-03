@@ -7,6 +7,7 @@ namespace FrogSmashers.Client;
 public sealed class ClientSettings
 {
     public RollbackPreferences Rollback { get; set; } = new();
+    public SteamTransport SteamTransport { get; set; }
     public bool Fullscreen { get; set; }
     public bool VSync { get; set; } = true;
     public int FrameLimit { get; set; } = 240;
@@ -69,6 +70,8 @@ public sealed class ClientSettings
     {
         var value = JsonSerializer.Deserialize<ClientSettings>(json) ?? new();
         value.Rollback = (value.Rollback ?? new()).Normalize();
+        if (!Enum.IsDefined(value.SteamTransport))
+            value.SteamTransport = SteamTransport.Sockets;
         value.FrameLimit = Math.Clamp(value.FrameLimit, 30, 1000);
         value.Volume = Math.Clamp(value.Volume, 0, 1);
         value.TitleVolume = Math.Clamp(value.TitleVolume, 0, 1);

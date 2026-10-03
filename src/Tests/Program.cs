@@ -118,6 +118,7 @@ internal static class Program
             NetworkProtocolTests.PacketStructure();
             LobbyRosterTests.Run();
             LobbyDiscoveryTests.Run(!args.Contains("--no-sockets"));
+            SteamLegacyWireTests.Run();
             LobbySimulationTests.Run();
             CpuSimulationTests.Run();
             SpectatorNetworkTests.Run();

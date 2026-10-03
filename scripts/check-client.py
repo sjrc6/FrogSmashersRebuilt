@@ -389,7 +389,7 @@ def verify_lobby_menus():
     returned = capture("browse-lan-back", lan + [key(23, "Escape")], 25)
     assert returned["Page"] == "JoinLobby" and returned["MenuBackground"], returned
     creation = capture("create-lobby", online + [key(7, "Enter")], 9)
-    assert creation["Page"] == "CreateLobby" and creation["MenuItems"][:2] == ["TYPE: PRIVATE", "MAX PLAYERS: 8"], creation
+    assert creation["Page"] == "CreateLobby" and creation["MenuItems"][:2] == ["MAX PLAYERS: 8", "TYPE: PUBLIC"], creation
 
     controller_online = [pad(1, 0, "DPadDown"), pad(3, 0, "A"), pad(5, 0, "A")]
     controller_creation = capture("controller-create-lobby", controller_online, 8)

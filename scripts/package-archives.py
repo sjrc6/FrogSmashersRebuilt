@@ -39,6 +39,14 @@ def validate_packages(targets):
         executable = "FrogSmashersRebuilt.exe" if target.startswith("win") else "FrogSmashersRebuilt"
         if not (folder / executable).is_file():
             raise SystemExit(f"{target}: game executable is missing")
+        docs = folder / "docs"
+        expected_docs = {"controls.txt"}
+        if target.startswith("win"):
+            expected_docs.add("IPv6-issues.txt")
+        if not docs.is_dir() or {path.name for path in docs.iterdir()} != expected_docs:
+            raise SystemExit(f"{target}: package docs must contain only {', '.join(sorted(expected_docs))}")
+        if (folder / "IPv6-issues.txt").exists():
+            raise SystemExit(f"{target}: IPv6 notice must remain in docs until an issue is detected")
         for path in folder.iterdir():
             if path.suffix in (".dll", ".so", ".pdb") or path.name.endswith((".deps.json", ".runtimeconfig.json")):
                 raise SystemExit(f"{target}: unbundled runtime file beside executable: {path.name}")
