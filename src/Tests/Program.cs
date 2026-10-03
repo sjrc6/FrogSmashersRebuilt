@@ -11,6 +11,12 @@ internal static class Program
     {
         try
         {
+            if (args.Contains("--discovery"))
+            {
+                LobbyDiscoveryTests.Run(!args.Contains("--no-sockets"));
+                Console.WriteLine($"PASS: {TestAssert.Count} lobby discovery checks");
+                return 0;
+            }
             if (args.Contains("--lobby"))
             {
                 LobbyTests.Run(Check);
@@ -111,6 +117,7 @@ internal static class Program
             NetworkProtocolTests.PacketValidationAndDesync();
             NetworkProtocolTests.PacketStructure();
             LobbyRosterTests.Run();
+            LobbyDiscoveryTests.Run(!args.Contains("--no-sockets"));
             LobbySimulationTests.Run();
             CpuSimulationTests.Run();
             SpectatorNetworkTests.Run();

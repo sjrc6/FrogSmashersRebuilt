@@ -28,7 +28,7 @@ internal sealed partial class LobbyController
                 proposed.SetPlayers(LocalPeer, online.PendingLocalPlayers, online.Access);
         }
         Presentation.Update(Roster, proposed);
-        game.Renderer.SetLobbyPreviews(Presentation.Roster);
+        game.Renderer.SetLobbyPreviews(Presentation.Roster, TeamMode);
     }
 
     private void JoinFeedback(int device)
@@ -39,8 +39,12 @@ internal sealed partial class LobbyController
             .FindIndex(slot => slot.Player is { } player && player.Peer == LocalPeer && player.Id == device);
         if (room < 0 || World == null || !Presentation.AnnounceJoin(LocalPeer, device))
             return;
-        var player = Presentation.Roster.Slots[room].Player!;
-        game.Renderer.LobbyColorEffect(World.Map, room, player.Color, -1);
+        var color = PlayerPalette.Lobby(
+            Presentation.Roster.Slots.Select(slot => slot.Player).ToArray(),
+            room,
+            TeamMode
+        );
+        game.Renderer.LobbyColorEffect(World.Map, room, color, -1);
         var position = game.Renderer.LobbyPreviewPosition(World.Map, room);
         game.Audio.PlayAt("CharacterSpawn", --feedbackSound, .3f, new Vector3(position, 0));
     }

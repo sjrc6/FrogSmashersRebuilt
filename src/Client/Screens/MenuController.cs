@@ -29,7 +29,6 @@ internal sealed partial class MenuController
     public bool EditingAddress { get; set; }
     public bool WaitingForBinding { get; private set; }
     public string JoinAddress { get; private set; } = "127.0.0.1";
-    public string SteamCode { get; private set; } = "";
     public bool ShowingCinematic => Screen is GameScreen.Intro or GameScreen.Title or GameScreen.Outro;
     public bool ShowingMenuBackground => !ShowingCinematic && context == GameScreen.Main;
     public bool ShowingMatch => !ShowingCinematic && context == GameScreen.Playing;
@@ -46,14 +45,9 @@ internal sealed partial class MenuController
     {
         if (!EditingAddress || char.IsControl(character))
             return;
-        if (Screen == GameScreen.JoinSteam && char.IsDigit(character) && SteamCode.Length < 20)
-        {
-            SteamCode += character;
-            menuSoundPending = true;
-        }
-        else if (
+        if (
             Screen == GameScreen.JoinUdp
-            && (char.IsLetterOrDigit(character) || ".:-".Contains(character))
+            && (char.IsAsciiLetterOrDigit(character) || ".:-_".Contains(character))
             && JoinAddress.Length < 128
         )
         {
@@ -65,6 +59,8 @@ internal sealed partial class MenuController
     public void Update(double elapsedSeconds)
     {
         AnimationTime += elapsedSeconds;
+        if (Screen is GameScreen.BrowseSteam or GameScreen.BrowseLan)
+            UpdateBrowser();
         if (Screen == GameScreen.Bindings)
             RefreshBindingDevice();
         var input = MenuInput.Read(game.Controls);
@@ -141,7 +137,7 @@ internal sealed partial class MenuController
             case GameScreen.Bindings when WaitingForBinding:
                 CaptureBinding();
                 break;
-            case GameScreen.JoinSteam or GameScreen.JoinUdp when EditingAddress:
+            case GameScreen.JoinUdp when EditingAddress:
                 UpdateAddress(input);
                 break;
             default:
@@ -350,20 +346,12 @@ internal sealed partial class MenuController
                     menuSoundPending = true;
                     continue;
                 }
-                game.Lobby.Choose(
-                    device,
-                    (
-                        device < 2
-                            ? game.Controls.Press(game.Settings.Keyboard[device].Tongue)
-                            : game.Controls.BindingPress(
-                                device - 2,
-                                game.Controls.ControllerBindings(device - 2).Tongue
-                            )
-                    )
-                        ? 1
-                        : 0,
-                    game.Lobby.TeamMode ? game.Controls.Vertical(device) : 0
-                );
+                bool changeColor =
+                    device < 2
+                        ? game.Controls.Press(game.Settings.Keyboard[device].Tongue)
+                        : game.Controls.BindingPress(device - 2, game.Controls.ControllerBindings(device - 2).Tongue);
+                if (changeColor)
+                    game.Lobby.ChooseColor(device);
             }
         }
     }
@@ -395,11 +383,7 @@ internal sealed partial class MenuController
             game.StartLocal();
     }
 
-    private void OpenOnline()
-    {
-        game.Online.PrepareSteam();
-        Open(GameScreen.Online);
-    }
+    private void OpenOnline() => Open(GameScreen.Online);
 
     private void UpdateConnecting(MenuInput input)
     {
@@ -426,11 +410,6 @@ internal sealed partial class MenuController
         }
         if (game.Controls.Press(Keys.Back))
         {
-            if (Screen == GameScreen.JoinSteam && SteamCode.Length > 0)
-            {
-                SteamCode = SteamCode[..^1];
-                menuSoundPending = true;
-            }
             if (Screen == GameScreen.JoinUdp && JoinAddress.Length > 0)
             {
                 JoinAddress = JoinAddress[..^1];
@@ -448,7 +427,7 @@ internal sealed partial class MenuController
     private void BeginAddressEdit()
     {
         EditingAddress = true;
-        game.Toasts.Show(Screen == GameScreen.JoinSteam ? "ENTER LOBBY ID" : "ENTER ADDRESS");
+        game.Toasts.Show("ENTER ADDRESS");
     }
 
     private void Open(GameScreen screen)
@@ -465,6 +444,8 @@ internal sealed partial class MenuController
         history.Push((Screen, Selected));
         Screen = screen;
         Selected = 0;
+        if (screen is GameScreen.BrowseSteam or GameScreen.BrowseLan)
+            StartBrowser();
     }
 
     private void OpenLobbyMenu(int device)
@@ -488,9 +469,11 @@ internal sealed partial class MenuController
         }
         if (Screen == GameScreen.Connecting)
         {
-            game.LeaveOnlineLobby();
+            game.CancelConnection();
             return;
         }
+        if (Screen is GameScreen.BrowseSteam or GameScreen.BrowseLan)
+            game.Online.StopBrowsing();
         if (!history.TryPop(out var previous))
             return;
         Screen = previous.Screen;
@@ -506,6 +489,7 @@ internal sealed partial class MenuController
 
     private void Reset(GameScreen screen)
     {
+        game.Online.StopBrowsing();
         context = Screen = screen;
         history.Clear();
         Selected = 0;
@@ -527,13 +511,11 @@ internal sealed partial class MenuController
         Screen = GameScreen.Connecting;
     }
 
-    public void ShowSeats(bool online = false)
+    public void ShowSeats()
     {
         Reset(GameScreen.Seats);
         if (game.Lobby.World == null)
             game.Lobby.Open();
-        if (online)
-            OpenOnline();
     }
 
     private void OpenCredits()

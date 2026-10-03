@@ -10,28 +10,33 @@ public sealed partial class Renderer
     private Texture2D? lobbyOutline;
     private Texture2D? lobbyBackground;
     private readonly LobbyPlayer?[] lobbyPreviews = new LobbyPlayer?[8];
+    private readonly Color[] lobbyColors = PlayerPalette.Colors.ToArray();
     private int outlinedRoom = -1;
 
-    internal void SetLobbyPreviews(LobbyRoster roster)
+    internal void SetLobbyPreviews(LobbyRoster roster, bool teams = false)
     {
+        var players = roster.Slots.Select(slot => slot.Player).ToArray();
         for (int room = 0; room < 8; room++)
+        {
             lobbyPreviews[room] = roster.Slots[room].Player is { Cpu: false } player ? player : null;
+            lobbyColors[room] = PlayerPalette.Lobby(players, room, teams);
+        }
     }
 
     internal Vector2 LobbyPreviewPosition(MapData map, int room) =>
         new((float)map.Spawns[room].X, (float)map.Spawns[room].Y + assets.Data.CharacterOffsetY);
 
-    internal void LobbyColorEffect(MapData map, int room, int color, long tick, float age = 0)
+    internal void LobbyColorEffect(MapData map, int room, Color color, long tick, float age = 0)
     {
         SetMap(map);
         var point = map.Spawns[room];
-        SpawnPuff(map, new((float)point.X, (float)point.Y), PlayerColors[color], tick, age);
+        SpawnPuff(map, new((float)point.X, (float)point.Y), color, tick, age);
     }
 
     private void DrawLobbyPreview(World world, int room)
     {
         var player = lobbyPreviews[room]!;
-        var color = PlayerColors[player.Color];
+        var color = lobbyColors[room];
         if (player.Spawned)
             color.A = 90;
         canvas.Begin(1);

@@ -239,17 +239,6 @@ internal sealed class SceneAnimationPlayer : IDisposable
         }
     }
 
-    public void PlayDeferredSounds()
-    {
-        foreach (var sound in soundTracks)
-        {
-            if (sound.Source.Active && !sound.Source.PlayOnAwake)
-            {
-                StartSound(sound);
-            }
-        }
-    }
-
     public void StopAudio()
     {
         foreach (var sound in soundTracks)

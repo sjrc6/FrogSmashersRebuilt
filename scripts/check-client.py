@@ -86,8 +86,8 @@ def verify_connections_and_repeat():
         assert changed["Volume"] == 0, changed
     toggled = capture("no-repeat-toggle", settings + [key(7, "Down"), dict(From=9, To=90, Keys=["Right"])], 95)
     assert "VSYNC: ON" in toggled["MenuItems"], toggled
-    rollback = settings + [key(frame, "Down") for frame in (7, 9, 11, 13, 15, 17)] + [key(19, "Enter")]
-    adjusted = capture("repeat-rollback", rollback + [dict(From=21, To=80, Keys=["Right"])], 85)
+    rollback = settings + [key(frame, "Down") for frame in (7, 9, 11, 13, 15, 17, 19)] + [key(21, "Enter")]
+    adjusted = capture("repeat-rollback", rollback + [dict(From=23, To=80, Keys=["Right"])], 85)
     assert adjusted["Page"] == "Rollback" and len(adjusted["MenuItems"]) == 4, adjusted
     assert adjusted["MenuItems"][0] != "DELAY: 16.7 MS", adjusted
     settings_file.write_bytes(initial_settings)
@@ -373,6 +373,21 @@ def verify_lobby_menus():
     online = [key(1, "Down"), key(3, "Enter")]
     choices = capture("online-choices", online, 5)
     assert choices["MenuItems"] == ["CREATE LOBBY", "JOIN LOBBY", "BACK"], choices
+    assert choices["MenuBackground"] and choices["LobbySlots"] is None, choices
+    backed = capture("online-back", online + [key(7, "Escape")], 9)
+    assert backed["Page"] == "Main" and backed["MenuBackground"] and backed["LobbySlots"] is None, backed
+    join = online + [key(7, "Down"), key(9, "Enter")]
+    joining = capture("join-lobby-options", join, 11)
+    assert joining["MenuItems"] == ["BROWSE STEAM LOBBIES", "JOIN CLIPBOARD LOBBY", "BROWSE LAN LOBBIES", "JOIN UDP", "BACK"], joining
+    assert joining["MenuBackground"] and joining["LobbySlots"] is None, joining
+    udp = join + [key(13, "Down"), key(15, "Down"), key(17, "Down"), key(19, "Enter")]
+    direct = capture("join-udp-options", udp, 21)
+    assert direct["Page"] == "JoinUdp" and "JOIN CLIPBOARD ADDRESS" in direct["MenuItems"], direct
+    lan = join + [key(13, "Down"), key(15, "Down"), key(17, "Enter")]
+    browsing = capture("browse-lan-options", lan, 21)
+    assert browsing["Page"] == "BrowseLan" and browsing["MenuBackground"] and browsing["LobbySlots"] is None, browsing
+    returned = capture("browse-lan-back", lan + [key(23, "Escape")], 25)
+    assert returned["Page"] == "JoinLobby" and returned["MenuBackground"], returned
     creation = capture("create-lobby", online + [key(7, "Enter")], 9)
     assert creation["Page"] == "CreateLobby" and creation["MenuItems"][:2] == ["TYPE: PRIVATE", "MAX PLAYERS: 8"], creation
 
@@ -550,11 +565,10 @@ def verify_online_creation():
     created = run("create-lobby-keeps-cpu", ["--no-intro", "--port", str(port), "--input-script", str(script), "--frames", "60"])
     assert created["Page"] == "Seats" and created["LobbySlots"][0]["Player"]["Cpu"], created
     assert [slot["Type"] for slot in created["LobbySlots"]] == [5, 0, 0, 0, 4, 4, 4, 4], created
-    script.write_text(json.dumps(rows + [key(61, "Escape"), key(63, "Up"), key(65, "Up"), key(67, "Enter")]))
-    returned = run("leave-online-restores-local", ["--no-intro", "--port", str(port), "--input-script", str(script), "--frames", "70"])
-    assert returned["Page"] == "Seats" and returned["LobbySlots"][0]["Player"]["Cpu"], returned
-    assert all(slot["Type"] in (1, 5) for slot in returned["LobbySlots"]), returned
-    print("CPU preserved when creating online; chosen capacity applied; failed creation and leaving restore local room types.")
+    script.write_text(json.dumps(rows + [key(61, "Escape"), key(63, "Up"), key(67, "Enter")]))
+    returned = run("quit-online-returns-main", ["--no-intro", "--port", str(port), "--input-script", str(script), "--frames", "70"])
+    assert returned["Page"] == "Main" and returned["LobbySlots"] is None and returned["LocalDevices"] == [], returned
+    print("CPU preserved when creating online; chosen capacity applied; failed creation restores local rooms; Quit Lobby returns to main.")
 
 
 def verify_lobby_network():

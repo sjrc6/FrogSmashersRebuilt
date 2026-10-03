@@ -52,6 +52,7 @@ internal static class Program
             LobbyPresentationTests.Run(Check);
             ToastTests.Run(Check);
             LobbyTests.Run(root!, Check);
+            TeamPaletteTests.Run(root!, Check);
             if (!args.Contains("--skip-compatibility"))
             {
                 AudioCompatibility.Run(root!, Check);

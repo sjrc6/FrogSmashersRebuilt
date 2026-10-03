@@ -9,18 +9,26 @@ internal sealed class EffectSystem
     private readonly SpriteCanvas canvas;
     private readonly GameCamera cameraController;
     private readonly Random cosmetics;
+    private readonly Func<World, int, Color> colorFor;
     private readonly Dictionary<string, EffectTemplate> templates;
     private readonly Dictionary<EffectData, int> renderModes;
     private readonly List<VisualEffect> effects = new();
     private float time;
     public IReadOnlyList<VisualEffect> Active => effects;
 
-    public EffectSystem(Assets assets, SpriteCanvas canvas, GameCamera camera, Random random)
+    public EffectSystem(
+        Assets assets,
+        SpriteCanvas canvas,
+        GameCamera camera,
+        Random random,
+        Func<World, int, Color> colorFor
+    )
     {
         this.assets = assets;
         this.canvas = canvas;
         cameraController = camera;
         cosmetics = random;
+        this.colorFor = colorFor;
         renderModes = assets
             .Data.Effects.Values.Append(assets.Data.TongueTip)
             .Distinct()
@@ -466,7 +474,7 @@ internal sealed class EffectSystem
                 {
                     effect.StartSize = .15f;
                     effect.EndSize = 0;
-                    effect.Colors = [Color.White, Color.Black, PlayerPalette.For(world, player.Slot)];
+                    effect.Colors = [Color.White, Color.Black, colorFor(world, player.Slot)];
                 }
             }
         }
@@ -479,7 +487,7 @@ internal sealed class EffectSystem
                 animator.TrailNumber++;
                 animator.TrailFaderCounter += delay * 2;
                 var tint = Color.Lerp(
-                    PlayerPalette.For(world, player.LastHitBy),
+                    colorFor(world, player.LastHitBy),
                     Color.White,
                     EffectAnimation.PingPong(animator.TrailNumber * .2f, 1)
                 );
@@ -527,7 +535,7 @@ internal sealed class EffectSystem
                     {
                         bool dark = RandomRange(0, 1) < .5f;
                         var tint = Color.Lerp(
-                            PlayerPalette.For(world, player.Slot),
+                            colorFor(world, player.Slot),
                             dark ? Color.Black : Color.White,
                             RandomRange(0, dark ? .3f : .8f)
                         );
@@ -581,12 +589,12 @@ internal sealed class EffectSystem
                 animator.Color =
                     animator.TrailNumber % 3 == 0 ? Color.White
                     : animator.TrailNumber % 3 == 1 ? Color.Black
-                    : PlayerPalette.For(world, player.Slot);
+                    : colorFor(world, player.Slot);
             }
         }
         else
         {
-            animator.Color = PlayerPalette.For(world, player.Slot);
+            animator.Color = colorFor(world, player.Slot);
         }
 
         foreach (var effect in effects.Where(effect => effect.Owner == player.Slot))

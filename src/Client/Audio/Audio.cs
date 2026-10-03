@@ -20,12 +20,17 @@ public sealed class Audio : IDisposable
     private readonly float[] flightVolume = new float[8];
     private string mapId = "";
     private float volume = .65f;
+    private float titleVolume = 1;
+    private SoundEffectInstance? titleMusic;
+    private float titleMusicBaseVolume;
     private bool paused;
     private readonly List<SoundEffectInstance> menuSounds = new();
     private long? lastMenuSoundTime;
     private long menuSoundNumber;
     public Vector3 ListenerPosition { get; set; } = new(0, 0, -10);
     public bool Enabled { get; private set; } = true;
+    public bool TitleBackground { get; set; }
+    private float EffectsVolume => Volume * (TitleBackground ? TitleVolume : 1);
 
     public float Volume
     {
@@ -33,25 +38,34 @@ public sealed class Audio : IDisposable
         set
         {
             volume = Math.Clamp(value, 0, 1);
-            foreach (var sound in menuSounds)
-                sound.Volume = MenuVolume * volume;
-            foreach (var sound in ambient)
-            {
-                sound.Instance.Volume = Math.Clamp(sound.BaseVolume * volume, 0, 1);
-            }
+            UpdateVolumes();
+        }
+    }
 
-            foreach (var sound in shots)
-            {
-                sound.Instance.Volume = Math.Clamp(sound.BaseVolume * volume, 0, 1);
-            }
+    public float TitleVolume
+    {
+        get => titleVolume;
+        set
+        {
+            titleVolume = Math.Clamp(value, 0, 1);
+            UpdateVolumes();
+        }
+    }
 
-            for (int i = 0; i < flight.Length; i++)
-            {
-                if (flight[i] != null)
-                {
-                    flight[i]!.Volume = Math.Clamp(flightVolume[i] * volume, 0, 1);
-                }
-            }
+    private void UpdateVolumes()
+    {
+        if (titleMusic != null)
+            titleMusic.Volume = Math.Clamp(titleMusicBaseVolume * Volume * TitleVolume, 0, 1);
+        foreach (var sound in menuSounds)
+            sound.Volume = MenuVolume * Volume;
+        foreach (var sound in ambient)
+            sound.Instance.Volume = Math.Clamp(sound.BaseVolume * EffectsVolume, 0, 1);
+        foreach (var sound in shots)
+            sound.Instance.Volume = Math.Clamp(sound.BaseVolume * EffectsVolume, 0, 1);
+        for (int i = 0; i < flight.Length; i++)
+        {
+            if (flight[i] != null)
+                flight[i]!.Volume = Math.Clamp(flightVolume[i] * EffectsVolume, 0, 1);
         }
     }
 
@@ -78,6 +92,33 @@ public sealed class Audio : IDisposable
 
     public void PlayAt(string group, long eventId, float volume, Vector3 position) =>
         PlaySource(group, eventId, volume, position);
+
+    public void PlayTitleMusic()
+    {
+        if (!Enabled || titleMusic != null)
+            return;
+        var source = assets.Data.PresentationScenes["TitleScreen"].Audio.First(s => s.Active && !s.PlayOnAwake);
+        try
+        {
+            titleMusic = assets.Sound(source.Path).CreateInstance();
+            titleMusicBaseVolume = source.Volume;
+            titleMusic.IsLooped = source.Loop;
+            titleMusic.Volume = Math.Clamp(source.Volume * Volume * TitleVolume, 0, 1);
+            titleMusic.Pitch = Pitch(source.Pitch);
+            titleMusic.Pan = source.Pan;
+            titleMusic.Play();
+        }
+        catch (Exception ex) when (IsAudioFailure(ex))
+        {
+            Disable("Title music", ex);
+        }
+    }
+
+    public void StopTitleMusic()
+    {
+        titleMusic?.Dispose();
+        titleMusic = null;
+    }
 
     public void PlayMenuAction()
     {
@@ -116,7 +157,7 @@ public sealed class Audio : IDisposable
             played.Remove(order.Dequeue());
         }
 
-        if (Volume <= 0)
+        if (EffectsVolume <= 0)
         {
             return;
         }
@@ -160,7 +201,7 @@ public sealed class Audio : IDisposable
                 }
                 else
                     instance = assets.Sound(path).CreateInstance();
-                instance.Volume = baseVolume * Volume;
+                instance.Volume = baseVolume * EffectsVolume;
                 instance.Pitch = Pitch(ratio);
                 instance.Pan = 0;
                 instance.Play();
@@ -203,6 +244,7 @@ public sealed class Audio : IDisposable
     {
         Console.Error.WriteLine(operation + " unavailable: " + ex.Message);
         Enabled = false;
+        StopTitleMusic();
         ClearMenuSounds();
         Reset();
     }
@@ -387,7 +429,7 @@ public sealed class Audio : IDisposable
             {
                 var instance = assets.Sound(source.Path).CreateInstance();
                 instance.IsLooped = source.Loop;
-                instance.Volume = Math.Clamp(Volume * source.Volume, 0, 1);
+                instance.Volume = Math.Clamp(EffectsVolume * source.Volume, 0, 1);
                 instance.Pitch = Pitch(source.Pitch);
                 instance.Pan = source.Pan;
                 instance.Play();
@@ -466,7 +508,7 @@ public sealed class Audio : IDisposable
                     flightVolume[i] = Math.Max(0, flightVolume[i] - dt * 2);
                     if (flight[i] != null)
                     {
-                        flight[i]!.Volume = Volume * flightVolume[i];
+                        flight[i]!.Volume = EffectsVolume * flightVolume[i];
                     }
 
                     continue;
@@ -509,12 +551,12 @@ public sealed class Audio : IDisposable
                         flightLevel[i] = level;
                     }
 
-                    flight[i]!.Volume = Volume * flightVolume[i];
+                    flight[i]!.Volume = EffectsVolume * flightVolume[i];
                     flight[i]!.Rate = pitch;
                     flight[i]!.Play();
                 }
 
-                flight[i]!.Volume = Volume * flightVolume[i];
+                flight[i]!.Volume = EffectsVolume * flightVolume[i];
                 flight[i]!.Rate = pitch;
             }
         }
@@ -560,11 +602,13 @@ public sealed class Audio : IDisposable
         }
 
         mapId = "";
+        TitleBackground = false;
     }
 
     public void Dispose()
     {
         Reset();
+        StopTitleMusic();
         ClearMenuSounds();
     }
 

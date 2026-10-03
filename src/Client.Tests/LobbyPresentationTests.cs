@@ -65,5 +65,17 @@ internal static class LobbyPresentationTests
         );
         view.Clear();
         check(!view.Pending && view.AnnounceJoin(1, 2), "Leaving the lobby clears feedback state");
+
+        committed.Reset();
+        committed.SetPlayers(0, Enumerable.Range(0, 4).Select(id => new LobbyPlayer(id, Team: 1, Color: id)).ToArray());
+        proposed.Reset();
+        proposed.SetPlayers(0, Enumerable.Range(0, 4).Select(id => new LobbyPlayer(id, Team: 0, Color: id)).ToArray());
+        proposed.SetPlayers(1, [new(0, Team: 1, Color: 4)]);
+        view.Update(committed, proposed);
+        check(
+            view.Roster.Slots[4].Player!.Team == 2,
+            "Pending join preview respects currently predicted team capacity"
+        );
+        check(view.Roster.Players(0).All(player => player.Team == 1), "Pending joins do not change incumbent teams");
     }
 }

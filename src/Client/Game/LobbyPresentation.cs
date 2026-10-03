@@ -55,14 +55,19 @@ internal sealed class LobbyPresentation
             if (changes[room] != RoomChange.Joining || slots[room].Player is not { } joining)
                 continue;
             var used = slots.Where((_, index) => index != room).Select(slot => slot.Player?.Color).ToHashSet();
-            if (used.Contains(joining.Color))
-                slots[room] = slots[room] with
+            slots[room] = slots[room] with
+            {
+                Player = joining with
                 {
-                    Player = joining with
-                    {
-                        Color = Enumerable.Range(0, LobbyRoster.MaxPlayers).First(color => !used.Contains(color)),
-                    },
-                };
+                    Color = used.Contains(joining.Color)
+                        ? Enumerable.Range(0, LobbyRoster.MaxPlayers).First(color => !used.Contains(color))
+                        : joining.Color,
+                    Team = LobbyRoster.AvailableTeam(
+                        joining.Team,
+                        slots.Where((_, index) => index != room).Select(slot => slot.Player)
+                    ),
+                },
+            };
         }
         Roster.Replace(
             slots,

@@ -22,6 +22,8 @@ public class FrogGame : Game
     private double diagnosticSeconds;
     private double diagnosticTickRate;
     private bool contentLoaded;
+    private bool connectionFromMainMenu;
+    private LobbyPlayer[] connectionParty = [];
     internal LaunchOptions Options { get; }
     internal ShutdownSignal? Shutdown { get; set; }
     internal ClientSettings Settings { get; } = ClientSettings.Load();
@@ -88,7 +90,7 @@ public class FrogGame : Game
         Assets = new Assets(Content, Content.RootDirectory);
         Setup = new MatchSetup(Options.Seed, ResolveFirstMap());
         Renderer = new Renderer(GraphicsDevice, Assets) { ShakeEnabled = Settings.ScreenShake };
-        Audio = new Audio(Assets, !Options.NoAudio) { Volume = Settings.Volume };
+        Audio = new Audio(Assets, !Options.NoAudio) { Volume = Settings.Volume, TitleVolume = Settings.TitleVolume };
         Cinematics = new CinematicPlayer(GraphicsDevice, Assets, Audio) { ShakeEnabled = Settings.ScreenShake };
         Match = new MatchController(Assets.Data, Renderer, Audio, Controls, Options.Record);
         Online = new OnlineController(Options, Assets.Data.ContentHash);
@@ -269,7 +271,7 @@ public class FrogGame : Game
         ShowMatch();
     }
 
-    internal void BeginLobby(string target, bool host)
+    internal void BeginLobby(string target, bool host, bool invited = true)
     {
         if (
             !host
@@ -280,16 +282,22 @@ public class FrogGame : Game
             Toasts.Show("ENTER A VALID LOBBY ID");
             return;
         }
-        if (!host && target.StartsWith("udp:", StringComparison.Ordinal) && string.IsNullOrWhiteSpace(target[4..]))
+        if (
+            !host
+            && target.StartsWith("udp:", StringComparison.Ordinal)
+            && !LobbyAddress.TryUdp(target[4..], Options.Port, out _, out _)
+        )
         {
-            Toasts.Show("ENTER AN ADDRESS");
+            Toasts.Show("ENTER A VALID ADDRESS");
             return;
         }
+        connectionFromMainMenu = Menus.ShowingMenuBackground || Menus.ShowingCinematic;
         LastError = null;
         try
         {
             if (Online.Lobby?.Connected == true)
                 Lobby.RememberParty();
+            connectionParty = Setup.Lobby.Roster.Players(0);
             Online.Connect(
                 target,
                 host,
@@ -297,7 +305,8 @@ public class FrogGame : Game
                 Setup.Lobby.Roster,
                 Setup.CreateOptions(Options.MapOrder),
                 Menus.AllowLan,
-                Menus.HintDevice
+                Menus.HintDevice,
+                invited
             );
             Lobby.Open();
             Menus.ShowConnecting();
@@ -329,6 +338,7 @@ public class FrogGame : Game
     private void ShowMatch()
     {
         Cinematics.Stop();
+        Audio.StopTitleMusic();
         Menus.ShowPlaying();
     }
 
@@ -366,9 +376,20 @@ public class FrogGame : Game
         Menus.ShowSeats();
     }
 
-    internal void LeaveOnlineLobby()
+    internal void CancelConnection()
     {
-        Lobby.RememberParty();
+        if (connectionFromMainMenu)
+        {
+            MainMenu();
+            return;
+        }
+        if (Online.Lobby?.Connected == true)
+            Lobby.RememberParty();
+        else
+        {
+            Setup.Lobby.Roster.Reset();
+            Setup.Lobby.Roster.SetPlayers(0, connectionParty);
+        }
         Match.Close();
         Online.CloseLobby();
         Cinematics.Stop();
@@ -388,6 +409,7 @@ public class FrogGame : Game
     internal void MainMenu()
     {
         LastError = null;
+        connectionParty = [];
         Cinematics.Stop();
         Online.CloseLobby();
         Lobby.Close();
@@ -397,7 +419,7 @@ public class FrogGame : Game
 
     internal void Fail(string message, string? toast = null)
     {
-        LeaveOnlineLobby();
+        CancelConnection();
         LastError = message;
         Toasts.Show(toast ?? UserMessages.ConnectionError(message));
         Console.Error.WriteLine(message);

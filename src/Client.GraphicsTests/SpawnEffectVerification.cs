@@ -59,7 +59,7 @@ internal sealed partial class PresentationChecks
                 if (map == lobby)
                 {
                     renderer.Reset();
-                    renderer.LobbyColorEffect(map, room, room, 0);
+                    renderer.LobbyColorEffect(map, room, PlayerPalette.Colors[room], 0);
                     Check(
                         Vector2.Distance(renderer.Effects.Active.Single().Position, position) < .0001f,
                         $"lobby room {room}: color change and spawn use the same puff origin"

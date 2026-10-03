@@ -366,7 +366,8 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             GameScreen.CreateLobby => "CREATE LOBBY",
             GameScreen.JoinLobby => "JOIN LOBBY",
             GameScreen.ViewPlayers => "PLAYERS",
-            GameScreen.JoinSteam => "JOIN STEAM",
+            GameScreen.BrowseSteam => "STEAM LOBBIES",
+            GameScreen.BrowseLan => "LAN LOBBIES",
             GameScreen.JoinUdp => "JOIN BY ADDRESS",
             GameScreen.Extras => "EXTRAS",
             GameScreen.Connecting => "CONNECTING",
@@ -420,6 +421,8 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
                 player.Cpu ? "CPU"
                 : player.Peer == game.Lobby.LocalPeer ? new LocalSeat(player.Id).Label
                 : $"PLAYER {room + 1}";
+            if (game.Lobby.TeamMode)
+                label += $" / TEAM {player.Team + 1}";
             game.Renderer.CenteredText(label, rect.Center.X, rect.Top + 24, Color.Black, center: true);
             if (player.Cpu || menu.Screen != GameScreen.Seats || player.Peer != game.Lobby.LocalPeer)
                 continue;

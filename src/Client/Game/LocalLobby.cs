@@ -30,7 +30,7 @@ internal sealed class LocalLobby
             return false;
         var player = new LobbyPlayer(
             device < 0 ? 10 + room : device,
-            Team: team is >= 0 ? team.Value : players.Length % 2,
+            Team: team is >= 0 ? team.Value : room,
             Color: room,
             Spawned: spawned,
             Cpu: device < 0

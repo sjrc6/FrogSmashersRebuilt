@@ -16,6 +16,7 @@ internal static class LobbySimulationTests
         ColorSelectionRequiresTheStartingPlatform();
         SpectatingRetainsTheLastConfirmedSelection();
         SlotPoliciesAreOutsideSimulation();
+        TeamsRespectCapacityAndRollback();
     }
 
     private static void SlotPoliciesAreOutsideSimulation()
@@ -51,6 +52,71 @@ internal static class LobbySimulationTests
 
     private static LobbySimulation Create(LobbyRoster roster, uint seed = 71) =>
         new(new World(TestFixtures.Map(), new GameRules { Lobby = true, PlayerCount = 8 }, 13), roster, seed);
+
+    private static void TeamsRespectCapacityAndRollback()
+    {
+        var roster = new LobbyRoster();
+        roster.SetPlayers(0, Enumerable.Range(0, 5).Select(id => new LobbyPlayer(id, Team: 1, Color: id)).ToArray());
+        Check(roster.Players(0).Count(player => player.Team == 1) == 4, "A fifth admission cannot overfill a team");
+        Check(roster.Players(0)[4].Team == 2, "Admission chooses the next available team color");
+        var simulation = Create(roster);
+        var inputs = new RollbackInput[6];
+        inputs[5] = new(default, TeamStep: -1);
+        simulation.Tick(inputs);
+        Check(simulation.Membership.Rooms[4]!.Team == 0, "Backward color cycling skips a full team");
+        inputs[5] = new(default, TeamStep: 1);
+        simulation.Tick(inputs);
+        Check(simulation.Membership.Rooms[4]!.Team == 2, "Forward color cycling skips a full team");
+
+        byte[] snapshot = simulation.Capture();
+        for (int frame = 0; frame < 100; frame++)
+        {
+            for (int handle = 1; handle < inputs.Length; handle++)
+                inputs[handle] = new(default, TeamStep: (sbyte)(handle % 2 == 0 ? 1 : -1));
+            simulation.Tick(inputs);
+            Check(
+                simulation
+                    .Membership.Rooms.OfType<LobbyPlayer>()
+                    .GroupBy(player => player.Team)
+                    .All(team => team.Count() <= 4),
+                "Simultaneous color changes respect the team limit"
+            );
+        }
+        byte[] result = simulation.Capture();
+        simulation.Restore(snapshot);
+        for (int frame = 0; frame < 100; frame++)
+            simulation.Tick(inputs);
+        Check(simulation.Capture().SequenceEqual(result), "Team selection replays deterministically after rollback");
+
+        var incumbents = new LobbyRoster();
+        incumbents.SetPlayers(
+            0,
+            Enumerable.Range(0, 4).Select(id => new LobbyPlayer(id, Team: 1, Color: id)).ToArray()
+        );
+        simulation = Create(incumbents);
+        var stale = new LobbyRoster();
+        stale.SetPlayers(0, Enumerable.Range(0, 4).Select(id => new LobbyPlayer(id, Team: 0, Color: id)).ToArray());
+        stale.SetPlayers(1, [new(0, Team: 1, Color: 4)]);
+        simulation.ApplyRoster(stale);
+        Check(
+            simulation.Membership.Humans(0).All(player => player.Team == 1),
+            "Admission preserves current team selections"
+        );
+        Check(
+            simulation.Membership.Humans(1)[0].Team == 2,
+            "Admission resolves capacity against current simulation teams"
+        );
+
+        var cpuRoster = new LobbyRoster();
+        cpuRoster.SetPlayers(0, Enumerable.Range(0, 4).Select(id => new LobbyPlayer(id, Team: 4, Color: id)).ToArray());
+        cpuRoster.Edit(4, SlotType.Cpu);
+        Check(cpuRoster.Slots[4].Player is { Cpu: true, Team: 5 }, "CPU creation also skips full teams");
+        var command = LobbyRosterCommand.From(1, cpuRoster.Membership());
+        Check(command.IsValid, "Valid team composition fits the roster command");
+        ulong teamBits = 7ul << (4 * 8 + 3);
+        command = command with { Details = (command.Details & ~teamBits) | (4ul << (4 * 8 + 3)) };
+        Check(!command.IsValid, "Roster commands reject a fifth teammate");
+    }
 
     private static void CompactInputsAddressTheirOwnRooms()
     {

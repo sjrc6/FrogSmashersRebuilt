@@ -18,6 +18,7 @@ public sealed class LobbyMembership
             || observers.Any(player => player == null || !LobbyRoster.ValidPlayer(player) || player.Cpu)
             || players.Select(player => (player.Peer, player.Id)).Distinct().Count() != players.Length
             || players.Select(player => player.Color).Distinct().Count() != players.Length
+            || players.GroupBy(player => player.Team).Any(team => team.Count() > LobbyRoster.MaxTeamPlayers)
             || observers.Select(player => player.Peer).Distinct().Count() != observers.Length
             || observers.Any(observer => players.Any(player => !player.Cpu && player.Peer == observer.Peer))
         )

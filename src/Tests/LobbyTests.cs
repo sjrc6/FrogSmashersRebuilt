@@ -80,9 +80,9 @@ internal static partial class LobbyTests
         };
         var host = rig.Add("host", Enumerable.Range(0, 4).Select(id => new LobbyPlayer(id)).ToArray());
         host.Lobby.SetRollbackSettings(new() { Delay = RollbackPreferences.MaximumDelayFrames, MaxExtraDelay = 0 });
-        rig.Input = (node, _) => node == host ? new(default, TeamStep: 1) : default;
+        rig.Input = (node, handle) => node == host && handle == 1 ? new(default, TeamStep: 1) : default;
         rig.Steps(240);
-        var guest = rig.Add("guest", Enumerable.Range(0, 3).Select(id => new LobbyPlayer(id)).ToArray());
+        var guest = rig.Add("guest", Enumerable.Range(0, 3).Select(id => new LobbyPlayer(id, Team: 1)).ToArray());
         guest.Lobby.SetRollbackSettings(
             new()
             {
@@ -93,15 +93,15 @@ internal static partial class LobbyTests
         );
         rig.WaitFor(() => rig.Ready, "Long input prefixes did not survive admission");
         rig.Steps(240);
-        var last = rig.Add("last", [new(0)]);
+        var last = rig.Add("last", [new(0, Team: 2)]);
         last.Lobby.SetRollbackSettings(new() { Delay = 0, MaxExtraDelay = 12 });
         rig.WaitFor(() => rig.Ready, "Eight-player delayed checkpoint failed");
         rig.Steps(240);
-        foreach (var player in host.Simulation.Membership.Humans(0))
-            Check(
-                player.Team == (host.Simulation.World.TickNumber - RollbackPreferences.MaximumDelayFrames) % 8,
-                "Long checkpoint prefix dropped or repeated an accepted lobby command"
-            );
+        Check(
+            host.Simulation.Membership.Humans(0)[0].Team
+                == (host.Simulation.World.TickNumber - RollbackPreferences.MaximumDelayFrames) % 8,
+            "Long checkpoint prefix dropped or repeated an accepted lobby command"
+        );
         foreach (var node in rig.Nodes)
         {
             Check(

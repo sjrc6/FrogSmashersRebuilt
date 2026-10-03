@@ -123,11 +123,4 @@ internal sealed partial class MenuController
             : -1;
         Selected = index >= 0 ? index : Math.Min(Selected, players.Length);
     }
-
-    private void CreateOnlineLobby()
-    {
-        Creation.Apply(game.Setup.Lobby.Roster);
-        AllowLan = Creation.Lan;
-        game.BeginLobby(Creation.Lan ? "udp" : "steam", true);
-    }
 }

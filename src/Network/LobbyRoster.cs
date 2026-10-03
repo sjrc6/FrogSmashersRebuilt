@@ -61,6 +61,7 @@ public sealed record LobbySlot(SlotType Type = SlotType.Open, LobbyPlayer? Playe
 public sealed class LobbyRoster
 {
     public const int MaxPlayers = 8;
+    public const int MaxTeamPlayers = 4;
     public const int MaxSpectators = 4;
     public const int MaxPeers = MaxPlayers + MaxSpectators;
     private readonly SlotType defaultType;
@@ -163,7 +164,15 @@ public sealed class LobbyRoster
             next[room] = next[room] with
             {
                 Type = requested.Cpu ? SlotType.Cpu : next[room].Type,
-                Player = requested with { Peer = peer, Color = color },
+                Player = requested with
+                {
+                    Peer = peer,
+                    Color = color,
+                    Team = AvailableTeam(
+                        requested.Team,
+                        next.Where((_, index) => index != room).Select(slot => slot.Player)
+                    ),
+                },
             };
         }
         slots = next;
@@ -184,7 +193,8 @@ public sealed class LobbyRoster
             var others = slots.Select(slot => slot.Player).ToArray();
             int color = Enumerable.Range(0, MaxPlayers).First(value => others.All(p => p?.Color != value));
             int id = 10 + room;
-            player = new LobbyPlayer(id, Team: room % 2, Color: color, Spawned: true, Cpu: true);
+            int team = AvailableTeam(color, others);
+            player = new LobbyPlayer(id, Team: team, Color: color, Spawned: true, Cpu: true);
         }
         slots[room] = new(type, player);
         return true;
@@ -250,6 +260,24 @@ public sealed class LobbyRoster
     }
 
     private LobbySlot Empty(LobbySlot slot) => new(slot.Type == SlotType.Cpu ? defaultType : slot.Type);
+
+    public static int AvailableTeam(int preferred, IEnumerable<LobbyPlayer?> players, int direction = 1)
+    {
+        if (preferred is < 0 or >= MaxPlayers || direction is not (-1 or 1))
+            throw new ArgumentOutOfRangeException(nameof(preferred));
+        Span<int> counts = stackalloc int[MaxPlayers];
+        counts.Clear();
+        foreach (var player in players)
+            if (player != null)
+                counts[player.Team]++;
+        for (int offset = 0; offset < MaxPlayers; offset++)
+        {
+            int team = (preferred + direction * offset + MaxPlayers) % MaxPlayers;
+            if (counts[team] < MaxTeamPlayers)
+                return team;
+        }
+        throw new InvalidOperationException("No team has room for another player");
+    }
 
     internal static bool ValidPlayer(LobbyPlayer player) =>
         player.Id is >= 0 and < 18

@@ -161,6 +161,7 @@ internal sealed class MatchController : IDisposable
     {
         renderer.Reset();
         audio.Reset();
+        audio.TitleBackground = IsMenuBackground;
         controls.ClearPendingEdges();
         accumulator = 0;
         Paused = false;

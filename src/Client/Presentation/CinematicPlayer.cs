@@ -112,6 +112,7 @@ public sealed class CinematicPlayer : IDisposable
     public void Stop()
     {
         animation.StopAudio();
+        audio?.StopTitleMusic();
         Active = false;
     }
 
@@ -282,7 +283,7 @@ public sealed class CinematicPlayer : IDisposable
         audio.PlayAt(
             name,
             long.MinValue + (epoch << 24) + ++eventSequence,
-            volume,
+            volume * audio.TitleVolume,
             new Vector3(animation.Camera + new Vector2(Range(-5, 5), 0), -10)
         );
     }
@@ -295,7 +296,7 @@ public sealed class CinematicPlayer : IDisposable
         }
 
         musicStarted = true;
-        animation.PlayDeferredSounds();
+        audio?.PlayTitleMusic();
     }
 
     private void AdvanceVictoryAnimation(float dt)

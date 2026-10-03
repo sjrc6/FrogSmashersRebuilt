@@ -11,6 +11,7 @@ public sealed class ClientSettings
     public bool VSync { get; set; } = true;
     public int FrameLimit { get; set; } = 240;
     public float Volume { get; set; } = .65f;
+    public float TitleVolume { get; set; } = 1;
     public bool ScreenShake { get; set; } = true;
     public Dictionary<string, PadBindings> ControllerBindings { get; set; } = new();
     public KeyBindings[] Keyboard { get; set; } =
@@ -70,6 +71,7 @@ public sealed class ClientSettings
         value.Rollback = (value.Rollback ?? new()).Normalize();
         value.FrameLimit = Math.Clamp(value.FrameLimit, 30, 1000);
         value.Volume = Math.Clamp(value.Volume, 0, 1);
+        value.TitleVolume = Math.Clamp(value.TitleVolume, 0, 1);
         if (value.Keyboard == null || value.Keyboard.Length != 2 || value.Keyboard.Any(k => k == null))
         {
             value.Keyboard = new ClientSettings().Keyboard;

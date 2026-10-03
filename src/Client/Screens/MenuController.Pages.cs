@@ -15,7 +15,7 @@ internal sealed partial class MenuController
                 return
                 [
                     new("LOCAL", () => ShowSeats()),
-                    new("ONLINE", () => ShowSeats(true)),
+                    new("ONLINE", OpenOnline),
                     Link("SETTINGS", GameScreen.Settings),
                     Link("EXTRAS", GameScreen.Extras),
                     new("QUIT", game.Exit),
@@ -51,8 +51,6 @@ internal sealed partial class MenuController
                     lobbyRows.Add(new("INVITE FRIENDS", steamLobby.InviteFriends));
                 if (game.Online.Lobby == null)
                     lobbyRows.Add(new("ONLINE OPTIONS", OpenOnline));
-                else
-                    lobbyRows.Add(new("LEAVE ONLINE", game.LeaveOnlineLobby));
                 lobbyRows.Add(new("QUIT LOBBY", game.MainMenu, Color: new(255, 85, 85)));
                 return lobbyRows;
             case GameScreen.SlotEditor:
@@ -101,6 +99,22 @@ internal sealed partial class MenuController
                             game.Audio.Volume = game.Settings.Volume;
                         }
                     ),
+                };
+                if (ShowingMenuBackground)
+                    personal.Add(
+                        new(
+                            "TITLE VOLUME",
+                            RepeatAdjust: true,
+                            Value: (int)MathF.Round(game.Settings.TitleVolume * 100) + "%",
+                            Change: amount =>
+                            {
+                                game.Settings.TitleVolume =
+                                    Math.Clamp((int)MathF.Round(game.Settings.TitleVolume * 20) + amount, 0, 20) / 20f;
+                                game.Audio.TitleVolume = game.Settings.TitleVolume;
+                            }
+                        )
+                    );
+                personal.Add(
                     new(
                         "SCREEN SHAKE",
                         Value: OnOff(game.Settings.ScreenShake),
@@ -109,8 +123,8 @@ internal sealed partial class MenuController
                             game.Settings.ScreenShake = !game.Settings.ScreenShake;
                             game.Renderer.ShakeEnabled = game.Cinematics.ShakeEnabled = game.Settings.ScreenShake;
                         }
-                    ),
-                };
+                    )
+                );
                 personal.Add(new("CONTROLS", () => OpenBindings(HintDevice)));
                 personal.Add(Link("ROLLBACK", GameScreen.Rollback));
                 personal.Add(BackRow());
@@ -169,28 +183,24 @@ internal sealed partial class MenuController
             case GameScreen.JoinLobby:
                 return
                 [
-                    Link("JOIN STEAM", GameScreen.JoinSteam),
-                    Link("JOIN LAN / UDP", GameScreen.JoinUdp),
+                    Link("BROWSE STEAM LOBBIES", GameScreen.BrowseSteam),
+                    new("JOIN CLIPBOARD LOBBY", JoinClipboardLobby),
+                    Link("BROWSE LAN LOBBIES", GameScreen.BrowseLan),
+                    Link("JOIN UDP", GameScreen.JoinUdp),
                     BackRow(),
                 ];
-            case GameScreen.JoinSteam:
-                return
-                [
-                    new("LOBBY ID", BeginAddressEdit, Value: SteamCode.Length == 0 ? "ENTER ID" : SteamCode),
-                    new("JOIN LOBBY", () => game.BeginLobby("steam:" + SteamCode, false)),
-                    BackRow(),
-                ];
+            case GameScreen.BrowseSteam or GameScreen.BrowseLan:
+                return browserEntries.Select(row => row.Entry).ToArray();
             case GameScreen.JoinUdp:
                 return
                 [
                     new("ADDRESS", BeginAddressEdit, Value: JoinAddress),
                     new("JOIN LOBBY", () => game.BeginLobby("udp:" + JoinAddress, false)),
+                    new("JOIN CLIPBOARD ADDRESS", JoinClipboardAddress),
                     BackRow(),
                 ];
             case GameScreen.Connecting:
-                return game.Online.Lobby is SteamLobby steam
-                    ? [new("INVITE FRIENDS", steam.InviteFriends), new("CANCEL", game.LeaveOnlineLobby)]
-                    : [new("CANCEL", game.LeaveOnlineLobby)];
+                return [new("CANCEL", game.CancelConnection)];
             case GameScreen.Playing:
                 if (!game.Match.Paused)
                     return [];

@@ -59,6 +59,7 @@ public sealed class LobbySimulation : IRollbackSimulation
         var oldBodies = World.Players.ToArray();
         uint previousPreviews = pendingPreviews;
         var usedColors = new HashSet<int>();
+        var assigned = new List<LobbyPlayer>();
         for (int room = 0; room < next.Length; room++)
         {
             if (next[room] is not { } incoming)
@@ -70,6 +71,7 @@ public sealed class LobbySimulation : IRollbackSimulation
             oldRooms[room] = previous;
             next[room] = incoming with { Color = old.Color, Team = old.Team, Spawned = old.Spawned };
             usedColors.Add(old.Color);
+            assigned.Add(next[room]!);
         }
         for (int room = 0; room < next.Length; room++)
         {
@@ -78,8 +80,9 @@ public sealed class LobbySimulation : IRollbackSimulation
             int color = usedColors.Contains(incoming.Color)
                 ? Enumerable.Range(0, LobbyRoster.MaxPlayers).First(value => !usedColors.Contains(value))
                 : incoming.Color;
-            next[room] = incoming with { Color = color };
+            next[room] = incoming with { Color = color, Team = LobbyRoster.AvailableTeam(incoming.Team, assigned) };
             usedColors.Add(color);
+            assigned.Add(next[room]!);
         }
         var spectators = requested
             .Spectators.Select(spectator =>
@@ -169,7 +172,11 @@ public sealed class LobbySimulation : IRollbackSimulation
                 if (input.TeamStep != 0)
                     player = player with
                     {
-                        Team = (player.Team + input.TeamStep + LobbyRoster.MaxPlayers) % LobbyRoster.MaxPlayers,
+                        Team = LobbyRoster.AvailableTeam(
+                            (player.Team + input.TeamStep + LobbyRoster.MaxPlayers) % LobbyRoster.MaxPlayers,
+                            players.Where((_, index) => index != room),
+                            input.TeamStep
+                        ),
                     };
                 if ((actions & LobbyInputActions.Spawn) != 0)
                     player = player with { Spawned = true };
@@ -396,7 +403,8 @@ public sealed class LobbySimulation : IRollbackSimulation
             int color = command.Color(room);
             if (used.Contains(color))
                 color = Enumerable.Range(0, LobbyRoster.MaxPlayers).First(value => !used.Contains(value));
-            players[room] = new(10 + room, Team: command.Team(room), Color: color, Spawned: true, Cpu: true);
+            int team = LobbyRoster.AvailableTeam(command.Team(room), players.Where((_, index) => index != room));
+            players[room] = new(10 + room, Team: team, Color: color, Spawned: true, Cpu: true);
             if (created)
             {
                 World.SetLobbySlot(room, false, color);

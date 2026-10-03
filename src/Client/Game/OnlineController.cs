@@ -9,6 +9,7 @@ internal sealed class OnlineController : IDisposable
     private readonly string fingerprint;
     private SteamClient? steam;
     public IGameLobby? Lobby { get; private set; }
+    public ILobbyBrowser? Browser { get; private set; }
 
     public OnlineController(LaunchOptions options, string contentHash)
     {
@@ -27,6 +28,26 @@ internal sealed class OnlineController : IDisposable
         steam = SteamClient.Connect();
     }
 
+    public void Browse(bool useSteam, int partySize)
+    {
+        StopBrowsing();
+        if (useSteam)
+        {
+            PrepareSteam();
+            if (steam?.Available != true)
+                throw new InvalidOperationException(steam?.Error ?? "Steam is unavailable");
+            Browser = new SteamLobbyBrowser(fingerprint, partySize);
+        }
+        else
+            Browser = new LanLobbyBrowser(fingerprint, partySize);
+    }
+
+    public void StopBrowsing()
+    {
+        Browser?.Dispose();
+        Browser = null;
+    }
+
     public void Connect(
         string target,
         bool host,
@@ -34,11 +55,17 @@ internal sealed class OnlineController : IDisposable
         LobbyRoster localRoster,
         MatchOptions match,
         bool allowLan,
-        int joinDevice
+        int joinDevice,
+        bool invited = true
     )
     {
+        StopBrowsing();
         if (target.StartsWith("steam", StringComparison.Ordinal))
+        {
             PrepareSteam();
+            if (steam?.Available != true)
+                throw new InvalidOperationException(steam?.Error ?? "Steam is unavailable");
+        }
         CloseLobby();
         var players = localRoster.Players(0).Where(player => host || !player.Cpu).ToArray();
         if (!host && players.Length == 0)
@@ -60,7 +87,7 @@ internal sealed class OnlineController : IDisposable
                 _ => throw new ArgumentException("Host transport must be udp or steam"),
             };
         else if (target.StartsWith("steam:", StringComparison.Ordinal))
-            Lobby = SteamLobby.Join(ulong.Parse(target[6..]), players, fingerprint);
+            Lobby = SteamLobby.Join(ulong.Parse(target[6..]), players, fingerprint, invited: invited);
         else if (target.StartsWith("udp:", StringComparison.Ordinal))
             Lobby = UdpLobby.Join(target[4..], options.Port, players, fingerprint);
         else
@@ -87,6 +114,7 @@ internal sealed class OnlineController : IDisposable
 
     public void Dispose()
     {
+        StopBrowsing();
         CloseLobby();
         steam?.Dispose();
     }

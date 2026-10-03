@@ -49,6 +49,7 @@ internal sealed partial class LobbyController(FrogGame game)
 
     public void Open()
     {
+        game.Audio.StopTitleMusic();
         var rules = new GameRules
         {
             Lobby = true,
@@ -151,23 +152,17 @@ internal sealed partial class LobbyController(FrogGame game)
             .ToHashSet();
         var available = Enumerable.Range(0, 8).Where(value => !used.Contains(value)).ToArray();
         int color = available.Length == 0 ? -1 : available[Random.Shared.Next(available.Length)];
-        if (
-            color < 0
-            || !SetPlayers([.. players, new LobbyPlayer(device, Math.Max(0, LocalPeer), players.Length % 2, color)])
-        )
+        if (color < 0 || !SetPlayers([.. players, new LobbyPlayer(device, Math.Max(0, LocalPeer), color, color)]))
             game.Toasts.Show(RosterUpdating ? "LOBBY UPDATING" : "NO OPEN SLOTS");
         else
             JoinFeedback(device);
     }
 
-    public void Choose(int device, int horizontal, int vertical)
+    public void ChooseColor(int device)
     {
-        if (horizontal == 0 && vertical == 0 || !LocalPlayers.Any(player => player.Id == device && !player.Spawned))
+        if (!LocalPlayers.Any(player => player.Id == device && !player.Spawned))
             return;
-        QueueCommand(
-            device,
-            new(default, ColorStep: (sbyte)Math.Sign(horizontal), TeamStep: (sbyte)Math.Sign(vertical))
-        );
+        QueueCommand(device, TeamMode ? new(default, TeamStep: 1) : new(default, ColorStep: 1));
     }
 
     private void QueueCommand(int device, RollbackInput input)
@@ -374,13 +369,20 @@ internal sealed partial class LobbyController(FrogGame game)
 
     private void PresentVisuals(IEnumerable<SimulationEvent> events)
     {
+        game.Renderer.SetLobbyPreviews(Roster, TeamMode);
         foreach (var item in events)
         {
             if (!Presentation.ShowEvent(item, EventPlayer(item)))
                 continue;
             float age = (float)Math.Max(0, (World!.TickNumber - 1 - item.Tick) * TickSeconds);
             if (item.Kind == SimulationEventKind.LobbyPreview)
-                game.Renderer.LobbyColorEffect(World!.Map, item.Player, item.Other, item.Tick, age);
+                game.Renderer.LobbyColorEffect(
+                    World!.Map,
+                    item.Player,
+                    PlayerPalette.Lobby(Simulation!.Membership.Rooms, item.Player, TeamMode),
+                    item.Tick,
+                    age
+                );
             else
                 game.Renderer.Consume([item], World!, age);
             if (Network != null && LocalFeedbackEvent(item))

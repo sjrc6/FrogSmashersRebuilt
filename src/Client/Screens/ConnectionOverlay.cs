@@ -27,7 +27,8 @@ internal sealed class ConnectionOverlay(FrogGame game)
                 if (lobby.Membership.Rooms[room] is not { } player)
                     continue;
                 int handle = player.Cpu ? -1 : Array.IndexOf(lobby.InputRooms.ToArray(), room);
-                players.Add(Row(handle, room, player.Peer, player.Color, player.Cpu, session));
+                var color = PlayerPalette.Lobby(lobby.Membership.Rooms, room, game.Lobby.TeamMode);
+                players.Add(Row(handle, room, player.Peer, color, player.Cpu, session));
             }
         }
         else if (game.Match.World is { } world)
@@ -37,13 +38,13 @@ internal sealed class ConnectionOverlay(FrogGame game)
                 bool cpu = world.Rules.CpuPlayers[slot];
                 int handle = cpu ? -1 : session?.InputHandle(slot) ?? slot;
                 int peer = handle >= 0 ? session?.PlayerPeer(handle) ?? 0 : 0;
-                players.Add(Row(handle, slot, peer, world.Players[slot].ColorIndex, cpu, session));
+                players.Add(Row(handle, slot, peer, PlayerPalette.For(world, slot), cpu, session));
             }
         }
         return players;
     }
 
-    private PlayerRow Row(int handle, int slot, int peer, int color, bool cpu, IRollbackSession? session)
+    private PlayerRow Row(int handle, int slot, int peer, Color color, bool cpu, IRollbackSession? session)
     {
         if (cpu)
             return new(-1, $"CPU {slot + 1}", color, null, 0, 0);
@@ -125,7 +126,7 @@ internal sealed class ConnectionOverlay(FrogGame game)
         y += headingHeight;
         foreach (var row in rows)
         {
-            game.Renderer.Panel(new(left, y, 12, line), PlayerPalette.Colors[row.Color]);
+            game.Renderer.Panel(new(left, y, 12, line), row.Color);
             game.Renderer.Text(row.Label, left + 22, y);
             string ping = row.Ping is { } milliseconds ? $"{milliseconds} MS" : "-- MS";
             game.Renderer.Text(ping, right - font.Measure(ping).X, y, PingColor(row.Ping));
@@ -168,7 +169,7 @@ internal sealed class ConnectionOverlay(FrogGame game)
     internal readonly record struct PlayerRow(
         int Handle,
         string Label,
-        int Color,
+        Color Color,
         int? Ping,
         int Prediction,
         int Donation

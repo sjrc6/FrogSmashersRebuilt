@@ -51,7 +51,7 @@ public sealed partial class Renderer : IDisposable
         canvas = new SpriteCanvas(device, assets, cameraController);
         scores = new ScoreDisplay(assets, canvas, cameraController);
         menuPanel = new NineSlicePanel(assets.Texture("UI/menu-panel"));
-        effects = new EffectSystem(assets, canvas, cameraController, cosmetics);
+        effects = new EffectSystem(assets, canvas, cameraController, cosmetics, ColorFor);
         compositor = new FrameCompositor(device, assets);
         var projection = Matrix.CreateOrthographicOffCenter(0, Width, Height, 0, 0, 1);
         assets.SpriteEffect.Parameters["MatrixTransform"].SetValue(projection);
@@ -600,7 +600,8 @@ public sealed partial class Renderer : IDisposable
 
     public static Color TeamColor(int team) => PlayerPalette.Team(team);
 
-    public Color ColorFor(World world, int slot) => PlayerPalette.For(world, slot);
+    public Color ColorFor(World world, int slot) =>
+        world.Rules.Lobby ? lobbyColors[slot] : PlayerPalette.For(world, slot);
 
     public Vector2 Screen(Vector2 world) => cameraController.ToScreen(world);
 

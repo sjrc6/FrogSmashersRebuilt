@@ -4,7 +4,10 @@ namespace FrogSmashers.Network;
 
 public sealed class SteamLobby : GameLobby
 {
+    internal const string GameTag = "FrogSmashersRebuilt";
+    internal const string Protocol = "7";
     private readonly bool hosting;
+    private readonly bool invited;
     private readonly int capacity;
     private readonly LobbyPlayer[] players;
     private readonly LobbySlot[]? initialRooms;
@@ -36,8 +39,13 @@ public sealed class SteamLobby : GameLobby
         IReadOnlyList<LobbySlot>? initialRooms = null
     ) => new(true, 0, capacity, players, contentHash, settingsJson, appId, initialRooms);
 
-    public static SteamLobby Join(ulong lobbyId, LobbyPlayer[] players, string contentHash, uint appId = 480) =>
-        new(false, lobbyId, 8, players, contentHash, "", appId);
+    public static SteamLobby Join(
+        ulong lobbyId,
+        LobbyPlayer[] players,
+        string contentHash,
+        uint appId = 480,
+        bool invited = true
+    ) => new(false, lobbyId, 8, players, contentHash, "", appId, invited: invited);
 
     private SteamLobby(
         bool hosting,
@@ -47,7 +55,8 @@ public sealed class SteamLobby : GameLobby
         string hash,
         string settings,
         uint appId,
-        IReadOnlyList<LobbySlot>? initialRooms = null
+        IReadOnlyList<LobbySlot>? initialRooms = null,
+        bool invited = false
     )
     {
         var validation = new LobbyRoster();
@@ -59,6 +68,7 @@ public sealed class SteamLobby : GameLobby
             initialRooms = validation.Slots;
         }
         this.hosting = hosting;
+        this.invited = invited;
         this.capacity = capacity;
         this.players = players.ToArray();
         this.initialRooms = initialRooms?.ToArray();
@@ -144,8 +154,13 @@ public sealed class SteamLobby : GameLobby
         }
 
         lobbyId = new CSteamID(c.m_ulSteamIDLobby);
-        SteamMatchmaking.SetLobbyData(lobbyId, "game", "FrogSmashersRebuilt");
-        SteamMatchmaking.SetLobbyData(lobbyId, "protocol", "7");
+        SteamMatchmaking.SetLobbyData(lobbyId, "game", GameTag);
+        SteamMatchmaking.SetLobbyData(lobbyId, "protocol", Protocol);
+        SteamMatchmaking.SetLobbyData(
+            lobbyId,
+            "name",
+            LobbyListing.DisplayName(SteamFriends.GetPersonaName(), "STEAM LOBBY")
+        );
         SteamMatchmaking.SetLobbyData(lobbyId, "content", contentHash);
         SteamMatchmaking.SetLobbyData(lobbyId, "state", "forming");
         StartCoordinator();
@@ -166,8 +181,8 @@ public sealed class SteamLobby : GameLobby
 
         lobbyId = new CSteamID(c.m_ulSteamIDLobby);
         if (
-            SteamMatchmaking.GetLobbyData(lobbyId, "game") != "FrogSmashersRebuilt"
-            || SteamMatchmaking.GetLobbyData(lobbyId, "protocol") != "7"
+            SteamMatchmaking.GetLobbyData(lobbyId, "game") != GameTag
+            || SteamMatchmaking.GetLobbyData(lobbyId, "protocol") != Protocol
             || SteamMatchmaking.GetLobbyData(lobbyId, "content") != contentHash
         )
         {
@@ -201,7 +216,7 @@ public sealed class SteamLobby : GameLobby
             contentHash,
             settings,
             initialRooms,
-            invited: !hosting,
+            invited: invited,
             isFriend: address =>
                 ulong.TryParse(address, out var id)
                 && SteamFriends.GetFriendRelationship(new CSteamID(id))

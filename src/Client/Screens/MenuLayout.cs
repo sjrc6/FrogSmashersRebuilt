@@ -53,6 +53,7 @@ internal static class MenuLayout
         {
             GameScreen.Main => 240,
             GameScreen.Bindings => 440,
+            GameScreen.BrowseSteam or GameScreen.BrowseLan => 520,
             _ => 400,
         };
 
