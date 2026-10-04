@@ -101,7 +101,7 @@ internal static partial class LobbyTests
             host.Lobby.SessionId == session && host.Simulation.InputSources.Count == 2,
             "CPU edit changed the spectating host session layout"
         );
-        Check(host.Lobby.StartMatch("{}"), "Spectating host could not start a CPU match");
+        Check(host.Lobby.StartMatch(_ => "{}"), "Spectating host could not start a CPU match");
         rig.WaitFor(() => host.Lobby.Ready && guest.Lobby.Ready, "CPU match checkpoint failed");
         Check(
             host.Lobby.InputPlayerSlots.SequenceEqual(new[] { -1, 2 }),

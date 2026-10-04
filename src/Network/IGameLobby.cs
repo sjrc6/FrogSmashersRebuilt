@@ -34,7 +34,7 @@ public interface IGameLobby : IDisposable
     bool SetSpectating(int peer, bool spectating);
     void Kick(int peer, bool ban);
     void SetMatchSettings(string settings);
-    bool StartMatch(string settings);
+    bool StartMatch(Func<LobbyRoster, string> createSettings);
     bool ReturnToLobby();
     ulong SessionId { get; }
     IReadOnlyList<int> PeerIds { get; }

@@ -15,7 +15,7 @@ internal sealed partial class PresentationChecks
     private void CaptureDeathMessages(string directory)
     {
         renderer.Reset();
-        var world = new World(assets.Data, new GameRules { PlayerCount = 2, MapOrder = [1] });
+        var world = new World(assets.Data, new GameRules(playerCount: 2, mapOrder: [1]));
         renderer.DrawWorld(world, null, 1, false);
         string[] messages = ["FAIL!", "BUTTS!", "FAREWELL, CRUEL WORLD!"];
         for (int index = 0; index < messages.Length; index++)
@@ -37,15 +37,7 @@ internal sealed partial class PresentationChecks
     {
         Directory.CreateDirectory(directory);
         renderer.Reset();
-        var world = new World(
-            assets.Data,
-            new GameRules
-            {
-                PlayerCount = playerCount,
-                WinScore = 10,
-                MapOrder = [1],
-            }
-        );
+        var world = new World(assets.Data, new GameRules(playerCount: playerCount, winScore: 10, mapOrder: [1]));
         var inputs = new InputFrame[playerCount];
         for (int slot = 0; slot < playerCount; slot++)
         {
@@ -64,7 +56,7 @@ internal sealed partial class PresentationChecks
             player.Y = 0;
             player.LastHitBy = 0;
             player.HitsTaken = hits;
-            world.Tick(inputs);
+            world.Advance(inputs.Select(frame => new MatchInput(frame)).ToArray());
             renderer.Consume(world.Events, world);
         }
 
@@ -118,7 +110,7 @@ internal sealed partial class PresentationChecks
         clock.Step(0, .05f, 10, false);
         Check(clock.Frame == 2 && clock.Counter == .2f, "paused sprite clock cannot consume accumulated time");
         renderer.Reset();
-        var world = new World(assets.Data, new GameRules { PlayerCount = 2 });
+        var world = new World(assets.Data, new GameRules(playerCount: 2));
         SimulationEvent Death(long tick, int killed, int scorer, int hits, bool award) =>
             new(tick, 0, SimulationEventKind.Death, killed, scorer, 40, 0, hits, AwardedScore: award);
         renderer.Consume([Death(10, 1, 0, 3, true)], world);

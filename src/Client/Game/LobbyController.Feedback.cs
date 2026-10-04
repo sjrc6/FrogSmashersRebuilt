@@ -28,7 +28,7 @@ internal sealed partial class LobbyController
                 proposed.SetPlayers(LocalPeer, online.PendingLocalPlayers, online.Access);
         }
         Presentation.Update(Roster, proposed);
-        game.Renderer.SetLobbyPreviews(Presentation.Roster, TeamMode);
+        game.Renderer.SetLobbyPreviews(Presentation.Roster, UsesTeams);
     }
 
     private void JoinFeedback(int device)
@@ -42,7 +42,7 @@ internal sealed partial class LobbyController
         var color = PlayerPalette.Lobby(
             Presentation.Roster.Slots.Select(slot => slot.Player).ToArray(),
             room,
-            TeamMode
+            UsesTeams
         );
         game.Renderer.LobbyColorEffect(World.Map, room, color, -1);
         var position = game.Renderer.LobbyPreviewPosition(World.Map, room);

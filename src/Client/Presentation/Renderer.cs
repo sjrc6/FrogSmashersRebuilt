@@ -692,11 +692,13 @@ public sealed partial class Renderer : IDisposable
         DrawBackdrop(map, 0);
         scores.Draw(world, true, elapsed, time, frameSeconds);
         bool tie =
-            world.RoundNumber >= world.Rules.MatchRounds
-            && !world.IsShowdown
-            && ScoreDisplay.Players(world).Count(p => p.RoundWins == world.Players.Max(p => p.RoundWins)) > 1;
+            world.Match.RoundNumber >= world.Rules.MatchRounds
+            && !world.Match.IsShowdown
+            && ScoreDisplay
+                .Players(world)
+                .Count(p => world.Match.Players[p.Slot].RoundWins == world.Match.Players.Max(p => p.RoundWins)) > 1;
         string title =
-            tie && elapsed >= 1 ? "SHOWDOWN ! ! ! " : $"ROUND {world.RoundNumber} OF {world.Rules.MatchRounds}";
+            tie && elapsed >= 1 ? "SHOWDOWN ! ! ! " : $"ROUND {world.Match.RoundNumber} OF {world.Rules.MatchRounds}";
         BeginUi();
         var header = Screen(new Vector2(0, 11.59f));
         assets.Font.Draw(

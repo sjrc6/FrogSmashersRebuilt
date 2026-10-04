@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <CompatibilityRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../..'))/</CompatibilityRoot>
-    <NetworkProtocol>FrogSmashersRebuilt.GGCS.2</NetworkProtocol>
+    <NetworkProtocol>FrogSmashersRebuilt.GGCS.3</NetworkProtocol>
   </PropertyGroup>
   <UsingTask
     TaskName="GenerateCompatibilityIdentity"

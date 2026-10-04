@@ -12,7 +12,7 @@ internal static class BotNavigationTests
         foreach (int side in new[] { -1, 1 })
         foreach (int startX in new[] { 21, 26, 29 })
         {
-            var world = new World(content, new() { MapOrder = [1], WinScore = 999 }, 123);
+            var world = new World(content, new(mapOrder: [1], winScore: 999), 123);
             var bot = world.Players[0];
             var target = world.Players[1];
             bot.Alive = target.Alive = true;
@@ -34,7 +34,7 @@ internal static class BotNavigationTests
             Check(reached, $"DownSmash {side}: bot reaches an opponent below the overhang");
         }
 
-        var center = new World(content, new() { MapOrder = [1], WinScore = 999 }, 123);
+        var center = new World(content, new(mapOrder: [1], winScore: 999), 123);
         var frog = center.Players[0];
         var opponent = center.Players[1];
         frog.Alive = opponent.Alive = true;

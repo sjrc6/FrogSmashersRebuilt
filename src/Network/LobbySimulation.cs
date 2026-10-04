@@ -57,6 +57,7 @@ public sealed class LobbySimulation : IRollbackSimulation
         var next = requested.Slots.Select(slot => slot.Player).ToArray();
         var oldRooms = Enumerable.Repeat(-1, LobbyRoster.MaxPlayers).ToArray();
         var oldBodies = World.Players.ToArray();
+        var oldProgress = World.Match.Players.ToArray();
         uint previousPreviews = pendingPreviews;
         var usedColors = new HashSet<int>();
         var assigned = new List<LobbyPlayer>();
@@ -107,6 +108,7 @@ public sealed class LobbySimulation : IRollbackSimulation
             if (oldRooms[room] is int previous && previous >= 0)
             {
                 World.Players[room] = oldBodies[previous];
+                World.Match.Players[room] = oldProgress[previous];
                 World.Players[room].Slot = room;
                 World.Players[room].Team = World.Rules.Teams[room];
                 int lastAttacker = World.Players[room].LastHitBy;
@@ -146,7 +148,7 @@ public sealed class LobbySimulation : IRollbackSimulation
                 throw new ArgumentException("Invalid lobby command", nameof(inputs));
         }
         ApplyCpuCommand(inputs[0].Cpu);
-        var gameplay = new InputFrame[LobbyRoster.MaxPlayers];
+        var gameplay = new MatchInput[LobbyRoster.MaxPlayers];
         var players = Membership.Rooms.ToArray();
         bool changed = false;
         for (int handle = 1; handle < inputRooms.Length; handle++)
@@ -192,7 +194,7 @@ public sealed class LobbySimulation : IRollbackSimulation
             }
             World.SetLobbySlot(room, player.Spawned, player.Color);
             if (player.Spawned)
-                gameplay[room] = input.Gameplay;
+                gameplay[room] = new(input.Gameplay);
         }
         if (changed)
         {
@@ -203,9 +205,9 @@ public sealed class LobbySimulation : IRollbackSimulation
             if (Membership.Rooms[room] is { Cpu: true, Spawned: true } cpu)
             {
                 World.SetLobbySlot(room, true, cpu.Color);
-                gameplay[room] = bots.Read(World, room);
+                gameplay[room] = new(bots.Read(World, room));
             }
-        World.Tick(gameplay);
+        World.Advance(gameplay);
         bots.Observe(World, Membership);
         events.Clear();
         events.AddRange(World.Events);

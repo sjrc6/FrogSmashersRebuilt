@@ -27,7 +27,7 @@ internal sealed class ConnectionOverlay(FrogGame game)
                 if (lobby.Membership.Rooms[room] is not { } player)
                     continue;
                 int handle = player.Cpu ? -1 : Array.IndexOf(lobby.InputRooms.ToArray(), room);
-                var color = PlayerPalette.Lobby(lobby.Membership.Rooms, room, game.Lobby.TeamMode);
+                var color = PlayerPalette.Lobby(lobby.Membership.Rooms, room, game.Lobby.UsesTeams);
                 players.Add(Row(handle, room, player.Peer, color, player.Cpu, session));
             }
         }

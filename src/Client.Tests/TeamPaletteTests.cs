@@ -28,13 +28,15 @@ internal static class TeamPaletteTests
                         "Team shades use the full brightness range"
                     );
                 var players = rooms.OfType<LobbyPlayer>().Reverse().ToArray();
-                var rules = new GameRules
-                {
-                    PlayerCount = Math.Max(count, 2),
-                    TeamMode = true,
-                    Teams = Enumerable.Range(0, 8).Select(slot => slot < count ? team : (team + 1) % 8).ToArray(),
-                    Colors = Enumerable.Range(0, 8).Select(slot => slot < count ? players[slot].Color : slot).ToArray(),
-                };
+                var rules = new GameRules(
+                    playerCount: count + 1,
+                    format: MatchFormat.Teams,
+                    teams: [.. Enumerable.Range(0, 8).Select(slot => slot < count ? team : (team + 1) % 8).ToArray()],
+                    colors:
+                    [
+                        .. Enumerable.Range(0, 8).Select(slot => slot < count ? players[slot].Color : slot).ToArray(),
+                    ]
+                );
                 var world = new World(content.Maps[0], rules);
                 for (int slot = 0; slot < count; slot++)
                 {
@@ -48,7 +50,7 @@ internal static class TeamPaletteTests
                         "Free-for-all lobby colors remain unchanged"
                     );
                 }
-                rules.TeamMode = false;
+                rules = new GameRules(playerCount: rules.PlayerCount, teams: rules.Teams, colors: rules.Colors);
                 world = new World(content.Maps[0], rules);
                 for (int slot = 0; slot < count; slot++)
                     check(

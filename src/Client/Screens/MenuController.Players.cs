@@ -4,8 +4,6 @@ namespace FrogSmashers.Client;
 
 internal sealed partial class MenuController
 {
-    private (int Peer, int Id)? selectedPlayer;
-
     private LobbyPlayer[] ListedPlayers() =>
         [
             .. game.Lobby.Roster.Slots.Where(slot => slot.Player != null).Select(slot => slot.Player!),
@@ -37,6 +35,7 @@ internal sealed partial class MenuController
             bool spectator = game.Lobby.Roster.Spectator(player.Peer) == player;
             rows.Add(
                 new(
+                    $"player-{player.Peer}-{player.Id}",
                     PlayerLabel(player),
                     Value: spectator ? "SPECTATOR" : null,
                     DisabledReason: PlayerActionDisabledReason(player),
@@ -46,7 +45,7 @@ internal sealed partial class MenuController
             if (spectator)
                 firstSpectator = false;
         }
-        rows.Add(new("BACK", Back));
+        rows.Add(new("back", "BACK", Back));
         return rows;
     }
 
@@ -56,7 +55,14 @@ internal sealed partial class MenuController
         if (player == null)
             return (null, null);
         string? disabled = PlayerActionDisabledReason(player);
-        MenuEntry Action(string label, Action activate) => new(label, activate, DisabledReason: disabled);
+        MenuEntry Action(string label, Action activate) =>
+            new(
+                "player-action-" + label,
+                label,
+                activate,
+                DisabledReason: disabled,
+                Role: label == "UNSPECTATE" ? MenuRole.Positive : MenuRole.Destructive
+            );
         if (player.Cpu)
             return (null, Action("KICK", () => game.Lobby.Remove(player.Peer, player.Id)));
 
@@ -83,13 +89,10 @@ internal sealed partial class MenuController
             Back();
             return;
         }
-        FollowSelectedPlayer();
-        var entries = PlayerRows();
+        var entries = Entries();
         SelectRow(Wrap(Selected + input.Vertical, entries.Count));
         var layout = MeasurePointer(entries);
         bool clickedRow = ClickRow(entries, layout);
-        var player = ListedPlayers().ElementAtOrDefault(Selected);
-        selectedPlayer = player == null ? null : (player.Peer, player.Id);
         if (clickedRow)
             return;
 
@@ -111,16 +114,5 @@ internal sealed partial class MenuController
             else if (actions.Remove != null && MenuLayout.PlayerAction(panel, true, paired).Contains(point))
                 ActivateEntry(actions.Remove);
         }
-        if (Screen == GameScreen.ViewPlayers)
-            FollowSelectedPlayer();
-    }
-
-    private void FollowSelectedPlayer()
-    {
-        var players = ListedPlayers();
-        int index = selectedPlayer is { } identity
-            ? Array.FindIndex(players, player => player.Peer == identity.Peer && player.Id == identity.Id)
-            : -1;
-        Selected = index >= 0 ? index : Math.Min(Selected, players.Length);
     }
 }

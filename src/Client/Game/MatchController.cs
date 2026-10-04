@@ -15,6 +15,7 @@ internal sealed class MatchController : IDisposable
     private readonly string? recordingPath;
     private readonly JsonSerializerOptions jsonOptions = new() { WriteIndented = true };
     private LocalSeat[] seats = [];
+    private readonly Dictionary<int, MatchCommand> commands = new();
     private InputReplay? replay;
     private string recordingSettings = "";
     private string ambientMap = "";
@@ -58,10 +59,6 @@ internal sealed class MatchController : IDisposable
     {
         Close();
         seats = localSeats.ToArray();
-        options.Rules.CpuPlayers = Enumerable
-            .Range(0, 8)
-            .Select(slot => slot < seats.Length && seats[slot].Device < 0)
-            .ToArray();
         CreateWorld(options);
         replay = recordingPath != null ? InputReplay.Start(World!) : null;
         recordingSettings = JsonSerializer.Serialize(options, jsonOptions);
@@ -74,18 +71,15 @@ internal sealed class MatchController : IDisposable
         IsMenuBackground = true;
         seats = Enumerable.Range(0, 4).Select(index => new LocalSeat(-1, index)).ToArray();
         CreateWorld(
-            new MatchOptions
-            {
-                Seed = seed,
-                Rules = new GameRules
-                {
-                    PlayerCount = 4,
-                    CpuPlayers = [true, true, true, true, false, false, false, false],
-                    MapOrder = [1],
-                    // Keep the menu action running without round-end screens.
-                    WinScore = int.MaxValue,
-                },
-            }
+            new MatchOptions(
+                new GameRules(
+                    playerCount: 4,
+                    cpuPlayers: [true, true, true, true, false, false, false, false],
+                    mapOrder: [1],
+                    winScore: int.MaxValue
+                ),
+                seed
+            )
         );
         ResetPresentation();
     }
@@ -96,23 +90,7 @@ internal sealed class MatchController : IDisposable
         var options =
             JsonSerializer.Deserialize<MatchOptions>(lobby.MatchSettingsJson)
             ?? throw new InvalidDataException("Invalid match settings");
-        var players = lobby
-            .Roster.Slots.Where(slot => slot.Player != null)
-            .Select(slot => slot.Player!)
-            .OrderBy(player => player.Peer)
-            .ToArray();
-        options.Rules.PlayerCount = players.Length;
-        options.Rules.CpuPlayers = Enumerable
-            .Range(0, 8)
-            .Select(slot => slot < players.Length && players[slot].Cpu)
-            .ToArray();
-        options.Rules.Teams = lobby.PlayerTeams.Concat(Enumerable.Repeat(0, 8 - lobby.PlayerTeams.Length)).ToArray();
-        if (options.Rules.TeamMode && lobby.PlayerTeams.Distinct().Count() < 2)
-        {
-            throw new InvalidDataException("CHOOSE TWO TEAMS");
-        }
-
-        options.Rules.Colors = lobby.PlayerColors.Concat(Enumerable.Repeat(0, 8 - lobby.PlayerColors.Length)).ToArray();
+        MatchSetup.ValidateRoster(options.Rules, lobby.Roster);
         seats = lobby
             .Roster.Humans(lobby.LocalPeer)
             .Select(player => new LocalSeat(player.Id, player.Team, player.Color, player.Id))
@@ -163,6 +141,7 @@ internal sealed class MatchController : IDisposable
         audio.Reset();
         audio.TitleBackground = IsMenuBackground;
         controls.ClearPendingEdges();
+        commands.Clear();
         accumulator = 0;
         Paused = false;
         Error = null;
@@ -187,7 +166,8 @@ internal sealed class MatchController : IDisposable
         Reconcile();
         if (Network?.Error != null)
         {
-            bool completed = World.Phase == MatchPhase.MatchFinished && Network.IsTransportFailure && TerminalConfirmed;
+            bool completed =
+                World.Match.Phase == MatchPhase.MatchFinished && Network.IsTransportFailure && TerminalConfirmed;
             Error = completed ? null : Network.Error;
             return;
         }
@@ -204,7 +184,7 @@ internal sealed class MatchController : IDisposable
             if (accumulator + 1e-9 < tickDuration)
                 break;
             if (
-                World.Phase == MatchPhase.MatchFinished
+                World.Match.Phase == MatchPhase.MatchFinished
                 || World.TickNumber >= tickLimit
                 || ReplayPlayback && World.TickNumber >= replay!.Frames.Count
             )
@@ -235,12 +215,26 @@ internal sealed class MatchController : IDisposable
         audio.UpdateFlights(World, (float)elapsedSeconds);
     }
 
+    public bool QueueFighterSelection(int device, int player)
+    {
+        if (
+            World?.Match.Phase != MatchPhase.Selecting
+            || player < 0
+            || player >= World.Players.Length
+            || !seats.Any(seat => seat.Device == device && seat.Device >= 0)
+        )
+            return false;
+        commands[device] = new(MatchCommandKind.SelectFighter, (byte)player);
+        return true;
+    }
+
     private void AdvanceLocal()
     {
         var world = World!;
         PreviousWorld!.Restore(world.Capture());
         var inputs = ReplayPlayback ? replay!.Frames[(int)world.TickNumber] : ReadInputs();
-        world.Tick(inputs);
+        world.Advance(inputs);
+        commands.Clear();
         if (!ReplayPlayback)
         {
             replay?.Record(inputs, world);
@@ -257,12 +251,15 @@ internal sealed class MatchController : IDisposable
         audio.PlayEvents(world.Events);
     }
 
-    private InputFrame[] ReadInputs()
+    private MatchInput[] ReadInputs()
     {
-        var inputs = new InputFrame[seats.Length];
+        var inputs = new MatchInput[seats.Length];
         for (int index = 0; index < seats.Length; index++)
         {
-            inputs[index] = seats[index].Device < 0 ? default : controls.Read(seats[index].Device);
+            inputs[index] = new(
+                seats[index].Device < 0 ? default : controls.Read(seats[index].Device),
+                commands.GetValueOrDefault(seats[index].Device)
+            );
         }
 
         return inputs;
@@ -271,13 +268,17 @@ internal sealed class MatchController : IDisposable
     private bool AdvanceNetwork()
     {
         var network = Network!;
-        var inputs = new InputFrame[network.LocalSlots.Length];
+        var inputs = new RollbackInput[network.LocalSlots.Length];
         int localPlayer = 0;
         for (int index = 0; index < inputs.Length; index++)
         {
             if (network.PlayerSlot(network.LocalSlots[index]) < 0)
                 continue;
-            inputs[index] = Paused ? default : controls.Read(seats[localPlayer].Device, consume: false);
+            int device = seats[localPlayer].Device;
+            inputs[index] = new(
+                Paused ? default : controls.Read(device, consume: false),
+                Match: commands.GetValueOrDefault(device)
+            );
             localPlayer++;
         }
 
@@ -290,7 +291,10 @@ internal sealed class MatchController : IDisposable
                 if (network.PlayerSlot(handle) < 0)
                     continue;
                 if (network.AcceptedLocalSlots.Contains(handle))
+                {
                     controls.Read(seats[localPlayer].Device);
+                    commands.Remove(seats[localPlayer].Device);
+                }
                 localPlayer++;
             }
         }
@@ -353,6 +357,7 @@ internal sealed class MatchController : IDisposable
         World = null;
         PreviousWorld = null;
         replay = null;
+        commands.Clear();
         ReplayPlayback = false;
         IsMenuBackground = false;
         Error = null;

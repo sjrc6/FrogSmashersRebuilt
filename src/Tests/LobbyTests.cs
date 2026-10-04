@@ -19,6 +19,9 @@ internal static partial class LobbyTests
         MeshFailureCancelsAdmission();
         LeavingKeepsPeerIdentityStable();
         MatchStartAndReturn();
+        MatchSettingsFreezeBeforeCheckpoint();
+        MatchSettingsUseRefreshedRoster();
+        PendingSelectionsCancelFrozenStart();
         HostCanSpectate();
         SpectatorTransitionAtLatency();
         InvalidClientsAndPackets();
@@ -470,7 +473,7 @@ internal static partial class LobbyTests
         rig.WaitFor(() => rig.Ready, "Match fixture did not synchronize");
         rig.Steps(80);
         Check(
-            !guest.Lobby.StartMatch("{}") && host.Lobby.StartMatch("{\"seed\":9}"),
+            !guest.Lobby.StartMatch(_ => "{}") && host.Lobby.StartMatch(_ => "{\"seed\":9}"),
             "Match start authority was not enforced"
         );
         rig.WaitFor(() => host.Lobby.Ready && guest.Lobby.Ready, "Match start checkpoint did not complete");
@@ -501,7 +504,7 @@ internal static partial class LobbyTests
         foreach (var node in rig.Nodes.Where(node => node.Active))
         {
             node.Simulation = new LobbySimulation(
-                new World(TestFixtures.Map(), new GameRules { Lobby = true, PlayerCount = 8 }, 13),
+                new World(TestFixtures.Map(), new GameRules(lobby: true, playerCount: 8), 13),
                 node.Lobby.Roster,
                 71
             );
@@ -743,7 +746,7 @@ internal static partial class LobbyTests
             "Observer could not finish entering spectate"
         );
         rig.Steps(80);
-        Check(host.Lobby.StartMatch("{}"), "Spectator leave fixture could not start a match");
+        Check(host.Lobby.StartMatch(_ => "{}"), "Spectator leave fixture could not start a match");
         rig.WaitFor(
             () => rig.Nodes.All(node => node.Lobby.Ready),
             "Spectator leave fixture did not finish match setup"
@@ -890,7 +893,8 @@ internal static partial class LobbyTests
             string hash = "mesh-fixture",
             bool attach = true,
             LobbyAdmissionPolicy? admission = null,
-            string admissionSecret = ""
+            string admissionSecret = "",
+            MapData? map = null
         )
         {
             var wire = new ManualWire(this, address);
@@ -907,7 +911,7 @@ internal static partial class LobbyTests
                     : (source, secret) => ulong.TryParse(source, out var id) && admission.Allows(id, secret)
             );
             var simulation = new LobbySimulation(
-                new World(TestFixtures.Map(), new GameRules { Lobby = true, PlayerCount = 8 }, 13),
+                new World(map ?? TestFixtures.Map(), new GameRules(lobby: true, playerCount: 8), 13),
                 lobby.Roster,
                 71
             );

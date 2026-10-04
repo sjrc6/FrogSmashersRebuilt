@@ -55,7 +55,7 @@ public sealed partial class World
                     if (
                         other != player
                         && other.Alive
-                        && (!Rules.TeamMode || player.Team != other.Team)
+                        && (!Rules.UsesTeams || player.Team != other.Team)
                         && CapsuleTouchesPlayer(player.Center, player.Center + direction * range, radius, other)
                     )
                     {
@@ -196,7 +196,7 @@ public sealed partial class World
                         if (
                             other != player
                             && other.Alive
-                            && (!Rules.TeamMode || other.Team != player.Team)
+                            && (!Rules.UsesTeams || other.Team != player.Team)
                             && CircleTouchesBox(tip, 1, other.X - 1, other.Y, other.X + 1, other.Y + 2)
                         )
                         {

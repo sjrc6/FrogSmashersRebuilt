@@ -44,7 +44,11 @@ internal sealed class AutomatedGame : FrogGame
     protected override void Update(GameTime gameTime)
     {
         base.Update(gameTime);
-        if (automation.Spectate && !requestedSpectating && Online.Lobby is { Connected: true, Starting: false } lobby)
+        if (
+            automation.Spectate
+            && !requestedSpectating
+            && Online.Lobby is { SimulationReady: true, LocalRequestPending: false } lobby
+        )
             requestedSpectating = lobby.SetSpectating(lobby.LocalPeer, true);
         if (
             automation.StartPlayers > 0
@@ -52,18 +56,21 @@ internal sealed class AutomatedGame : FrogGame
             && online.Roster.Count == automation.StartPlayers
             && online.Roster.Spectators.Count >= automation.StartSpectators
         )
-            online.StartMatch(JsonSerializer.Serialize(Setup.CreateOptions(Options.MapOrder)));
+            online.StartMatch(roster => JsonSerializer.Serialize(Setup.CreateOptions(Options.MapOrder, roster)));
     }
 
     protected override void Draw(GameTime gameTime)
     {
         base.Draw(gameTime);
-        bool framesComplete = automation.Frames > 0 && RenderedFrames >= automation.Frames;
+        if (resultWritten && automation.HoldResult)
+            return;
+        bool lobbySettled = !automation.WaitForLobby || Online.Lobby?.SimulationReady == true && !Lobby.RosterUpdating;
+        bool framesComplete = automation.Frames > 0 && RenderedFrames >= automation.Frames && lobbySettled;
         bool ticksComplete =
             automation.Ticks > 0
             && !Match.IsMenuBackground
             && Match.World != null
-            && (Match.World.TickNumber >= automation.Ticks || Match.World.Phase == MatchPhase.MatchFinished)
+            && (Match.World.TickNumber >= automation.Ticks || Match.World.Match.Phase == MatchPhase.MatchFinished)
             && Match.TerminalConfirmed;
         if (!framesComplete && !ticksComplete && LastError == null)
         {
@@ -86,7 +93,8 @@ internal sealed class AutomatedGame : FrogGame
         }
 
         WriteResult();
-        Exit();
+        if (!automation.HoldResult)
+            Exit();
     }
 
     protected override void OnExiting(object sender, ExitingEventArgs args)
@@ -107,14 +115,67 @@ internal sealed class AutomatedGame : FrogGame
         }
 
         var buffer = GraphicsDevice.PresentationParameters;
+        var entries = Menus.Entries();
+        var layout = entries.Count > 0 ? MenuRenderer.Measure(entries) : null;
         var playerActions = Menus.Screen == GameScreen.ViewPlayers ? Menus.PlayerActions() : default;
+        var buttons = new Dictionary<string, Rectangle>();
+        if (layout != null)
+        {
+            if (Menus.Screen == GameScreen.ViewPlayers)
+            {
+                bool paired = playerActions.Accept != null && playerActions.Remove != null;
+                if (playerActions.Accept != null)
+                    buttons.Add("accept", MenuLayout.PlayerAction(layout.Panel, false, paired));
+                if (playerActions.Remove != null)
+                    buttons.Add("remove", MenuLayout.PlayerAction(layout.Panel, true, paired));
+                buttons.Add("back", MenuLayout.PlayerBack(layout.Panel, paired));
+            }
+            else if (Menus.Screen != GameScreen.Main)
+                buttons.Add("back", MenuLayout.FooterBack(layout.Panel));
+        }
         var result = new
         {
             Page = Menus.Screen.ToString(),
             Menus.HintDevice,
             Menus.Selected,
             Menus.SelectedSeat,
-            MenuItems = Menus.Entries().Select(entry => entry.Text).ToArray(),
+            MenuItems = entries.Select(entry => entry.Text).ToArray(),
+            MenuPanel = layout == null
+                ? null
+                : new
+                {
+                    layout.Panel.X,
+                    layout.Panel.Y,
+                    layout.Panel.Width,
+                    layout.Panel.Height,
+                },
+            MenuRows = layout
+                ?.Rows.Select(
+                    (row, index) =>
+                        new
+                        {
+                            entries[index].Id,
+                            entries[index].DisabledReason,
+                            Role = entries[index].Role.ToString(),
+                            row.Bounds.X,
+                            row.Bounds.Y,
+                            row.Bounds.Width,
+                            row.Bounds.Height,
+                        }
+                )
+                .ToArray(),
+            MenuButtons = buttons
+                .Select(button => new
+                {
+                    Id = button.Key,
+                    button.Value.X,
+                    button.Value.Y,
+                    button.Value.Width,
+                    button.Value.Height,
+                })
+                .ToArray(),
+            MenuPage = layout?.Page,
+            MenuPages = layout?.PageStarts.Length,
             ConnectionsVisible = Connections.Visible,
             InputWaitMessage = Connections.InputWaitMessage(),
             ConnectionPlayers = Connections.Visible ? Connections.Rows() : null,
@@ -173,8 +234,8 @@ internal sealed class AutomatedGame : FrogGame
             TickRate = World.TickRate,
             Hash = Match.World?.HashState().ToString("x16"),
             Map = Match.World?.Map.Id,
-            RoundNumber = Match.World?.RoundNumber,
-            Phase = Match.World?.Phase.ToString(),
+            RoundNumber = Match.World?.Match.RoundNumber,
+            Phase = Match.World?.Match.Phase.ToString(),
             Players = Match.World?.Players.Length,
             RenderedFrames,
             RollbackCount = Match.Network?.RollbackCount ?? 0,

@@ -49,16 +49,7 @@ internal static class TestFixtures
         };
 
     public static World MakeWorld(int players) =>
-        new(
-            Map(),
-            new GameRules
-            {
-                PlayerCount = players,
-                WinScore = 99,
-                MatchRounds = 3,
-            },
-            12345
-        );
+        new(Map(), new GameRules(playerCount: players, winScore: 99, matchRounds: 3), 12345);
 
     public static InputFrame Input(long tick, int slot)
     {

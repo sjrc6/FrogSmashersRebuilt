@@ -188,7 +188,7 @@ public sealed partial class Renderer
             AddCommand(fly.SortingLayer, fly.Order, fly.Material, fly.Z, DrawKind.Fly, fly);
         }
 
-        if (showGameplayUi && !world.IsShowdown)
+        if (showGameplayUi && !world.Match.IsShowdown)
         {
             AddCommand(0, 0, "", 2.78f, DrawKind.ScoreText);
             AddCommand(0, 0, "SelectiveColorReplace", 2.78f, DrawKind.ScoreIcons);

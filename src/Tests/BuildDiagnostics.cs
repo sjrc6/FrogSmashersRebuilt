@@ -81,7 +81,9 @@ internal static class BuildDiagnostics
         var world = MakeWorld(8);
         for (int tick = 0; tick < 900; tick++)
         {
-            world.Tick(Enumerable.Range(0, 8).Select(s => Input(tick, s)).ToArray());
+            world.Advance(
+                Enumerable.Range(0, 8).Select(s => Input(tick, s)).Select(frame => new MatchInput(frame)).ToArray()
+            );
         }
 
         var snapshot = world.Capture();
@@ -92,7 +94,9 @@ internal static class BuildDiagnostics
             world.Restore(snapshot);
             for (int frame = 900; frame < 924; frame++)
             {
-                world.Tick(Enumerable.Range(0, 8).Select(s => Input(frame, s)).ToArray());
+                world.Advance(
+                    Enumerable.Range(0, 8).Select(s => Input(frame, s)).Select(frame => new MatchInput(frame)).ToArray()
+                );
                 _ = world.Capture();
                 _ = world.HashState();
             }

@@ -6,9 +6,7 @@ public sealed partial class World
 {
     private void StartRound()
     {
-        Phase = MatchPhase.Playing;
-        Winner = -1;
-        PhaseTicks = 0;
+        Match.StartRound();
         Fly = new FlyState { SpawnTicks = RandomRange(15 * TickRate, 45 * TickRate) };
         for (int i = 0; i < Players.Length; i++)
         {
@@ -18,8 +16,6 @@ public sealed partial class World
                 Slot = i,
                 Team = prior.Team,
                 ColorIndex = prior.ColorIndex,
-                RoundWins = prior.RoundWins,
-                Eliminated = prior.Eliminated,
                 SpawnTicks = TicksFromSeconds(.5m + .2m * i),
             };
         }
@@ -27,7 +23,7 @@ public sealed partial class World
 
     private int ChooseMap(int round)
     {
-        if (IsShowdown)
+        if (Match.IsShowdown)
         {
             for (int i = 0; i < maps.Count; i++)
             {
@@ -86,15 +82,11 @@ public sealed partial class World
 
         int slot = player.Slot;
         int team = player.Team;
-        int score = player.Score;
-        int wins = player.RoundWins;
         var fresh = new PlayerState
         {
             Slot = slot,
             Team = team,
             ColorIndex = player.ColorIndex,
-            Score = score,
-            RoundWins = wins,
             Alive = true,
             X = FromDecimal(point.X),
             Y = FromDecimal(point.Y),
@@ -115,23 +107,26 @@ public sealed partial class World
 
         var player = Players[slot];
         player.ColorIndex = color;
-        if (player.Eliminated == !active)
+        if ((Match.Players[slot].Participation == Participation.Active) == active)
         {
             return;
         }
 
+        Match.Players[slot] = new PlayerProgress
+        {
+            Stocks = Rules.StartingStocks,
+            Participation = active ? Participation.Active : Participation.Inactive,
+        };
         Players[slot] = new PlayerState
         {
             Slot = slot,
             Team = Rules.Teams[slot],
             ColorIndex = color,
-            Eliminated = !active,
             SpawnTicks = 0,
         };
     }
 
-    private bool IsWinner(PlayerState player) =>
-        Winner >= 0 && (Rules.TeamMode ? player.Team == Players[Winner].Team : player.Slot == Winner);
+    private bool IsWinner(PlayerState player) => Match.IsWinner(Rules, player.Slot);
 
     private void Kill(PlayerState player)
     {
@@ -156,103 +151,27 @@ public sealed partial class World
             player.LastHitBy,
             player.HitsTaken,
             awardedScore: !Rules.Lobby
-                && Phase == MatchPhase.Playing
-                && !IsShowdown
+                && Match.Phase == MatchPhase.Playing
+                && !Match.IsShowdown
                 && player.LastHitBy >= 0
                 && player.LastHitBy < Players.Length
         );
-        if (Rules.Lobby || Phase != MatchPhase.Playing)
+        int winner = Match.RecordDeath(Rules, player.Slot, player.LastHitBy, player.HitsTaken);
+        if (winner >= 0)
         {
-            return;
+            Match.WinRound(Rules, winner);
+            Emit(SimulationEventKind.RoundWin, Players[winner]);
         }
-
-        if (IsShowdown)
-        {
-            player.Eliminated = true;
-            var survivors = Players.Where(x => !x.Eliminated).ToArray();
-            if (
-                survivors.Length == 1
-                || survivors.Length > 0 && Rules.TeamMode && survivors.All(x => x.Team == survivors[0].Team)
-            )
-            {
-                WinRound(survivors[0]);
-            }
-        }
-        else if (player.LastHitBy >= 0 && player.LastHitBy < Players.Length)
-        {
-            var attacker = Players[player.LastHitBy];
-            int points = Math.Max(1, player.HitsTaken);
-            if (Rules.TeamMode)
-            {
-                foreach (var teammate in Players)
-                {
-                    if (teammate.Team == attacker.Team)
-                    {
-                        teammate.Score += points;
-                    }
-                }
-            }
-            else
-            {
-                attacker.Score += points;
-            }
-
-            if (attacker.Score >= TargetScore)
-            {
-                WinRound(attacker);
-            }
-        }
-    }
-
-    private void WinRound(PlayerState player)
-    {
-        Phase = MatchPhase.RoundFinished;
-        Winner = player.Slot;
-        PhaseTicks = Rules.RoundFinishTicks;
-        foreach (var teammate in Players)
-        {
-            if (IsWinner(teammate))
-            {
-                teammate.RoundWins++;
-            }
-        }
-
-        Emit(SimulationEventKind.RoundWin, player);
     }
 
     private void AdvanceRound()
     {
-        if (IsShowdown)
+        if (!Match.AdvanceRound(Rules))
         {
-            Phase = MatchPhase.MatchFinished;
-            Emit(SimulationEventKind.MatchWin, Players[Winner]);
+            Emit(SimulationEventKind.MatchWin, Players[Match.Winner]);
             return;
         }
-
-        if (RoundNumber >= Rules.MatchRounds)
-        {
-            int highest = Players.Max(player => player.RoundWins);
-            var leaders = Players.Where(player => player.RoundWins == highest).ToArray();
-            if (leaders.Length == 1 || Rules.TeamMode && leaders.All(player => player.Team == leaders[0].Team))
-            {
-                Winner = leaders[0].Slot;
-                Phase = MatchPhase.MatchFinished;
-                Emit(SimulationEventKind.MatchWin, leaders[0]);
-                return;
-            }
-
-            IsShowdown = true;
-            foreach (var player in Players)
-            {
-                player.Eliminated = player.RoundWins != highest;
-            }
-        }
-        else
-        {
-            RoundNumber++;
-        }
-
-        CurrentMapIndex = ChooseMap(RoundNumber - 1);
+        Match.CurrentMapIndex = ChooseMap(Match.RoundNumber - 1);
         StartRound();
     }
 }

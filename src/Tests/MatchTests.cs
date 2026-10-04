@@ -8,28 +8,22 @@ internal static class MatchTests
 {
     public static void Scoring()
     {
-        var score = CreateWorld(
-            new()
-            {
-                WinScore = 2,
-                MatchRounds = 1,
-                RoundFinishTicks = 2,
-                ScoreScreenTicks = 0,
-            }
-        );
+        var score = CreateWorld(new(winScore: 2, matchRounds: 1, roundFinishTicks: 2, scoreScreenTicks: 0));
         score.Players[1].X = 51;
         score.Players[1].LastHitBy = 0;
         score.Players[1].HitsTaken = 2;
         Step(score);
         Check(
-            score.Players[0].Score == 2 && score.Winner == 0 && score.Phase == MatchPhase.RoundFinished,
+            score.Match.Players[0].Score == 2
+                && score.Match.Winner == 0
+                && score.Match.Phase == MatchPhase.RoundFinished,
             "knockout awards combo-sized points and wins the round"
         );
         Check(
             score.Events.Single(e => e.Kind == SimulationEventKind.Death).AwardedScore,
             "round-winning death retains its awarded-score flag after the phase changes"
         );
-        var lateDeath = CreateWorld(new() { WinScore = 1, PlayerCount = 3 });
+        var lateDeath = CreateWorld(new(winScore: 1, playerCount: 3));
         lateDeath.Players[1].X = 51;
         lateDeath.Players[1].LastHitBy = 0;
         lateDeath.Players[2].X = 51;
@@ -37,7 +31,10 @@ internal static class MatchTests
         Step(lateDeath);
         var deaths = lateDeath.Events.Where(e => e.Kind == SimulationEventKind.Death).ToArray();
         Check(
-            deaths.Length == 2 && deaths[0].AwardedScore && !deaths[1].AwardedScore && lateDeath.Players[1].Score == 0,
+            deaths.Length == 2
+                && deaths[0].AwardedScore
+                && !deaths[1].AwardedScore
+                && lateDeath.Match.Players[1].Score == 0,
             "death after victory in the same tick must not produce a score award or overwrite winner text"
         );
         var uncredited = CreateWorld();
@@ -49,43 +46,29 @@ internal static class MatchTests
         );
         Step(score, count: 2);
         Check(
-            score.Phase == MatchPhase.MatchFinished && score.Players[0].RoundWins == 1,
+            score.Match.Phase == MatchPhase.MatchFinished && score.Match.Players[0].RoundWins == 1,
             "final round advances to match victory"
         );
-        var teams = CreateWorld(
-            new()
-            {
-                PlayerCount = 4,
-                TeamMode = true,
-                Teams = [0, 0, 1, 1],
-                WinScore = 2,
-            }
-        );
+        var teams = CreateWorld(new(playerCount: 4, format: MatchFormat.Teams, teams: [0, 0, 1, 1], winScore: 2));
         teams.Players[2].X = 51;
         teams.Players[2].LastHitBy = 0;
         teams.Players[2].HitsTaken = 2;
         Step(teams);
         Check(
-            teams.Players[0].Score == 2
-                && teams.Players[1].Score == 2
-                && teams.Players[0].RoundWins == 1
-                && teams.Players[1].RoundWins == 1,
+            teams.Match.Players[0].Score == 2
+                && teams.Match.Players[1].Score == 2
+                && teams.Match.Players[0].RoundWins == 1
+                && teams.Match.Players[1].RoundWins == 1,
             "team score and round wins are credited to every teammate"
         );
-        var showdown = CreateWorld(
-            new()
-            {
-                PlayerCount = 4,
-                TeamMode = true,
-                Teams = [0, 0, 1, 1],
-                Showdown = true,
-            }
-        );
+        var showdown = CreateWorld(new(playerCount: 4, format: MatchFormat.Teams, teams: [0, 0, 1, 1], showdown: true));
         showdown.Players[2].X = 51;
         showdown.Players[3].X = 51;
         Step(showdown);
         Check(
-            showdown.Phase == MatchPhase.RoundFinished && showdown.Winner == 0 && showdown.Players[2].Eliminated,
+            showdown.Match.Phase == MatchPhase.RoundFinished
+                && showdown.Match.Winner == 0
+                && (showdown.Match.Players[2].Participation != Participation.Active),
             "team showdown ends when only one team survives"
         );
         Check(
@@ -98,13 +81,7 @@ internal static class MatchTests
     {
         var campaign = new World(
             new GameContent { Maps = [new() { Id = "first" }, new() { Id = "second" }, new() { Id = "Showdown" }] },
-            new()
-            {
-                WinScore = 1,
-                MatchRounds = 2,
-                RoundFinishTicks = 1,
-                ScoreScreenTicks = 0,
-            },
+            new(winScore: 1, matchRounds: 2, roundFinishTicks: 1, scoreScreenTicks: 0),
             123
         );
         foreach (var player in campaign.Players)
@@ -118,7 +95,7 @@ internal static class MatchTests
         campaign.Players[1].LastHitBy = 0;
         Step(campaign);
         Check(
-            campaign.RoundNumber == 2 && campaign.Map.Id == "second" && campaign.Players[0].RoundWins == 1,
+            campaign.Match.RoundNumber == 2 && campaign.Map.Id == "second" && campaign.Match.Players[0].RoundWins == 1,
             "campaign rotates arenas while retaining round wins"
         );
         foreach (var player in campaign.Players)
@@ -132,25 +109,20 @@ internal static class MatchTests
         campaign.Players[0].LastHitBy = 1;
         Step(campaign);
         Check(
-            campaign.IsShowdown && campaign.Map.Id == "Showdown" && campaign.Players.All(p => !p.Eliminated),
+            campaign.Match.IsShowdown
+                && campaign.Map.Id == "Showdown"
+                && campaign.Match.Players.All(p => p.Participation == Participation.Active),
             "tied final standings route to the showdown arena"
         );
-        var scoreboard = CreateWorld(
-            new()
-            {
-                WinScore = 1,
-                MatchRounds = 1,
-                RoundFinishTicks = 1,
-            }
-        );
+        var scoreboard = CreateWorld(new(winScore: 1, matchRounds: 1, roundFinishTicks: 1));
         scoreboard.Players[1].X = 51;
         scoreboard.Players[1].LastHitBy = 0;
         Step(scoreboard);
         Check(
-            scoreboard.Phase == MatchPhase.RoundScores
-                && scoreboard.PhaseTicks == World.TickRate * 6
-                && scoreboard.RoundNumber == 1
-                && scoreboard.Winner == 0,
+            scoreboard.Match.Phase == MatchPhase.RoundScores
+                && scoreboard.Match.PhaseTicks == World.TickRate * 6
+                && scoreboard.Match.RoundNumber == 1
+                && scoreboard.Match.Winner == 0,
             "winner celebration enters the six-second standings screen before final victory"
         );
         var standingPosition = scoreboard.Players[0].Position;
@@ -158,8 +130,8 @@ internal static class MatchTests
         var standings = scoreboard.Capture();
         Step(scoreboard, new(1, 0, InputButtons.Jump | InputButtons.Attack), World.TickRate * 6 - 1);
         Check(
-            scoreboard.Phase == MatchPhase.RoundScores
-                && scoreboard.PhaseTicks == 1
+            scoreboard.Match.Phase == MatchPhase.RoundScores
+                && scoreboard.Match.PhaseTicks == 1
                 && scoreboard.Players[0].Position == standingPosition
                 && scoreboard.Players[0].AnimationTime == standingAnimation,
             "standings advance network time while freezing actors and animation clocks"
@@ -173,7 +145,7 @@ internal static class MatchTests
         );
         Step(scoreboard);
         Check(
-            scoreboard.Phase == MatchPhase.MatchFinished,
+            scoreboard.Match.Phase == MatchPhase.MatchFinished,
             "final standings remain visible for their full duration before match victory"
         );
     }

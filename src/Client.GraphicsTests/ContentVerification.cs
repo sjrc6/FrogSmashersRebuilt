@@ -26,7 +26,7 @@ internal sealed partial class PresentationChecks
         for (int index = 0; index < assets.Data.Maps.Count; index++)
         {
             renderer.Reset();
-            var world = new World(assets.Data, new GameRules { PlayerCount = 8, MapOrder = [index] });
+            var world = new World(assets.Data, new GameRules(playerCount: 8, mapOrder: [index]));
             renderer.Update(1 / 60f);
             renderer.DrawWorld(world, null, 1);
             checks.Add("map renders compiled textures, shaders and emitters: " + world.Map.Id);

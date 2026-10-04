@@ -44,7 +44,7 @@ public sealed partial class World
     {
         if (!Fly.Active)
         {
-            if (Fly.IngestedBy >= 0 || IsShowdown || Phase != MatchPhase.Playing)
+            if (Fly.IngestedBy >= 0 || Match.IsShowdown || Match.Phase != MatchPhase.Playing)
             {
                 return;
             }

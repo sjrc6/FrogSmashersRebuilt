@@ -9,12 +9,13 @@ public readonly record struct RollbackInput(
     byte Actions = 0,
     sbyte ColorStep = 0,
     sbyte TeamStep = 0,
-    LobbyCpuCommand Cpu = default
+    LobbyCpuCommand Cpu = default,
+    MatchCommand Match = default
 );
 
 internal sealed class RollbackInputCodec : IInputCodec<RollbackInput>
 {
-    public int Size => 21;
+    public int Size => 23;
 
     public void Encode(RollbackInput input, Span<byte> destination)
     {
@@ -28,6 +29,8 @@ internal sealed class RollbackInputCodec : IInputCodec<RollbackInput>
         destination[12] = input.Cpu.Enabled;
         BinaryPrimitives.WriteUInt32LittleEndian(destination[13..], input.Cpu.Colors);
         BinaryPrimitives.WriteUInt32LittleEndian(destination[17..], input.Cpu.Teams);
+        destination[21] = (byte)input.Match.Kind;
+        destination[22] = input.Match.Player;
     }
 
     public RollbackInput Decode(ReadOnlySpan<byte> source)
@@ -43,7 +46,8 @@ internal sealed class RollbackInputCodec : IInputCodec<RollbackInput>
                 source[12],
                 BinaryPrimitives.ReadUInt32LittleEndian(source[13..]),
                 BinaryPrimitives.ReadUInt32LittleEndian(source[17..])
-            )
+            ),
+            new MatchCommand((MatchCommandKind)source[21], source[22])
         );
         Validate(input);
         return input;
@@ -52,6 +56,7 @@ internal sealed class RollbackInputCodec : IInputCodec<RollbackInput>
     private static void Validate(RollbackInput input)
     {
         _ = InputFrame.FromPacked(input.Gameplay.Packed);
+        input.Match.Validate();
         if (
             (input.Actions & ~3) != 0
             || input.ColorStep is < -1 or > 1

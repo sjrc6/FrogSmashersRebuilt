@@ -11,14 +11,15 @@ internal sealed partial class LobbyController(FrogGame game)
     private readonly Dictionary<int, RollbackInput> commands = new();
     private string receivedSettings = "";
     private string? lastNotice;
-    private bool onlineTeams;
+    public MatchOptions? HostOptions { get; private set; }
     private double accumulator;
     private long rollbackCount;
     private long lastAudioTick = -1;
     private long lastVisualTick = -1;
     private IRollbackSession? presentedSession;
     private readonly LobbyRoster displayedRoster = new();
-    public bool TeamMode => IsHost ? game.Setup.Preferences.TeamMode : onlineTeams;
+    public bool UsesTeams =>
+        IsHost ? game.Setup.Preferences.Format != MatchFormat.Ffa : HostOptions?.Rules.UsesTeams == true;
     public LobbySimulation? Simulation { get; private set; }
     public World? World => Simulation?.World;
     public World? PreviousWorld { get; private set; }
@@ -50,12 +51,7 @@ internal sealed partial class LobbyController(FrogGame game)
     public void Open()
     {
         game.Audio.StopTitleMusic();
-        var rules = new GameRules
-        {
-            Lobby = true,
-            PlayerCount = 8,
-            MapOrder = [0],
-        };
+        var rules = new GameRules(lobby: true, playerCount: 8, mapOrder: [0]);
         var data = game.Assets.Data;
         var world = new World([data.PresentationScenes["Lobby"]], rules, 1, data.CharacterParameters);
         PreviousWorld = new World([data.PresentationScenes["Lobby"]], rules, 1, data.CharacterParameters);
@@ -94,7 +90,7 @@ internal sealed partial class LobbyController(FrogGame game)
         Presentation.Clear();
         accumulator = 0;
         receivedSettings = "";
-        onlineTeams = false;
+        HostOptions = null;
         presentedSession = null;
         game.Renderer.SetLobbyPreviews(game.Setup.Lobby.Roster);
     }
@@ -162,7 +158,7 @@ internal sealed partial class LobbyController(FrogGame game)
     {
         if (!LocalPlayers.Any(player => player.Id == device && !player.Spawned))
             return;
-        QueueCommand(device, TeamMode ? new(default, TeamStep: 1) : new(default, ColorStep: 1));
+        QueueCommand(device, UsesTeams ? new(default, TeamStep: 1) : new(default, ColorStep: 1));
     }
 
     private void QueueCommand(int device, RollbackInput input)
@@ -246,7 +242,9 @@ internal sealed partial class LobbyController(FrogGame game)
         if (!IsHost && Online!.MatchSettingsJson != receivedSettings)
         {
             receivedSettings = Online.MatchSettingsJson;
-            onlineTeams = JsonSerializer.Deserialize<MatchOptions>(receivedSettings)?.Rules.TeamMode ?? false;
+            HostOptions =
+                JsonSerializer.Deserialize<MatchOptions>(receivedSettings)
+                ?? throw new InvalidDataException("Invalid host match settings");
         }
         if (Online != null && Network == null)
         {
@@ -369,7 +367,7 @@ internal sealed partial class LobbyController(FrogGame game)
 
     private void PresentVisuals(IEnumerable<SimulationEvent> events)
     {
-        game.Renderer.SetLobbyPreviews(Roster, TeamMode);
+        game.Renderer.SetLobbyPreviews(Roster, UsesTeams);
         foreach (var item in events)
         {
             if (!Presentation.ShowEvent(item, EventPlayer(item)))
@@ -379,7 +377,7 @@ internal sealed partial class LobbyController(FrogGame game)
                 game.Renderer.LobbyColorEffect(
                     World!.Map,
                     item.Player,
-                    PlayerPalette.Lobby(Simulation!.Membership.Rooms, item.Player, TeamMode),
+                    PlayerPalette.Lobby(Simulation!.Membership.Rooms, item.Player, UsesTeams),
                     item.Tick,
                     age
                 );

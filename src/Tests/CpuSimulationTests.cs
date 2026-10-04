@@ -19,7 +19,7 @@ internal static class CpuSimulationTests
     {
         var roster = new LobbyRoster();
         roster.SetPlayers(0, [new(0, Spawned: true)]);
-        var simulation = new LobbySimulation(new World(Map(), new GameRules { Lobby = true, PlayerCount = 8 }), roster);
+        var simulation = new LobbySimulation(new World(Map(), new GameRules(lobby: true, playerCount: 8)), roster);
         var handles = simulation.InputSources.ToArray();
         byte[] before = simulation.Capture();
         roster.Edit(7, SlotType.Cpu);
@@ -69,7 +69,8 @@ internal static class CpuSimulationTests
         var remove = new LobbyCpuCommand(3, 128, 0, 0, 0);
         simulation.Tick([new(default, Cpu: remove), default]);
         Check(
-            simulation.Membership.Rooms[7] == null && simulation.World.Players[7].Eliminated,
+            simulation.Membership.Rooms[7] == null
+                && (simulation.World.Match.Players[7].Participation != Participation.Active),
             "CPU removal left an active body"
         );
         Check(simulation.World.Players[0].LastHitBy == -1, "Removed CPU retained credit for future deaths");
@@ -95,17 +96,7 @@ internal static class CpuSimulationTests
     private static void CpuMatchesRecomputeDuringRollback(bool hostSpectates, bool allCpus)
     {
         bool[] cpus = [true, allCpus, true, allCpus, false, false, false, false];
-        World Create() =>
-            new(
-                Map(),
-                new GameRules
-                {
-                    PlayerCount = 4,
-                    CpuPlayers = cpus,
-                    WinScore = 999,
-                },
-                42
-            );
+        World Create() => new(Map(), new GameRules(playerCount: 4, cpuPlayers: [.. cpus], winScore: 999), 42);
         int[] bodies = allCpus ? [-1] : [-1, 1, 3];
         int[][] owners =
             allCpus
@@ -176,10 +167,11 @@ internal static class CpuSimulationTests
             }
             var expected = Create();
             for (int tick = 0; tick < ticks; tick++)
-                expected.Tick(
+                expected.Advance(
                     Enumerable
                         .Range(0, 4)
                         .Select(slot => cpus[slot] ? default : Input(tick - FixedTiming.Delay, slot))
+                        .Select(frame => new MatchInput(frame))
                         .ToArray()
                 );
             Check(cpuMoved, "Match CPUs did not generate their own inputs");

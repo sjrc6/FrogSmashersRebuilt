@@ -16,22 +16,13 @@ public sealed partial class World
     private readonly List<SimulationEvent> events = new();
     private uint randomState;
     public GameRules Rules { get; }
+    public MatchState Match { get; private set; }
     public PlayerState[] Players { get; private set; }
     public FlyState Fly { get; private set; } = new();
-    public MapData Map => maps[CurrentMapIndex];
-    public int CurrentMapIndex { get; private set; }
+    public MapData Map => maps[Match.CurrentMapIndex];
     public long TickNumber { get; private set; }
-    public int RoundNumber { get; private set; } = 1;
-    public MatchPhase Phase { get; private set; }
-    public int Winner { get; private set; } = -1;
-    public int PhaseTicks { get; private set; }
-    public bool IsShowdown { get; private set; }
     public ulong ConfigurationHash { get; private set; }
     public IReadOnlyList<SimulationEvent> Events => events;
-    public int TargetScore =>
-        Rules.WinScore > 0 ? Rules.WinScore
-        : !Rules.TeamMode && Players.Length == 2 ? 5
-        : 10;
 
     public World(MapData map, GameRules rules, uint seed = 1)
         : this([map], rules, seed, null) { }
@@ -46,54 +37,9 @@ public sealed partial class World
         Dictionary<string, decimal>? characterParameters
     )
     {
-        if (rules.PlayerCount is < 2 or > 8)
-        {
-            throw new ArgumentOutOfRangeException(nameof(rules.PlayerCount));
-        }
-
-        if (rules.Colors.Length != 8 || rules.Colors.Any(color => color is < 0 or > 7) || rules.CpuPlayers.Length != 8)
-        {
-            throw new ArgumentException("Invalid player colors or CPU assignments");
-        }
-
-        if (availableMaps.Count == 0)
-        {
-            throw new ArgumentException("A world needs at least one map");
-        }
-
-        if (rules.Lobby && availableMaps.Any(map => map.Spawns.Count < rules.PlayerCount))
-            throw new ArgumentException("A lobby needs a spawn point for every room");
-
-        if (rules.Teams.Length < rules.PlayerCount || rules.Teams.Any(team => team < 0 || team > 7))
-        {
-            throw new ArgumentException("Invalid teams");
-        }
-
-        if (rules.MatchRounds < 1 || rules.WinScore < 0 || rules.RoundFinishTicks < 0 || rules.ScoreScreenTicks < 0)
-        {
-            throw new ArgumentException("Invalid match rules");
-        }
-
-        if (rules.MapOrder.Any(i => i < 0 || i >= availableMaps.Count))
-        {
-            throw new ArgumentException("Invalid map order");
-        }
-
-        Rules = new GameRules
-        {
-            PlayerCount = rules.PlayerCount,
-            Lobby = rules.Lobby,
-            CpuPlayers = rules.CpuPlayers.ToArray(),
-            Colors = rules.Colors.ToArray(),
-            TeamMode = rules.TeamMode,
-            Teams = (int[])rules.Teams.Clone(),
-            WinScore = rules.WinScore,
-            MatchRounds = rules.MatchRounds,
-            Showdown = rules.Showdown,
-            RoundFinishTicks = rules.RoundFinishTicks,
-            ScoreScreenTicks = rules.ScoreScreenTicks,
-            MapOrder = (int[])rules.MapOrder.Clone(),
-        };
+        rules.ValidateWorld(availableMaps);
+        Rules = rules;
+        Match = new MatchState(rules);
         maps = availableMaps;
         collisionMaps = availableMaps.Select(map => new CollisionMap(map)).ToArray();
         tuning = new CharacterTuning(characterParameters);
@@ -105,11 +51,9 @@ public sealed partial class World
                 Slot = i,
                 Team = rules.Teams[i],
                 ColorIndex = rules.Colors[i],
-                Eliminated = rules.Lobby,
             })
             .ToArray();
-        IsShowdown = rules.Showdown;
-        CurrentMapIndex = ChooseMap(0);
+        Match.CurrentMapIndex = ChooseMap(0);
         ConfigurationHash = ComputeConfigurationHash();
         StartRound();
     }
@@ -162,7 +106,7 @@ public sealed partial class World
             )
         );
 
-    public void Tick(InputFrame[] inputs)
+    public void Advance(MatchInput[] inputs)
     {
         if (inputs.Length != Players.Length)
         {
@@ -171,19 +115,26 @@ public sealed partial class World
 
         foreach (var input in inputs)
         {
-            _ = InputFrame.FromPacked(input.Packed);
+            input.Validate();
         }
 
         events.Clear();
-        if (Phase == MatchPhase.MatchFinished)
+        for (int slot = 0; slot < inputs.Length; slot++)
+            Match.ApplySelection(Rules, slot, inputs[slot].Command);
+        if (Match.Phase == MatchPhase.Selecting)
+        {
+            TickNumber++;
+            return;
+        }
+        if (Match.Phase == MatchPhase.MatchFinished)
         {
             TickNumber++;
             return;
         }
 
-        if (Phase == MatchPhase.RoundScores)
+        if (Match.Phase == MatchPhase.RoundScores)
         {
-            if (--PhaseTicks <= 0)
+            if (--Match.PhaseTicks <= 0)
             {
                 AdvanceRound();
             }
@@ -197,23 +148,23 @@ public sealed partial class World
             inputs = inputs.ToArray();
             for (int slot = 0; slot < Players.Length; slot++)
                 if (Rules.CpuPlayers[slot])
-                    inputs[slot] = BotController.GetInput(this, slot);
+                    inputs[slot] = new(BotController.GetInput(this, slot));
         }
         for (int slot = 0; slot < Players.Length; slot++)
         {
-            TickPlayer(Players[slot], inputs[slot]);
+            TickPlayer(Players[slot], inputs[slot].Gameplay);
         }
 
         if (!Rules.Lobby)
         {
             UpdateFly();
         }
-        if (Phase == MatchPhase.RoundFinished && --PhaseTicks <= 0)
+        if (Match.Phase == MatchPhase.RoundFinished && --Match.PhaseTicks <= 0)
         {
             if (Rules.ScoreScreenTicks > 0)
             {
-                Phase = MatchPhase.RoundScores;
-                PhaseTicks = Rules.ScoreScreenTicks;
+                Match.Phase = MatchPhase.RoundScores;
+                Match.PhaseTicks = Rules.ScoreScreenTicks;
             }
             else
             {
@@ -226,14 +177,18 @@ public sealed partial class World
 
     private void TickPlayer(PlayerState player, InputFrame input)
     {
-        if (Phase == MatchPhase.RoundFinished && !IsWinner(player))
+        if (Match.Phase == MatchPhase.RoundFinished && !IsWinner(player))
         {
             input = default;
         }
 
         if (!player.Alive)
         {
-            if (!player.Eliminated && (Phase == MatchPhase.Playing || IsWinner(player)) && --player.SpawnTicks <= 0)
+            if (
+                Match.Players[player.Slot].Participation == Participation.Active
+                && (Match.Phase == MatchPhase.Playing || IsWinner(player))
+                && --player.SpawnTicks <= 0
+            )
             {
                 Spawn(player);
             }

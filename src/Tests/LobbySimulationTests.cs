@@ -51,7 +51,7 @@ internal static class LobbySimulationTests
     }
 
     private static LobbySimulation Create(LobbyRoster roster, uint seed = 71) =>
-        new(new World(TestFixtures.Map(), new GameRules { Lobby = true, PlayerCount = 8 }, 13), roster, seed);
+        new(new World(TestFixtures.Map(), new GameRules(lobby: true, playerCount: 8), 13), roster, seed);
 
     private static void TeamsRespectCapacityAndRollback()
     {
@@ -199,7 +199,7 @@ internal static class LobbySimulationTests
         simulation.World.Players[0].X = 9;
         simulation.World.Players[0].Y = 14;
         simulation.World.Players[0].VX = 7;
-        simulation.World.Players[0].Score = 6;
+        simulation.World.Match.Players[0].Score = 6;
         var requested = new LobbyRoster();
         requested.SetPlayers(0, [new(0, Color: 0, Spawned: false)]);
         requested.SetPlayers(1, [new(1, Peer: 1, Color: 3)]);
@@ -217,7 +217,7 @@ internal static class LobbySimulationTests
                 && simulation.World.Players[0].X == 9
                 && simulation.World.Players[0].Y == 14
                 && simulation.World.Players[0].VX == 7
-                && simulation.World.Players[0].Score == 6,
+                && simulation.World.Match.Players[0].Score == 6,
             "Admitting a new connection preserves an existing frog's physical state"
         );
 
@@ -232,10 +232,13 @@ internal static class LobbySimulationTests
                 && simulation.World.Players[6].Slot == 6,
             "Room reassignment preserves frog identity and position"
         );
-        Check(simulation.World.Players[0].Eliminated, "The previous room no longer owns a moved frog");
+        Check(
+            (simulation.World.Match.Players[0].Participation != Participation.Active),
+            "The previous room no longer owns a moved frog"
+        );
         byte[] snapshot = simulation.Capture();
         simulation.Restore(snapshot);
-        Check(simulation.World.Players[6].Score == 6, "Moved frogs retain valid standalone snapshots");
+        Check(simulation.World.Match.Players[6].Score == 6, "Moved frogs retain valid standalone snapshots");
     }
 
     private static void CpuRetaliationSurvivesRollback()
@@ -293,7 +296,8 @@ internal static class LobbySimulationTests
         empty.Tick([default]);
         empty.Tick([default]);
         Check(
-            empty.World.TickNumber == 2 && empty.World.Players.All(player => player.Eliminated),
+            empty.World.TickNumber == 2
+                && empty.World.Match.Players.All(player => player.Participation != Participation.Active),
             "Empty lobbies support a permanent host command stream"
         );
         var roster = new LobbyRoster();
@@ -318,7 +322,7 @@ internal static class LobbySimulationTests
         var map = TestFixtures.Map();
         map.Spawns = Enumerable.Range(0, 8).Select(room => new PointData { X = room * 4 - 14, Y = 0 }).ToList();
         map.Collision[0].X = map.Spawns[0].X;
-        var simulation = new LobbySimulation(new World(map, new GameRules { Lobby = true, PlayerCount = 8 }), roster);
+        var simulation = new LobbySimulation(new World(map, new GameRules(lobby: true, playerCount: 8)), roster);
         for (int tick = 0; tick < 20; tick++)
             simulation.Tick([default, default]);
         Check(
@@ -332,7 +336,8 @@ internal static class LobbySimulationTests
             simulation.Tick([default, default]);
         simulation.Tick([default, new(default, (byte)LobbyInputActions.SelectColor)]);
         Check(
-            !simulation.Membership.Rooms[0]!.Spawned && simulation.World.Players[0].Eliminated,
+            !simulation.Membership.Rooms[0]!.Spawned
+                && (simulation.World.Match.Players[0].Participation != Participation.Active),
             "Landing on the starting platform enables deterministic color selection"
         );
         Check(

@@ -72,11 +72,16 @@ internal static class ContentSimulationTests
                     Check(touched, $"authored map {map.Name}: tongue attaches to original collider {box.Name}");
                 }
 
-                var world = new World(map, new() { PlayerCount = 8, WinScore = 999 }, 321);
+                var world = new World(map, new(playerCount: 8, winScore: 999), 321);
                 int flySpawns = 0;
                 for (int i = 0; i < 7200; i++)
                 {
-                    world.Tick(world.Players.Select(p => BotController.GetInput(world, p.Slot)).ToArray());
+                    world.Advance(
+                        world
+                            .Players.Select(p => BotController.GetInput(world, p.Slot))
+                            .Select(frame => new MatchInput(frame))
+                            .ToArray()
+                    );
                     flySpawns += world.Events.Count(e => e.Kind == SimulationEventKind.FlySpawn);
                 }
 
@@ -133,20 +138,15 @@ internal static class ContentSimulationTests
                 "Lobby collision is not aligned to background pixels"
             );
         }
-        var rules = new GameRules
-        {
-            Lobby = true,
-            PlayerCount = 8,
-            MapOrder = [0],
-        };
+        var rules = new GameRules(lobby: true, playerCount: 8, mapOrder: [0]);
         var world = new World([map], rules, 7, content.CharacterParameters);
         var inputs = new InputFrame[8];
         for (int tick = 0; tick < 120; tick++)
-            world.Tick(inputs);
+            world.Advance(inputs.Select(frame => new MatchInput(frame)).ToArray());
         Check(world.Players.All(player => !player.Alive), "Lobby spawned unjoined players");
         for (int room = 0; room < 8; room++)
             world.SetLobbySlot(room, true, 7 - room);
-        world.Tick(inputs);
+        world.Advance(inputs.Select(frame => new MatchInput(frame)).ToArray());
         for (int room = 0; room < 8; room++)
         {
             var player = world.Players[room];
@@ -159,35 +159,38 @@ internal static class ContentSimulationTests
             Check(player.ColorIndex == 7 - room, "Selected lobby color was lost on spawning");
         }
         for (int tick = 0; tick < 60; tick++)
-            world.Tick(inputs);
+            world.Advance(inputs.Select(frame => new MatchInput(frame)).ToArray());
         Check(world.Players.All(player => player.OnGround), "Room platforms did not support all eight spawns");
         inputs[0] = new(0, -1, InputButtons.Jump);
         for (int tick = 0; tick < 30; tick++)
-            world.Tick(inputs);
+            world.Advance(inputs.Select(frame => new MatchInput(frame)).ToArray());
         inputs[0] = default;
         for (int tick = 0; tick < 180; tick++)
-            world.Tick(inputs);
+            world.Advance(inputs.Select(frame => new MatchInput(frame)).ToArray());
         Check(
             world.Players[0].OnGround && world.Players[0].Y < FromDecimal(map.Spawns[0].Y) - 5,
             "Dropping from a room platform did not land on a floor-gap platform"
         );
         world.SetLobbySlot(0, false, 2);
-        world.Tick(inputs);
-        Check(!world.Players[0].Alive && world.Players[0].Eliminated, "Backing out left an active frog");
+        world.Advance(inputs.Select(frame => new MatchInput(frame)).ToArray());
+        Check(
+            !world.Players[0].Alive && (world.Match.Players[0].Participation != Participation.Active),
+            "Backing out left an active frog"
+        );
         world.SetLobbySlot(0, true, 2);
-        world.Tick(inputs);
+        world.Advance(inputs.Select(frame => new MatchInput(frame)).ToArray());
         Check(
             world.Players[0].ColorIndex == 2 && world.Players[0].Y == FromDecimal(map.Spawns[0].Y),
             "Rejoining did not reset the frog to its room"
         );
         world.Players[0].Y = FromDecimal(map.KillBounds.Bottom) - 2;
-        world.Tick(inputs);
+        world.Advance(inputs.Select(frame => new MatchInput(frame)).ToArray());
         for (int tick = 0; tick < 200; tick++)
-            world.Tick(inputs);
+            world.Advance(inputs.Select(frame => new MatchInput(frame)).ToArray());
         Check(
             world.Players[0].Alive
-                && world.Players.All(player => player.Score == 0)
-                && world.Phase == MatchPhase.Playing
+                && world.Match.Players.All(player => player.Score == 0)
+                && world.Match.Phase == MatchPhase.Playing
                 && !world.Fly.Active,
             "Lobby KO did not respawn without scoring"
         );

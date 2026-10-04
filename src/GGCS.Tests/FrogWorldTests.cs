@@ -33,7 +33,7 @@ internal static class FrogWorldTests
         {
             for (int player = 0; player < players; player++)
                 generated[player] = Input(frame, player);
-            baseline.Tick(generated);
+            baseline.Advance(generated.Select(frame => new MatchInput(frame)).ToArray());
             expected[frame] = baseline.HashState();
         }
 
@@ -100,7 +100,7 @@ internal static class FrogWorldTests
         {
             for (int player = 0; player < 8; player++)
                 inputs[player] = Input(tick, player);
-            baseline.Tick(inputs);
+            baseline.Advance(inputs.Select(frame => new MatchInput(frame)).ToArray());
         }
         byte[] checkpoint = baseline.Capture();
         ulong checkpointHash = World.Hash(checkpoint);
@@ -116,7 +116,7 @@ internal static class FrogWorldTests
                 if (player < 7)
                     engine.AddInput(player, frame, inputs[player]);
             }
-            baseline.Tick(inputs);
+            baseline.Advance(inputs.Select(frame => new MatchInput(frame)).ToArray());
             Check.True(engine.Advance(), "A fresh session predicts after restoring a world checkpoint");
             engine.AddInput(7, frame, inputs[7]);
             engine.Repair();
@@ -237,12 +237,7 @@ internal static class FrogWorldTests
                     .ToList(),
                 FlySpawn = new PointData { X = 0, Y = 12 },
             },
-            new GameRules
-            {
-                PlayerCount = players,
-                WinScore = 99,
-                MatchRounds = 3,
-            },
+            new GameRules(playerCount: players, winScore: 99, matchRounds: 3),
             12345
         );
 
@@ -283,7 +278,7 @@ internal static class FrogWorldTests
             Check.Equal(StartTick + frame, World.TickNumber, "World tick aligns with session state boundary");
             for (int player = 0; player < values.Length; player++)
                 inputs[player] = values[player].Input;
-            World.Tick(inputs);
+            World.Advance(inputs.Select(frame => new MatchInput(frame)).ToArray());
         }
     }
 }

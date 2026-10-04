@@ -23,7 +23,7 @@ internal static class PlayerPalette
     public static Color For(World world, int slot)
     {
         var player = world.Players[slot];
-        if (!world.Rules.TeamMode)
+        if (!world.Rules.UsesTeams)
             return Colors[player.ColorIndex];
         int count = 0,
             shade = 0;

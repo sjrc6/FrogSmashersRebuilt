@@ -4,26 +4,24 @@ namespace FrogSmashers.Client;
 
 internal sealed partial class MenuController
 {
-    public IReadOnlyList<MenuEntry> Entries()
+    private IReadOnlyList<MenuEntry> BuildEntries()
     {
-        string OnOff(bool value) => value ? "ON" : "OFF";
-        MenuEntry Link(string label, GameScreen screen) => new(label, () => Open(screen));
-        MenuEntry BackRow() => new("BACK", Back);
         switch (Screen)
         {
             case GameScreen.Main:
                 return
                 [
-                    new("LOCAL", () => ShowSeats()),
-                    new("ONLINE", OpenOnline),
+                    new("local", "LOCAL", () => ShowSeats()),
+                    new("online", "ONLINE", OpenOnline),
                     Link("SETTINGS", GameScreen.Settings),
                     Link("EXTRAS", GameScreen.Extras),
-                    new("QUIT", game.Exit),
+                    new("quit", "QUIT", game.Exit, Role: MenuRole.Destructive),
                 ];
             case GameScreen.Extras:
                 return
                 [
                     new(
+                        "play-intro",
                         "PLAY INTRO",
                         () =>
                         {
@@ -31,8 +29,8 @@ internal sealed partial class MenuController
                             Screen = GameScreen.Intro;
                         }
                     ),
-                    new("WATCH CPUS", game.WatchCpus),
-                    new("CREDITS", OpenCredits),
+                    new("watch-cpus", "WATCH CPUS", game.WatchCpus),
+                    new("credits", "CREDITS", OpenCredits),
                     BackRow(),
                 ];
             case GameScreen.Seats:
@@ -41,125 +39,39 @@ internal sealed partial class MenuController
                 var lobbyRows = new List<MenuEntry>();
                 if (game.Lobby.IsHost)
                 {
-                    lobbyRows.Add(new("START MATCH", StartFromSeats));
-                    lobbyRows.Add(Link("MATCH SETTINGS", GameScreen.MatchSettings));
-                    lobbyRows.Add(Link("EDIT SLOTS", GameScreen.SlotEditor));
+                    lobbyRows.Add(
+                        new(
+                            "start-match",
+                            "START MATCH",
+                            StartFromSeats,
+                            Role: MenuRole.Positive,
+                            DisabledReason: MatchStartBlockedReason()
+                        )
+                    );
                 }
+                lobbyRows.Add(Link("MATCH SETTINGS", GameScreen.MatchSettings));
+                if (game.Lobby.IsHost)
+                    lobbyRows.Add(Link("EDIT SLOTS", GameScreen.SlotEditor));
                 lobbyRows.Add(Link("SETTINGS", GameScreen.Settings));
                 lobbyRows.Add(Link("VIEW PLAYERS", GameScreen.ViewPlayers));
                 if (game.Online.Lobby is SteamLobby steamLobby)
-                    lobbyRows.Add(new("INVITE FRIENDS", steamLobby.InviteFriends));
+                    lobbyRows.Add(
+                        new("invite-friends", "INVITE FRIENDS", steamLobby.InviteFriends, Role: MenuRole.Positive)
+                    );
                 if (game.Online.Lobby == null)
-                    lobbyRows.Add(new("ONLINE OPTIONS", OpenOnline));
-                lobbyRows.Add(new("QUIT LOBBY", game.MainMenu, Color: new(255, 85, 85)));
+                    lobbyRows.Add(new("online-options", "ONLINE OPTIONS", OpenOnline));
+                lobbyRows.Add(new("quit-lobby", "QUIT LOBBY", game.MainMenu, Role: MenuRole.Destructive));
                 return lobbyRows;
             case GameScreen.SlotEditor:
                 return [];
             case GameScreen.ViewPlayers:
                 return PlayerRows();
             case GameScreen.Settings:
-                var personal = new List<MenuEntry>
-                {
-                    new(
-                        "FULLSCREEN",
-                        Value: OnOff(game.Settings.Fullscreen),
-                        Change: _ =>
-                        {
-                            game.Settings.Fullscreen = !game.Settings.Fullscreen;
-                            game.ApplyDisplay();
-                        }
-                    ),
-                    new(
-                        "VSYNC",
-                        Value: OnOff(game.Settings.VSync),
-                        Change: _ =>
-                        {
-                            game.Settings.VSync = !game.Settings.VSync;
-                            game.ApplyDisplay();
-                        }
-                    ),
-                    new(
-                        "FPS LIMIT",
-                        RepeatAdjust: true,
-                        Value: game.Settings.FrameLimit.ToString(),
-                        DisabledReason: game.Settings.VSync ? "VSYNC ENABLED" : null,
-                        Change: amount =>
-                            game.Settings.FrameLimit = FrameRates[
-                                Wrap(Array.IndexOf(FrameRates, game.Settings.FrameLimit) + amount, FrameRates.Length)
-                            ]
-                    ),
-                    new(
-                        "VOLUME",
-                        RepeatAdjust: true,
-                        Value: (int)MathF.Round(game.Settings.Volume * 100) + "%",
-                        Change: amount =>
-                        {
-                            game.Settings.Volume =
-                                Math.Clamp((int)MathF.Round(game.Settings.Volume * 20) + amount, 0, 20) / 20f;
-                            game.Audio.Volume = game.Settings.Volume;
-                        }
-                    ),
-                };
-                if (ShowingMenuBackground)
-                    personal.Add(
-                        new(
-                            "TITLE VOLUME",
-                            RepeatAdjust: true,
-                            Value: (int)MathF.Round(game.Settings.TitleVolume * 100) + "%",
-                            Change: amount =>
-                            {
-                                game.Settings.TitleVolume =
-                                    Math.Clamp((int)MathF.Round(game.Settings.TitleVolume * 20) + amount, 0, 20) / 20f;
-                                game.Audio.TitleVolume = game.Settings.TitleVolume;
-                            }
-                        )
-                    );
-                personal.Add(
-                    new(
-                        "SCREEN SHAKE",
-                        Value: OnOff(game.Settings.ScreenShake),
-                        Change: _ =>
-                        {
-                            game.Settings.ScreenShake = !game.Settings.ScreenShake;
-                            game.Renderer.ShakeEnabled = game.Cinematics.ShakeEnabled = game.Settings.ScreenShake;
-                        }
-                    )
-                );
-                personal.Add(new("CONTROLS", () => OpenBindings(HintDevice)));
-                personal.Add(Link("ROLLBACK", GameScreen.Rollback));
-                personal.Add(BackRow());
-                return personal;
+                return PersonalRows();
             case GameScreen.Rollback:
                 return RollbackRows();
             case GameScreen.MatchSettings:
-                var entries = new List<MenuEntry>
-                {
-                    new("TEAMS", Value: OnOff(Rules.TeamMode), Change: _ => Rules.TeamMode = !Rules.TeamMode),
-                    new(
-                        "ROUND TARGET",
-                        RepeatAdjust: true,
-                        Value: Rules.WinScore == 0 ? "AUTO" : Rules.WinScore.ToString(),
-                        Change: amount => Rules.WinScore = Wrap(Rules.WinScore + amount, 31)
-                    ),
-                    new(
-                        "ROUNDS",
-                        RepeatAdjust: true,
-                        Value: Rules.MatchRounds.ToString(),
-                        Change: amount => Rules.MatchRounds = Math.Clamp(Rules.MatchRounds + amount, 1, 20)
-                    ),
-                    new(
-                        "FIRST ARENA",
-                        Value: game.Assets.Data.Maps[Rules.FirstMap].Name,
-                        Change: amount => Rules.FirstMap = Wrap(Rules.FirstMap + amount, 7)
-                    ),
-                    new(
-                        "MAP ORDER",
-                        Value: Rules.ShuffleMaps ? "SHUFFLED" : "SEQUENTIAL",
-                        Change: _ => Rules.ShuffleMaps = !Rules.ShuffleMaps
-                    ),
-                };
-                entries.Add(BackRow());
-                return entries;
+                return MatchRows();
             case GameScreen.Online:
                 return
                 [
@@ -171,22 +83,24 @@ internal sealed partial class MenuController
                 var creation = new List<MenuEntry>
                 {
                     new(
+                        "max-players",
                         "MAX PLAYERS",
                         RepeatAdjust: true,
                         Value: Creation.Capacity(game.Lobby.Roster).ToString(),
                         Change: amount => Creation.ChangeCapacity(amount, game.Lobby.Roster)
                     ),
-                    new("TYPE", Value: Creation.TypeLabel, Change: Creation.CycleType),
+                    new("type", "TYPE", Value: Creation.TypeLabel, Change: Creation.CycleType),
                 };
                 if (!Creation.Lan)
                     creation.Add(Link("ADVANCED", GameScreen.CreateLobbyAdvanced));
-                creation.Add(new("CREATE LOBBY", CreateOnlineLobby));
+                creation.Add(new("create-lobby", "CREATE LOBBY", CreateOnlineLobby));
                 creation.Add(BackRow());
                 return creation;
             case GameScreen.CreateLobbyAdvanced:
                 return
                 [
                     new(
+                        "steam-api",
                         "STEAM API",
                         Value: game.Settings.SteamTransport == SteamTransport.Legacy ? "LEGACY" : "SOCKETS",
                         Change: _ =>
@@ -204,23 +118,23 @@ internal sealed partial class MenuController
                 return
                 [
                     Link("BROWSE STEAM LOBBIES", GameScreen.BrowseSteam),
-                    new("JOIN CLIPBOARD LOBBY", JoinClipboardLobby),
+                    new("join-clipboard-lobby", "JOIN CLIPBOARD LOBBY", JoinClipboardLobby),
                     Link("BROWSE LAN LOBBIES", GameScreen.BrowseLan),
                     Link("JOIN UDP", GameScreen.JoinUdp),
                     BackRow(),
                 ];
             case GameScreen.BrowseSteam or GameScreen.BrowseLan:
-                return browserEntries.Select(row => row.Entry).ToArray();
+                return browserEntries;
             case GameScreen.JoinUdp:
                 return
                 [
-                    new("ADDRESS", BeginAddressEdit, Value: JoinAddress),
-                    new("JOIN LOBBY", () => game.BeginLobby("udp:" + JoinAddress, false)),
-                    new("JOIN CLIPBOARD ADDRESS", JoinClipboardAddress),
+                    new("address", "ADDRESS", BeginAddressEdit, Value: JoinAddress),
+                    new("join-lobby", "JOIN LOBBY", () => game.BeginLobby("udp:" + JoinAddress, false)),
+                    new("join-clipboard-address", "JOIN CLIPBOARD ADDRESS", JoinClipboardAddress),
                     BackRow(),
                 ];
             case GameScreen.Connecting:
-                return [new("CANCEL", game.CancelConnection)];
+                return [new("cancel", "CANCEL", game.CancelConnection)];
             case GameScreen.Playing:
                 if (!game.Match.Paused)
                     return [];
@@ -230,15 +144,17 @@ internal sealed partial class MenuController
                     Link("VIEW PLAYERS", GameScreen.ViewPlayers),
                 };
                 if (game.Online.Lobby == null || game.Online.Lobby.IsHost)
-                    pauseRows.Add(new("RETURN TO LOBBY", game.ReturnToLobby));
-                pauseRows.Add(new("QUIT GAME", game.MainMenu, Color: new(255, 85, 85)));
+                    pauseRows.Add(new("return-to-lobby", "RETURN TO LOBBY", game.ReturnToLobby));
+                pauseRows.Add(new("quit-game", "QUIT GAME", game.MainMenu, Role: MenuRole.Destructive));
                 return pauseRows;
             case GameScreen.Bindings:
                 string[] names = ["LEFT", "RIGHT", "UP", "DOWN", "JUMP", "BAT", "TONGUE", "STRAFE"];
                 return names
                     .Select((name, i) => BindingEntry(name, i))
-                    .Prepend(new MenuEntry(BindingTitle, Change: CycleBindingDevice, IsTitle: true))
-                    .Append(new MenuEntry("RESET TO DEFAULT", ResetBindings))
+                    .Prepend(new MenuEntry("binding-device", BindingTitle, Change: CycleBindingDevice, IsTitle: true))
+                    .Append(
+                        new MenuEntry("reset-to-default", "RESET TO DEFAULT", ResetBindings, Role: MenuRole.Destructive)
+                    )
                     .Append(BackRow())
                     .ToArray();
             default:

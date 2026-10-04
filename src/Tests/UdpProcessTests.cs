@@ -88,7 +88,7 @@ internal static class UdpProcessTests
                     "test"
                 );
         var lobbySimulation = new LobbySimulation(
-            new World(Map(), new GameRules { Lobby = true, PlayerCount = 8 }, 13),
+            new World(Map(), new GameRules(lobby: true, playerCount: 8), 13),
             lobby.Roster
         );
         lobby.AttachSimulation(lobbySimulation);
@@ -103,7 +103,7 @@ internal static class UdpProcessTests
                 && lobby.Roster.Count == 4
                 && lobbySimulation.World.TickNumber >= 90
             )
-                lobby.StartMatch("{}");
+                lobby.StartMatch(_ => "{}");
             if (lobby.Error != null)
             {
                 throw new Exception(lobby.Error);

@@ -16,7 +16,7 @@ public interface IRollbackSimulation
 internal sealed class MatchSimulation : IRollbackSimulation
 {
     private readonly int[] inputPlayerSlots;
-    private readonly InputFrame[] gameplay;
+    private readonly MatchInput[] commands;
     public World World { get; }
 
     public MatchSimulation(World world, int[] inputPlayerSlots)
@@ -26,7 +26,7 @@ internal sealed class MatchSimulation : IRollbackSimulation
         var humans = Enumerable.Range(0, world.Players.Length).Where(slot => !world.Rules.CpuPlayers[slot]);
         if (!inputPlayerSlots.Where(slot => slot >= 0).Order().SequenceEqual(humans))
             throw new ArgumentException("Every human frog needs one input stream");
-        gameplay = new InputFrame[world.Players.Length];
+        commands = new MatchInput[world.Players.Length];
     }
 
     public byte[] Capture() => World.Capture();
@@ -45,10 +45,10 @@ internal sealed class MatchSimulation : IRollbackSimulation
     {
         if (inputs.Length != inputPlayerSlots.Length)
             throw new ArgumentException("Supply one input per human and host command stream");
-        Array.Clear(gameplay);
+        Array.Clear(commands);
         for (int handle = 0; handle < inputs.Length; handle++)
             if (inputPlayerSlots[handle] is int slot && slot >= 0)
-                gameplay[slot] = inputs[handle].Gameplay;
-        World.Tick(gameplay);
+                commands[slot] = new(inputs[handle].Gameplay, inputs[handle].Match);
+        World.Advance(commands);
     }
 }

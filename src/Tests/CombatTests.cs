@@ -134,7 +134,7 @@ internal static class CombatTests
             downCombo.Players[1].HitsTaken == 1 && downCombo.Players[1].WasHitDownwards,
             "later horizontal combo hits retain downward platform bypass until recovery"
         );
-        var team = CreateWorld(new() { TeamMode = true, Teams = [0, 0] });
+        var team = CreateWorld(new(playerCount: 3, format: MatchFormat.Teams, teams: [0, 0, 1]));
         team.Players[1].X = 4;
         Step(team, new(0, 0, InputButtons.Attack), 3);
         Step(team, count: 4);
@@ -293,8 +293,8 @@ internal static class CombatTests
                 ),
                 default,
             };
-            recorded.Tick(inputs);
-            replay.Record(inputs, recorded);
+            recorded.Advance(inputs.Select(frame => new MatchInput(frame)).ToArray());
+            replay.Record(inputs.Select(input => new MatchInput(input)).ToArray(), recorded);
             if (tick == 75)
             {
                 var snapshot = recorded.Capture();

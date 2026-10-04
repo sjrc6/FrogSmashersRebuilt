@@ -29,7 +29,7 @@ internal static class NetworkProtocolTests
             sa.Poll();
             sb.Poll();
             if (tick == 70)
-                b.Players[0].Score++;
+                b.Match.Players[0].Score++;
             sa.TryAdvance([Input(a.TickNumber, 0)]);
             sb.TryAdvance([Input(b.TickNumber, 1)]);
             if (sa.Error != null || sb.Error != null)

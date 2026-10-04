@@ -12,7 +12,7 @@ internal static class InterpolationSnapshotTests
         var roster = new LobbyRoster();
         roster.SetPlayers(0, [new(0, Spawned: true), new(1, Color: 1, Spawned: true)]);
         var lobby = new LobbySimulation(
-            new World(TestFixtures.Map(), new GameRules { PlayerCount = 8, Lobby = true }),
+            new World(TestFixtures.Map(), new GameRules(playerCount: 8, lobby: true)),
             roster
         );
         Verify(new ObservedSimulation(lobby.World, lobby), lobby.InputRooms.ToArray());
@@ -86,7 +86,9 @@ internal static class InterpolationSnapshotTests
             if (lobby != null)
                 lobby.Tick(inputs);
             else
-                World.Tick(inputs.ToArray().Select(input => input.Gameplay).ToArray());
+                World.Advance(
+                    inputs.ToArray().Select(input => input.Gameplay).Select(frame => new MatchInput(frame)).ToArray()
+                );
         }
     }
 }

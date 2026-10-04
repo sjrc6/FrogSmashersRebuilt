@@ -12,15 +12,20 @@ internal sealed partial class MenuController
 {
     private static readonly int[] FrameRates = [60, 90, 100, 120, 144, 165, 240, 360, 500];
     private readonly FrogGame game;
-    private readonly Stack<(GameScreen Screen, int Selected)> history = new();
+    private readonly Stack<(GameScreen Screen, int Selected, string? Identity)> history = new();
     private GameScreen context = GameScreen.Main;
     private bool menuSoundPending;
     private readonly MenuAdjustRepeat adjustRepeat = new();
-    private (GameScreen Screen, int Row) repeatTarget;
+    private (GameScreen Screen, string? Identity) repeatTarget;
+    private readonly MenuSelection selection = new();
     public LobbyCreation Creation { get; } = new();
     public double AnimationTime { get; private set; }
     public GameScreen Screen { get; set; } = GameScreen.Intro;
-    public int Selected { get; set; }
+    public int Selected
+    {
+        get => selection.Index;
+        set => selection.Select(value);
+    }
     public int SelectedSeat { get; private set; }
     public int HintDevice { get; private set; }
     public int BindingDevice { get; private set; }
@@ -34,6 +39,28 @@ internal sealed partial class MenuController
     public bool ShowingMatch => !ShowingCinematic && context == GameScreen.Playing;
     public bool LocalPresentationPaused => ShowingMatch && game.Match.Network == null && game.Match.Paused;
     private MatchPreferences Rules => game.Setup.Preferences;
+
+    private static string OnOff(bool value) => value ? "ON" : "OFF";
+
+    private MenuEntry Link(string label, GameScreen screen) => new("page-" + screen, label, () => Open(screen));
+
+    private MenuEntry BackRow() => new("back", "BACK", Back);
+
+    public IReadOnlyList<MenuEntry> Entries()
+    {
+        var entries = BuildEntries();
+        selection.Reconcile(Screen, entries);
+        return entries;
+    }
+
+    private string? MatchStartBlockedReason()
+    {
+        if (game.Lobby.RosterUpdating)
+            return "LOBBY UPDATING";
+        var options = game.Setup.CreateOptions(game.Options.MapOrder, game.Lobby.Roster);
+        return options.Rules.StartBlockedReason()
+            ?? (MatchSetup.MatchPlayers(game.Lobby.Roster).Any(player => !player.Spawned) ? "SPAWN ALL PLAYERS" : null);
+    }
 
     public MenuController(FrogGame game)
     {
@@ -156,7 +183,7 @@ internal sealed partial class MenuController
             if (
                 Screen == GameScreen.Playing
                 && !game.Match.Paused
-                && game.Match.World?.Phase == MatchPhase.MatchFinished
+                && game.Match.World?.Match.Phase == MatchPhase.MatchFinished
                 && !game.Options.Demo
                 && !game.Match.ReplayPlayback
                 && game.TerminalConfirmed()
@@ -164,8 +191,8 @@ internal sealed partial class MenuController
             {
                 game.Match.SaveReplay();
                 game.Cinematics.StartOutro(
-                    game.Match.World.Winner >= 0
-                        ? game.Renderer.ColorFor(game.Match.World, game.Match.World.Winner)
+                    game.Match.World.Match.Winner >= 0
+                        ? game.Renderer.ColorFor(game.Match.World, game.Match.World.Match.Winner)
                         : Color.White
                 );
                 Screen = GameScreen.Outro;
@@ -182,7 +209,7 @@ internal sealed partial class MenuController
 
     private MenuInput RepeatAdjustment(MenuInput input, double elapsedSeconds)
     {
-        var target = (Screen, Selected);
+        var target = (Screen, Entries().ElementAtOrDefault(Selected)?.Id);
         if (repeatTarget != target)
             adjustRepeat.Reset();
         repeatTarget = target;
@@ -235,8 +262,10 @@ internal sealed partial class MenuController
 
     private void SelectRow(int index)
     {
-        menuSoundPending |= Selected != index;
+        if (Selected == index)
+            return;
         Selected = index;
+        menuSoundPending = true;
     }
 
     private void ActivateEntry(MenuEntry entry)
@@ -245,6 +274,8 @@ internal sealed partial class MenuController
             game.Toasts.Show(reason);
         else
             entry.Select();
+        if (Screen == GameScreen.MatchSettings && game.Lobby.IsHost)
+            game.PublishMatchSettings();
         menuSoundPending = true;
     }
 
@@ -254,6 +285,8 @@ internal sealed partial class MenuController
             game.Toasts.Show(reason);
         else
             entry.Change?.Invoke(amount);
+        if (Screen == GameScreen.MatchSettings && game.Lobby.IsHost)
+            game.PublishMatchSettings();
         menuSoundPending = true;
     }
 
@@ -261,9 +294,19 @@ internal sealed partial class MenuController
     {
         if (layout == null || Pointer() is not Point point)
             return false;
+        if (layout.Paginated && game.Controls.MousePressed)
+        {
+            foreach (int direction in new[] { -1, 1 })
+                if (MenuLayout.PageButton(layout, direction).Contains(point))
+                {
+                    int page = Wrap(layout.Page + direction, layout.PageStarts.Length);
+                    SelectRow(layout.PageStarts[page]);
+                    return true;
+                }
+        }
         for (int i = 0; i < entries.Count; i++)
         {
-            if (!layout.Rows[i].Bounds.Contains(point))
+            if (layout.Rows[i].Bounds.IsEmpty || !layout.Rows[i].Bounds.Contains(point))
                 continue;
             SelectRow(i);
             if (game.Controls.MousePressed)
@@ -292,7 +335,7 @@ internal sealed partial class MenuController
 
     private MenuLayout.Measurement? MeasurePointer(IReadOnlyList<MenuEntry> entries) =>
         game.Controls.MousePressed || game.Controls.MouseRightPressed || game.Controls.MouseMoved
-            ? MenuLayout.Measure(Screen, entries, game.Assets.Font, ShowStickInputs)
+            ? game.MenuRenderer.Measure(entries)
             : null;
 
     private bool ClickBackHint(MenuLayout.Measurement? layout) =>
@@ -358,25 +401,17 @@ internal sealed partial class MenuController
 
     private void StartFromSeats()
     {
-        if (game.Lobby.RosterUpdating)
+        if (MatchStartBlockedReason() is { } reason)
         {
-            game.Toasts.Show("LOBBY UPDATING");
-            return;
-        }
-        var players = game.Lobby.Roster.Slots.Where(slot => slot.Player != null).Select(slot => slot.Player!).ToArray();
-        if (players.Length < 2 || players.Any(player => !player.Spawned))
-        {
-            game.Toasts.Show(players.Length < 2 ? "NEED TWO PLAYERS" : "SPAWN ALL PLAYERS");
-            return;
-        }
-        if (Rules.TeamMode && players.Select(player => player.Team).Distinct().Count() < 2)
-        {
-            game.Toasts.Show("CHOOSE TWO TEAMS");
+            game.Toasts.Show(reason);
             return;
         }
         if (game.Online.Lobby is { } online)
         {
-            if (!online.StartMatch(JsonSerializer.Serialize(game.Setup.CreateOptions(game.Options.MapOrder))))
+            bool started = online.StartMatch(roster =>
+                JsonSerializer.Serialize(game.Setup.CreateOptions(game.Options.MapOrder, roster))
+            );
+            if (!started)
                 game.Toasts.Show(online.Notice ?? "HOST ONLY");
         }
         else
@@ -434,14 +469,12 @@ internal sealed partial class MenuController
     {
         if (screen == GameScreen.CreateLobby)
             Creation.Reset(game.Lobby.Roster);
-        if (screen == GameScreen.ViewPlayers)
-            selectedPlayer = null;
         if (screen == GameScreen.SlotEditor)
         {
             slotGesture.Reset();
             slotPreview = null;
         }
-        history.Push((Screen, Selected));
+        history.Push((Screen, Selected, Entries().ElementAtOrDefault(Selected)?.Id));
         Screen = screen;
         Selected = 0;
         if (screen is GameScreen.BrowseSteam or GameScreen.BrowseLan)
@@ -477,7 +510,7 @@ internal sealed partial class MenuController
         if (!history.TryPop(out var previous))
             return;
         Screen = previous.Screen;
-        Selected = previous.Selected;
+        selection.Restore(Screen, previous.Selected, previous.Identity);
         game.Controls.ClearPendingEdges();
     }
 

@@ -194,7 +194,13 @@ internal static class NetworkSessionTests
         var baseline = MakeWorld(players);
         for (int tick = 0; tick < target; tick++)
         {
-            baseline.Tick(Enumerable.Range(0, players).Select(p => Input(tick - 2, p)).ToArray());
+            baseline.Advance(
+                Enumerable
+                    .Range(0, players)
+                    .Select(p => Input(tick - 2, p))
+                    .Select(frame => new MatchInput(frame))
+                    .ToArray()
+            );
         }
 
         foreach (var s in sessions)
@@ -421,7 +427,7 @@ internal static class NetworkSessionTests
         RunUntil(550);
         var expected = MakeWorld(2);
         for (int tick = 0; tick < 550; tick++)
-            expected.Tick([Input(tick - 2, 0), Input(tick - 2, 1)]);
+            expected.Advance([new(Input(tick - 2, 0)), new(Input(tick - 2, 1))]);
         foreach (var session in sessions)
         {
             Check(
@@ -504,7 +510,7 @@ internal static class NetworkSessionTests
         }
         var expected = MakeWorld(2);
         for (int tick = 0; tick < 200; tick++)
-            expected.Tick([Input(tick - 2, 0), Input(tick - 2, 1)]);
+            expected.Advance([new(Input(tick - 2, 0)), new(Input(tick - 2, 1))]);
         foreach (var session in sessions)
         {
             Check(

@@ -105,11 +105,15 @@ internal sealed class ScoreDisplay
         );
 
     private static bool Winner(World world, PlayerState player) =>
-        world.Winner >= 0
-        && (world.Rules.TeamMode ? player.Team == world.Players[world.Winner].Team : player.Slot == world.Winner);
+        world.Match.Winner >= 0
+        && (
+            world.Rules.UsesTeams
+                ? player.Team == world.Players[world.Match.Winner].Team
+                : player.Slot == world.Match.Winner
+        );
 
     public static IEnumerable<PlayerState> Players(World world) =>
-        world.Rules.TeamMode ? world.Players.GroupBy(p => p.Team).Select(g => g.First()) : world.Players;
+        world.Rules.UsesTeams ? world.Players.GroupBy(p => p.Team).Select(g => g.First()) : world.Players;
 
     public void Draw(
         World world,
@@ -122,17 +126,20 @@ internal sealed class ScoreDisplay
         bool updateLayout = true
     )
     {
-        bool reset = hudRound != world.RoundNumber || roundScoreLayout != roundWins;
+        bool reset = hudRound != world.Match.RoundNumber || roundScoreLayout != roundWins;
         if (reset)
         {
-            hudRound = world.RoundNumber;
+            hudRound = world.Match.RoundNumber;
             roundScoreLayout = roundWins;
             hudSorted = roundWins;
             Array.Clear(hudScores);
         }
 
         int Score(PlayerState p) =>
-            roundWins ? p.RoundWins - (Winner(world, p) && elapsed < (world.IsShowdown ? .05f : 1f) ? 1 : 0) : p.Score;
+            roundWins
+                ? world.Match.Players[p.Slot].RoundWins
+                    - (Winner(world, p) && elapsed < (world.Match.IsShowdown ? .05f : 1f) ? 1 : 0)
+                : world.Match.Players[p.Slot].Score;
         var players = Players(world).ToArray();
         foreach (var p in players)
         {
@@ -206,10 +213,10 @@ internal sealed class ScoreDisplay
             var color = PlayerPalette.For(world, p.Slot);
             if (roundWins)
             {
-                float start = world.IsShowdown ? .05f : 1;
-                if (Winner(world, p) && elapsed >= start && elapsed < start + (world.IsShowdown ? 10 : 2))
+                float start = world.Match.IsShowdown ? .05f : 1;
+                if (Winner(world, p) && elapsed >= start && elapsed < start + (world.Match.IsShowdown ? 10 : 2))
                 {
-                    if (world.IsShowdown)
+                    if (world.Match.IsShowdown)
                     {
                         text = "WINNER!";
                     }
@@ -220,7 +227,7 @@ internal sealed class ScoreDisplay
             else
             {
                 var message = scoreMessages.LastOrDefault(m =>
-                    world.Rules.TeamMode ? world.Players[m.Player].Team == p.Team : m.Player == p.Slot
+                    world.Rules.UsesTeams ? world.Players[m.Player].Team == p.Team : m.Player == p.Slot
                 );
                 if (message != null)
                 {

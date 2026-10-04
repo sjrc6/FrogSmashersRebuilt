@@ -248,11 +248,12 @@ internal static class SpectatorNetworkTests
         }
         var baseline = MakeWorld(playerCount);
         for (int tick = 0; tick < target; tick++)
-            baseline.Tick(
+            baseline.Advance(
                 Enumerable
                     .Range(0, playerCount)
                     .Select(slot => Input(Math.Max(0, tick - 2), slot))
                     .Select(input => tick < 2 ? default : input)
+                    .Select(frame => new MatchInput(frame))
                     .ToArray()
             );
         foreach (var session in sessions.Take(running))

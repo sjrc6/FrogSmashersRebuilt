@@ -36,10 +36,7 @@ public sealed class PlayerState
     public int Facing = 1;
     public int LastHitBy = -1;
     public int HitsTaken;
-    public int Score;
-    public int RoundWins;
     public bool Alive;
-    public bool Eliminated;
     public bool OnGround;
     public bool WallSliding;
     public bool HasFly;
@@ -96,13 +93,10 @@ public sealed class PlayerState
         writer.Write(Facing);
         writer.Write(LastHitBy);
         writer.Write(HitsTaken);
-        writer.Write(Score);
-        writer.Write(RoundWins);
         writer.Write(WallSlideSide);
         writer.Write(SpawnTicks);
         writer.Write(HitstopTicks);
         writer.Write(Alive);
-        writer.Write(Eliminated);
         writer.Write(OnGround);
         writer.Write(WallSliding);
         writer.Write(HasFly);
@@ -152,13 +146,10 @@ public sealed class PlayerState
             Facing = reader.ReadInt32(),
             LastHitBy = reader.ReadInt32(),
             HitsTaken = reader.ReadInt32(),
-            Score = reader.ReadInt32(),
-            RoundWins = reader.ReadInt32(),
             WallSlideSide = reader.ReadInt32(),
             SpawnTicks = reader.ReadInt32(),
             HitstopTicks = reader.ReadInt32(),
             Alive = reader.ReadBoolean(),
-            Eliminated = reader.ReadBoolean(),
             OnGround = reader.ReadBoolean(),
             WallSliding = reader.ReadBoolean(),
             HasFly = reader.ReadBoolean(),

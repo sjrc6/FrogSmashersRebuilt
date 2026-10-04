@@ -20,29 +20,35 @@ internal sealed partial class MenuController
 
         rows.Add(
             new(
+                "delay",
                 "DELAY",
                 Value: RollbackPreferences.Milliseconds(preferences.Delay),
+                ValueSample: "999 MS",
                 RepeatAdjust: true,
                 Change: amount => Change(value => value with { Delay = value.Delay + amount })
             )
         );
         rows.Add(
             new(
+                "donation",
                 "DONATION",
                 Value: RollbackPreferences.Milliseconds(preferences.Donation),
+                ValueSample: "999 MS",
                 RepeatAdjust: true,
                 Change: amount => Change(value => value with { Donation = value.Donation + amount })
             )
         );
         rows.Add(
             new(
+                "max-extra-delay",
                 "MAX EXTRA DELAY",
                 Value: RollbackPreferences.Milliseconds(preferences.MaxExtraDelay),
+                ValueSample: "999 MS",
                 RepeatAdjust: true,
                 Change: amount => Change(value => value with { MaxExtraDelay = value.MaxExtraDelay + amount })
             )
         );
-        rows.Add(new("BACK", Back));
+        rows.Add(new("back", "BACK", Back));
         return rows;
     }
 }

@@ -36,12 +36,12 @@ internal static class TickRateStudy
     private static object Cpu()
     {
         var world = TestFixtures.MakeWorld(8);
-        var inputs = new InputFrame[8];
+        var inputs = new MatchInput[8];
         void Tick()
         {
             for (int slot = 0; slot < inputs.Length; slot++)
-                inputs[slot] = Input(world.TickNumber, slot);
-            world.Tick(inputs);
+                inputs[slot] = new(Input(world.TickNumber, slot));
+            world.Advance(inputs);
             _ = world.Capture();
             _ = world.HashState();
         }
@@ -159,7 +159,13 @@ internal static class TickRateStudy
             }
             var baseline = TestFixtures.MakeWorld(peers);
             for (int tick = 0; tick < target; tick++)
-                baseline.Tick(Enumerable.Range(0, peers).Select(slot => Input(tick - delay, slot)).ToArray());
+                baseline.Advance(
+                    Enumerable
+                        .Range(0, peers)
+                        .Select(slot => Input(tick - delay, slot))
+                        .Select(frame => new MatchInput(frame))
+                        .ToArray()
+                );
             Check(
                 sessions.All(s =>
                     s.World.TickNumber == target

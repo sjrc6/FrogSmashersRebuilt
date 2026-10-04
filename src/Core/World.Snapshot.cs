@@ -5,7 +5,7 @@ namespace FrogSmashers.Core;
 public sealed partial class World
 {
     private const int SnapshotMagic = 0x46535253;
-    private const int SnapshotVersion = 3;
+    private const int SnapshotVersion = 4;
     private readonly MemoryStream snapshotBuffer = new(4096);
 
     public byte[] Capture()
@@ -17,12 +17,7 @@ public sealed partial class World
         writer.Write(ConfigurationHash);
         writer.Write(TickNumber);
         writer.Write(randomState);
-        writer.Write(CurrentMapIndex);
-        writer.Write(RoundNumber);
-        writer.Write((int)Phase);
-        writer.Write(Winner);
-        writer.Write(PhaseTicks);
-        writer.Write(IsShowdown);
+        Match.WriteSnapshot(writer);
         writer.Write(Players.Length);
         foreach (var player in Players)
         {
@@ -59,26 +54,10 @@ public sealed partial class World
 
         var tick = reader.ReadInt64();
         var rng = reader.ReadUInt32();
-        var map = reader.ReadInt32();
-        var round = reader.ReadInt32();
-        var phase = (MatchPhase)reader.ReadInt32();
-        var winner = reader.ReadInt32();
-        var phaseTicks = reader.ReadInt32();
-        var showdown = reader.ReadBoolean();
+        var match = MatchState.ReadSnapshot(reader, Rules, maps.Count);
         int count = reader.ReadInt32();
-        if (
-            count != Players.Length
-            || map < 0
-            || map >= maps.Count
-            || tick < 0
-            || round < 1
-            || !Enum.IsDefined(phase)
-            || winner < -1
-            || winner >= count
-        )
-        {
+        if (count != Players.Length || tick < 0)
             throw new InvalidDataException("Invalid snapshot state");
-        }
 
         var players = new PlayerState[count];
         for (int i = 0; i < count; i++)
@@ -112,12 +91,7 @@ public sealed partial class World
 
         TickNumber = tick;
         randomState = rng;
-        CurrentMapIndex = map;
-        RoundNumber = round;
-        Phase = phase;
-        Winner = winner;
-        PhaseTicks = phaseTicks;
-        IsShowdown = showdown;
+        Match = match;
         Players = players;
         Fly = fly;
         events.Clear();
@@ -142,28 +116,7 @@ public sealed partial class World
         using var writer = new BinaryWriter(stream, Encoding.UTF8, true);
         writer.Write(SnapshotVersion);
         writer.Write(TickRate);
-        writer.Write(Rules.PlayerCount);
-        writer.Write(Rules.Lobby);
-        foreach (bool cpu in Rules.CpuPlayers)
-            writer.Write(cpu);
-        foreach (int color in Rules.Colors)
-            writer.Write(color);
-        writer.Write(Rules.TeamMode);
-        foreach (var player in Players)
-        {
-            writer.Write(player.Team);
-        }
-
-        writer.Write(Rules.WinScore);
-        writer.Write(Rules.MatchRounds);
-        writer.Write(Rules.Showdown);
-        writer.Write(Rules.RoundFinishTicks);
-        writer.Write(Rules.ScoreScreenTicks);
-        writer.Write(Rules.MapOrder.Length);
-        foreach (int map in Rules.MapOrder)
-        {
-            writer.Write(map);
-        }
+        Rules.WriteConfiguration(writer);
 
         tuning.WriteConfiguration(writer);
         GameplayData.WriteMaps(writer, maps);

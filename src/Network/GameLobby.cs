@@ -45,7 +45,7 @@ public abstract class GameLobby : IGameLobby
 
     public void SetMatchSettings(string settings) => Active?.SetMatchSettings(settings);
 
-    public bool StartMatch(string settings) => Active?.StartMatch(settings) ?? false;
+    public bool StartMatch(Func<LobbyRoster, string> createSettings) => Active?.StartMatch(createSettings) ?? false;
 
     public bool ReturnToLobby() => Active?.ReturnToLobby() ?? false;
 

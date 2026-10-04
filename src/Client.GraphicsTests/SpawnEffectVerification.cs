@@ -37,14 +37,14 @@ internal sealed partial class PresentationChecks
             for (int room = 0; room < map.Spawns.Count; room++)
             {
                 var point = map.Spawns[room];
-                var world = new World([map], new GameRules { PlayerCount = 2 }, 1, assets.Data.CharacterParameters);
-                world.Players[1].Eliminated = true;
+                var world = new World([map], new GameRules(playerCount: 2), 1, assets.Data.CharacterParameters);
+                world.Match.Players[1].Participation = Participation.Eliminated;
                 var player = world.Players[0];
                 player.Alive = true;
                 player.X = Fixed.FromDecimal(point.X);
                 player.Y = Fixed.FromDecimal(point.Y);
                 for (int tick = 0; tick < 120 && !player.OnGround; tick++)
-                    world.Tick(new InputFrame[2]);
+                    world.Advance(new MatchInput[2]);
                 Check(player.OnGround, $"{map.Id} spawn {room}: simulation reaches supporting platform");
 
                 renderer.Reset();
@@ -67,14 +67,14 @@ internal sealed partial class PresentationChecks
                 }
             }
 
-        var lobbyWorld = new World(lobby, new GameRules { Lobby = true, PlayerCount = 8 });
+        var lobbyWorld = new World(lobby, new GameRules(lobby: true, playerCount: 8));
         foreach (int height in new[] { 720, 1080 })
         {
             renderer.Reset();
             renderer.Update(0);
             lobbyWorld.SetLobbySlot(0, false, 0);
             lobbyWorld.SetLobbySlot(0, true, 0);
-            lobbyWorld.Tick(new InputFrame[8]);
+            lobbyWorld.Advance(new MatchInput[8]);
             renderer.Consume(lobbyWorld.Events, lobbyWorld);
             var effect = renderer.Effects.Active.Single(e => e.Name == "SpawnPuff");
             var origin = effect.Position;

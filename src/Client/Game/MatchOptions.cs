@@ -1,9 +1,19 @@
+using System.Text.Json.Serialization;
 using FrogSmashers.Core;
 
 namespace FrogSmashers.Client;
 
-public sealed class MatchOptions
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record MatchOptions
 {
-    public GameRules Rules { get; set; } = new();
-    public uint Seed { get; set; } = 1;
+    public GameRules Rules { get; }
+    public uint Seed { get; }
+    public bool ShuffleMaps { get; }
+
+    public MatchOptions(GameRules rules, uint seed = 1, bool shuffleMaps = false)
+    {
+        Rules = rules ?? throw new ArgumentNullException(nameof(rules));
+        Seed = seed;
+        ShuffleMaps = shuffleMaps;
+    }
 }

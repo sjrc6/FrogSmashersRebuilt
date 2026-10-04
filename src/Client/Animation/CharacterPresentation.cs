@@ -92,12 +92,12 @@ internal sealed class CharacterPresentation
             case State.Idle:
                 counter += dt;
                 bool winner =
-                    world.Phase == MatchPhase.RoundFinished
-                    && world.Winner >= 0
+                    world.Match.Phase == MatchPhase.RoundFinished
+                    && world.Match.Winner >= 0
                     && (
-                        world.Rules.TeamMode
-                            ? player.Team == world.Players[world.Winner].Team
-                            : player.Slot == world.Winner
+                        world.Rules.UsesTeams
+                            ? player.Team == world.Players[world.Match.Winner].Team
+                            : player.Slot == world.Match.Winner
                     );
                 if (winner)
                 {

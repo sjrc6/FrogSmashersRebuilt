@@ -26,7 +26,7 @@ internal sealed partial class PresentationChecks
             BackgroundColor = [.25f, .25f, .25f, 1],
             Spawns = [new(), new()],
         };
-        var world = new World(map, new GameRules { PlayerCount = 2 });
+        var world = new World(map, new GameRules(playerCount: 2));
         foreach (var player in world.Players)
             player.Alive = false;
         var launched = world.Players[0];

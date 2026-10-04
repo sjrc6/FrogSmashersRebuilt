@@ -100,6 +100,7 @@ internal sealed class GraphicsTestGame : Game
             [
                 .. suite.VerifySourcePresentation(),
                 .. suite.VerifyContent(),
+                .. suite.VerifyMenuLayout(),
                 .. suite.VerifyMenuPanels(
                     captureDirectory == null ? null : Path.Combine(captureDirectory, "menu-panels")
                 ),

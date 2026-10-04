@@ -7,7 +7,7 @@ public sealed partial class World
 {
     private bool Ray(FixedVector origin, bool horizontal, Fixed distance, bool includeOneWay, out Fixed allowed)
     {
-        return collisionMaps[CurrentMapIndex].Raycast(origin, horizontal, distance, includeOneWay, out allowed);
+        return collisionMaps[Match.CurrentMapIndex].Raycast(origin, horizontal, distance, includeOneWay, out allowed);
     }
 
     private void MoveAndCollide(PlayerState player, InputFrame input)
@@ -190,7 +190,7 @@ public sealed partial class World
 
     private bool TouchesTerrain(FixedVector point, Fixed radius, bool includeOneWay)
     {
-        return collisionMaps[CurrentMapIndex].TouchesCircle(point, radius, includeOneWay);
+        return collisionMaps[Match.CurrentMapIndex].TouchesCircle(point, radius, includeOneWay);
     }
 
     private static bool CapsuleTouchesPlayer(FixedVector a, FixedVector b, Fixed radius, PlayerState player)

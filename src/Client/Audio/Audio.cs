@@ -456,7 +456,7 @@ public sealed class Audio : IDisposable
         }
 
         Prune();
-        if (world.Phase is MatchPhase.RoundScores or MatchPhase.MatchFinished)
+        if (world.Match.Phase is MatchPhase.RoundScores or MatchPhase.MatchFinished)
         {
             foreach (var sound in shots)
             {

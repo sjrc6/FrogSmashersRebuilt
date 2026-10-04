@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FrogSmashers.Client;
+using FrogSmashers.Core;
 using FrogSmashers.Network;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
@@ -70,7 +71,7 @@ internal static class MenuSetupTests
         );
         var setup = new MatchSetup(7);
         check(setup.Preferences == new MatchPreferences(), "new sessions start with default match settings");
-        setup.Preferences.TeamMode = true;
+        setup.Preferences.Format = MatchFormat.Teams;
         setup.Preferences.WinScore = 12;
         setup.Preferences.MatchRounds = 4;
         setup.Preferences.FirstMap = 3;
@@ -89,15 +90,21 @@ internal static class MenuSetupTests
         );
         setup.Preferences.WinScore = 17;
         check(match.Rules.WinScore == 12, "editing the lobby does not mutate active match rules");
-        match.Rules.Teams[0] = 7;
-        match.Rules.MapOrder[0] = 6;
-        check(
-            setup.CreateOptions().Rules.Teams[0] == 0 && setup.CreateOptions().Rules.MapOrder.All(i => i < 6),
-            "match snapshots have independent arrays"
-        );
+        var mutableTeams = match.Rules.Teams.ToArray();
+        mutableTeams[0] = 7;
+        check(match.Rules.Teams[0] == 0, "exported rule arrays cannot mutate active configuration");
         var mapOrder = new[] { 1, 2 };
-        setup.CreateOptions(mapOrder).Rules.MapOrder[0] = 6;
-        check(mapOrder[0] == 1, "launch map order is not aliased into match rules");
+        var custom = setup.CreateOptions(mapOrder);
+        mapOrder[0] = 6;
+        check(custom.Rules.MapOrder[0] == 1, "launch map order is not aliased into match rules");
+        var roundTrip = JsonSerializer.Deserialize<MatchOptions>(JsonSerializer.Serialize(match))!;
+        check(
+            roundTrip.Rules.Format == MatchFormat.Teams
+                && roundTrip.Rules.Teams.SequenceEqual(match.Rules.Teams)
+                && roundTrip.Rules.CpuPlayers.SequenceEqual(match.Rules.CpuPlayers)
+                && roundTrip.Rules.MapOrder.SequenceEqual(match.Rules.MapOrder),
+            "network and replay configuration round-trip without mutation"
+        );
         for (int i = 0; i < 4; i++)
             setup.Lobby.Join(-1);
         check(setup.Seats.Count == 8 && !setup.Lobby.Join(2), "local party respects the eight-player limit");
@@ -112,7 +119,7 @@ internal static class MenuSetupTests
         var customStart = new MatchSetup(7, firstMap: 4);
         check(customStart.CreateOptions().Rules.MapOrder[0] == 4, "launch map supplies the initial arena");
         customStart.FirstMap = 2;
-        customStart.Preferences.TeamMode = true;
+        customStart.Preferences.Format = MatchFormat.Teams;
         customStart.Preferences.WinScore = 12;
         customStart.Preferences.ShuffleMaps = true;
         check(customStart.CreateOptions().Rules.MapOrder[0] == 2, "lobby map edits override the launch default");

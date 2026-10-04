@@ -34,10 +34,15 @@ internal sealed partial class MenuController
     private MenuEntry BindingEntry(string name, int action)
     {
         if (WaitingForBinding && Selected == action + 1)
-            return new(name, Value: "...");
+            return new("binding-" + action, name, Value: "...");
         return BindingDevice < 2
-            ? new(name, BeginBinding, Key: BindingKeys()[action])
-            : new(name, BeginBinding, Button: game.Controls.ControllerBindings(BindingDevice - 2)[action]);
+            ? new("binding-" + action, name, BeginBinding, Key: BindingKeys()[action])
+            : new(
+                "binding-" + action,
+                name,
+                BeginBinding,
+                Button: game.Controls.ControllerBindings(BindingDevice - 2)[action]
+            );
     }
 
     private void BeginBinding()

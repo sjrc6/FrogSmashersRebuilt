@@ -37,11 +37,11 @@ internal static class MechanicsFixture
 
     public static void Step(World world, InputFrame p0 = default, int count = 1)
     {
-        var input = new InputFrame[world.Players.Length];
-        input[0] = p0;
+        var input = new MatchInput[world.Players.Length];
+        input[0] = new(p0);
         for (int i = 0; i < count; i++)
         {
-            world.Tick(input);
+            world.Advance(input);
         }
     }
 }

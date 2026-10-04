@@ -12,8 +12,10 @@ internal static class InputReplayTests
         var replay = InputReplay.Start(replayWorld);
         for (int i = 0; i < 360; i++)
         {
-            var input = replayWorld.Players.Select(p => BotController.GetInput(replayWorld, p.Slot)).ToArray();
-            replayWorld.Tick(input);
+            var input = replayWorld
+                .Players.Select(p => new MatchInput(BotController.GetInput(replayWorld, p.Slot)))
+                .ToArray();
+            replayWorld.Advance(input);
             replay.Record(input, replayWorld);
         }
 

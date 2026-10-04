@@ -207,7 +207,7 @@ internal static class SteamLegacyWireTests
             .ToArray();
         var simulations = lobbies
             .Select(lobby => new LobbySimulation(
-                new World(TestFixtures.Map(), new GameRules { Lobby = true, PlayerCount = 8 }, 13),
+                new World(TestFixtures.Map(), new GameRules(lobby: true, playerCount: 8), 13),
                 lobby.Roster,
                 71
             ))

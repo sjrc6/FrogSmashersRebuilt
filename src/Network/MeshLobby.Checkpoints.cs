@@ -21,6 +21,7 @@ internal sealed partial class MeshLobby
         public long Boundary { get; set; } = -1;
         public ulong Session { get; set; }
         public string Settings { get; set; } = "";
+        public LobbyPlayer?[] Players { get; set; } = [];
         public int[] PausePeers { get; set; } = [];
         public int[] RequiredPeers { get; set; } = [];
         public Dictionary<int, long> Stopped { get; } = new();
@@ -183,6 +184,7 @@ internal sealed partial class MeshLobby
         {
             Session = NewSessionId(),
             Settings = MatchSettingsJson,
+            Players = Roster.Slots.Select(slot => slot.Player).ToArray(),
             PausePeers = committedPlayers.Where(peerAddresses.ContainsKey).ToArray(),
             RequiredPeers = Roster
                 .Slots.Where(slot => slot.Player != null)
@@ -236,6 +238,12 @@ internal sealed partial class MeshLobby
         {
             simulation.Restore(pending.Previous);
             CancelCheckpoint("SPAWN ALL PLAYERS");
+            return;
+        }
+        if (!pending.Players.SequenceEqual(simulation.Membership.Rooms))
+        {
+            simulation.Restore(pending.Previous);
+            CancelCheckpoint("PLAYERS CHANGED; START AGAIN");
             return;
         }
         pending.Snapshot = simulation.Capture();

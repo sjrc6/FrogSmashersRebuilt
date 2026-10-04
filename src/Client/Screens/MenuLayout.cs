@@ -8,7 +8,10 @@ internal static class MenuLayout
     private const int LineThickness = 2;
     private const int SectionSpacing = RowPadding * 2 + LineThickness;
 
-    public sealed record Measurement(Rectangle Panel, MeasuredRow[] Rows);
+    public sealed record Measurement(Rectangle Panel, MeasuredRow[] Rows, int Page, int[] PageStarts)
+    {
+        public bool Paginated => PageStarts.Length > 1;
+    }
 
     public readonly record struct MeasuredRow(Rectangle Bounds, MenuText Text);
 
@@ -16,57 +19,109 @@ internal static class MenuLayout
         GameScreen screen,
         IReadOnlyList<MenuEntry> entries,
         BitmapFont font,
-        bool showSticks = false
+        bool showSticks = false,
+        int selected = 0,
+        Rectangle? viewport = null,
+        Func<MenuEntry, Vector2>? accessorySize = null
     )
     {
-        int width = PanelWidth(screen);
+        var view = viewport ?? new Rectangle(0, 0, Renderer.Width, Renderer.Height);
+        const int margin = 24;
+        int preferredWidth = screen switch
+        {
+            GameScreen.Main => 240,
+            GameScreen.Bindings => 480,
+            GameScreen.BrowseSteam or GameScreen.BrowseLan => 560,
+            _ => 440,
+        };
+        int width = Math.Min(preferredWidth, view.Width - margin * 2);
+        int header = RowsOffset(screen);
+        int footer = (showSticks ? 32 : 0) + RowPadding + FooterHeight(screen);
+        int capacity = view.Height - margin * 2 - 24 - header - footer;
+        if (width < 128 || capacity < 48)
+            throw new ArgumentException("Menu viewport is too small");
         var rows = new MeasuredRow[entries.Count];
-        int offset = RowsOffset(screen);
+        var pages = new List<int> { 0 };
+        var heights = new List<int>();
+        int used = 0;
+        int page = 0;
         for (int index = 0; index < entries.Count; index++)
         {
             var entry = entries[index];
-            var text = Text(entry, width, font);
-            if (entry.SeparatorBefore)
-                offset += SectionSpacing;
+            var text = Text(entry, width, font, accessorySize);
+            if (entry.IsTitle)
+            {
+                rows[index] = new(new Rectangle(12, 12, width - 24, 72), text);
+                continue;
+            }
             int rowHeight = (int)MathF.Ceiling(text.Height) + RowPadding * 2;
-            var bounds = entry.IsTitle
-                ? new Rectangle(12, 12, width - 24, 72)
-                : new Rectangle(12, offset, width - 24, rowHeight);
-            rows[index] = new(bounds, text);
-            if (!entry.IsTitle)
-                offset += rowHeight;
+            int separator = entry.SeparatorBefore && used > 0 ? SectionSpacing : 0;
+            if (rowHeight > capacity)
+                throw new ArgumentException("Menu row exceeds the viewport");
+            if (used + separator + rowHeight > capacity)
+            {
+                heights.Add(used);
+                pages.Add(index);
+                used = 0;
+                separator = 0;
+            }
+            used += separator;
+            rows[index] = new(new Rectangle(12, header + used, width - 24, rowHeight), text);
+            used += rowHeight;
         }
-        int height = offset + (showSticks ? 32 : 0) + RowPadding + FooterHeight(screen);
-        int top = screen == GameScreen.Main ? 324 : (Renderer.Height - height) / 4 * 2;
-        var panel = new Rectangle((Renderer.Width - width) / 2, top, width, height);
+        heights.Add(used);
+        selected = Math.Clamp(selected, 0, Math.Max(0, entries.Count - 1));
+        for (int index = 1; index < pages.Count; index++)
+            if (pages[index] <= selected)
+                page = index;
+        int height = header + heights.Max() + footer;
+        int top = screen == GameScreen.Main ? view.Top + 324 : view.Top + (view.Height - height) / 2;
+        top = Math.Clamp(top, view.Top + margin, view.Bottom - margin - 24 - height);
+        var panel = new Rectangle(view.Center.X - width / 2, top, width, height);
+        int end = page + 1 < pages.Count ? pages[page + 1] : entries.Count;
         for (int index = 0; index < rows.Length; index++)
         {
+            bool visible = entries[index].IsTitle || index >= pages[page] && index < end;
             var bounds = rows[index].Bounds;
-            bounds.Offset(panel.Location);
+            if (visible)
+                bounds.Offset(panel.Location);
+            else
+                bounds = Rectangle.Empty;
             rows[index] = rows[index] with { Bounds = bounds };
         }
-        return new(panel, rows);
+        return new(panel, rows, page, pages.ToArray());
     }
 
-    private static int PanelWidth(GameScreen screen) =>
-        screen switch
-        {
-            GameScreen.Main => 240,
-            GameScreen.Bindings => 440,
-            GameScreen.BrowseSteam or GameScreen.BrowseLan => 520,
-            _ => 400,
-        };
+    public static Rectangle PageButton(Measurement layout, int direction) =>
+        new(
+            direction < 0 ? layout.Panel.Left : layout.Panel.Center.X,
+            layout.Panel.Bottom + 2,
+            layout.Panel.Width / 2,
+            20
+        );
 
-    private static MenuText Text(MenuEntry entry, int panelWidth, BitmapFont font)
+    private static MenuText Text(
+        MenuEntry entry,
+        int panelWidth,
+        BitmapFont font,
+        Func<MenuEntry, Vector2>? accessorySize
+    )
     {
         float width = panelWidth - 64;
         string label;
+        if (entry.Key != null || entry.Button != null)
+        {
+            var size =
+                accessorySize?.Invoke(entry) ?? throw new ArgumentException("Binding rows require glyph measurements");
+            label = font.Wrap(entry.Label, width - size.X - 16, 2);
+            return new(label, null, false, Math.Max(size.Y, font.Measure(label).Y));
+        }
         if (entry.Value is not { } value)
         {
             label = font.Wrap(entry.Label, width, 2);
             return new(label, null, false, font.Measure(label).Y);
         }
-        float valueWidth = font.Measure(value).X;
+        float valueWidth = Math.Max(font.Measure(value).X, font.Measure(entry.ValueSample ?? value).X);
         if (valueWidth <= width * .55f)
         {
             label = font.Wrap(entry.Label, width - valueWidth - 16, 2);
@@ -74,7 +129,11 @@ internal static class MenuLayout
         }
         label = font.Wrap(entry.Label, width, 1);
         value = font.Wrap(value, width, 2);
-        return new(label, value, true, font.Measure(label).Y + 6 + font.Measure(value).Y);
+        float reservedHeight = Math.Max(
+            font.Measure(value).Y,
+            font.Measure(font.Wrap(entry.ValueSample ?? value, width, 2)).Y
+        );
+        return new(label, value, true, font.Measure(label).Y + 6 + reservedHeight);
     }
 
     public readonly record struct MenuText(string Label, string? Value, bool Stacked, float Height);

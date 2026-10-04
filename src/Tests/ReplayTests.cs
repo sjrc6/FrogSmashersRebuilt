@@ -19,8 +19,8 @@ internal static class ReplayTests
             }
 
             var input = Enumerable.Range(0, 8).Select(s => Input(tick, s)).ToArray();
-            a.Tick(input);
-            b.Tick(input);
+            a.Advance(input.Select(frame => new MatchInput(frame)).ToArray());
+            b.Advance(input.Select(frame => new MatchInput(frame)).ToArray());
             Check(a.HashState() == b.HashState(), $"Identical replay diverged at {tick}");
         }
 
@@ -30,13 +30,15 @@ internal static class ReplayTests
             b.Restore(pair.Value);
             for (long tick = b.TickNumber; tick < 2400; tick++)
             {
-                b.Tick(Enumerable.Range(0, 8).Select(s => Input(tick, s)).ToArray());
+                b.Advance(
+                    Enumerable.Range(0, 8).Select(s => Input(tick, s)).Select(frame => new MatchInput(frame)).ToArray()
+                );
             }
 
             Check(expected.SequenceEqual(b.Capture()), $"Restore/resimulation changed state at {pair.Key}");
         }
 
-        var c = new World(Map(), new GameRules { PlayerCount = 8, WinScore = 3 }, 12345);
+        var c = new World(Map(), new GameRules(playerCount: 8, winScore: 3), 12345);
         bool refused = false;
         try
         {

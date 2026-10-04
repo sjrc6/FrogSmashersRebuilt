@@ -160,7 +160,7 @@ internal static class PhysicsTests
             ],
             Spawns = Enumerable.Range(0, 8).Select(i => new PointData { X = -35 + i * 10, Y = 0 }).ToList(),
         };
-        var eight = new World(spawnMap, new() { PlayerCount = 8 }, 42);
+        var eight = new World(spawnMap, new(playerCount: 8), 42);
         Step(eight, count: 240);
         Check(
             eight.Players.All(p => p.Alive && p.Facing == 1) && eight.Players.Select(p => p.X).Distinct().Count() == 8,

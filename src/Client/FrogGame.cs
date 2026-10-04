@@ -12,7 +12,7 @@ public class FrogGame : Game
     private readonly DisplaySettings display;
     private readonly FrameTiming timing = new();
     private WindowsWindowIcons? windowIcons;
-    private MenuRenderer menuRenderer = null!;
+    internal MenuRenderer MenuRenderer { get; private set; } = null!;
     private ToastRenderer toastRenderer = null!;
     internal ConnectionOverlay Connections { get; private set; } = null!;
     private int matchGeneration;
@@ -97,7 +97,7 @@ public class FrogGame : Game
         Online = new OnlineController(Options, Assets.Data.ComputeGameplayHash());
         Lobby = new LobbyController(this);
         Menus = new MenuController(this);
-        menuRenderer = new MenuRenderer(this, Menus);
+        MenuRenderer = new MenuRenderer(this, Menus);
         toastRenderer = new ToastRenderer(this);
         Connections = new(this);
         ConfigureLaunch();
@@ -261,10 +261,10 @@ public class FrogGame : Game
     {
         LastError = null;
         var options = Setup.CreateOptions(Options.MapOrder);
-        if (options.Rules.TeamMode && options.Rules.Teams.Take(Setup.Seats.Count).Distinct().Count() < 2)
+        if (options.Rules.StartBlockedReason() is { } reason)
         {
             Menus.ShowSeats();
-            Toasts.Show("CHOOSE TWO TEAMS");
+            Toasts.Show(reason);
             return;
         }
 
@@ -401,10 +401,10 @@ public class FrogGame : Game
 
     internal void WatchCpus()
     {
-        var options = Setup.CreateOptions(Options.MapOrder);
-        options.Rules.PlayerCount = 4;
-        options.Rules.Teams = [0, 1, 0, 1, 0, 1, 0, 1];
-        Match.StartLocal(options, Enumerable.Range(0, 4).Select(i => new LocalSeat(-1, i % 2)).ToArray());
+        var demo = new MatchSetup(Setup.Seed, Setup.FirstMap);
+        for (int slot = 0; slot < 4; slot++)
+            demo.Lobby.Join(-1, slot % 2);
+        Match.StartLocal(demo.CreateOptions(Options.MapOrder), demo.Seats);
         ShowMatch();
     }
 
@@ -437,11 +437,14 @@ public class FrogGame : Game
         display.Apply();
     }
 
+    internal void PublishMatchSettings() =>
+        Online.Lobby?.SetMatchSettings(
+            System.Text.Json.JsonSerializer.Serialize(Setup.CreateOptions(Options.MapOrder, Lobby.Roster))
+        );
+
     internal void SaveSettings()
     {
-        Online.Lobby?.SetMatchSettings(
-            System.Text.Json.JsonSerializer.Serialize(Setup.CreateOptions(Options.MapOrder))
-        );
+        PublishMatchSettings();
         ScheduleSettingsSave();
         settingsSave.Flush();
     }
@@ -466,7 +469,7 @@ public class FrogGame : Game
     {
         DrawScene();
         Renderer.BeginUi();
-        menuRenderer.Draw();
+        MenuRenderer.Draw();
         timing.RecordFrame(gameTime.ElapsedGameTime.TotalSeconds);
         var diagnosticScene =
             Menus.ShowingLobby ? Lobby.World
@@ -501,11 +504,11 @@ public class FrogGame : Game
         else if (Match.World != null && (Menus.ShowingMatch || Menus.ShowingMenuBackground))
         {
             var world = Match.World;
-            if (world.Phase == MatchPhase.RoundScores)
+            if (world.Match.Phase == MatchPhase.RoundScores)
             {
                 Renderer.DrawRoundScores(
                     world,
-                    (world.Rules.ScoreScreenTicks - world.PhaseTicks) / (float)World.TickRate
+                    (world.Rules.ScoreScreenTicks - world.Match.PhaseTicks) / (float)World.TickRate
                 );
             }
             else

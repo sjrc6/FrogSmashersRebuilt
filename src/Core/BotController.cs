@@ -28,7 +28,7 @@ public static class BotController
             if (
                 other == player
                 || !other.Alive
-                || world.Rules.TeamMode && other.Team == player.Team
+                || world.Rules.UsesTeams && other.Team == player.Team
                 || targetSlot.HasValue && other.Slot != targetSlot.Value
             )
             {

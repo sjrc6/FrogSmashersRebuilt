@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using FrogSmashers.Core;
 using FrogSmashers.Network;
 using static FrogSmashers.Tests.TestAssert;
 using static FrogSmashers.Tests.TestFixtures;
@@ -45,7 +46,13 @@ internal static class Program
                 var replay = MakeWorld(8);
                 for (int tick = 0; tick < 2400; tick++)
                 {
-                    replay.Tick(Enumerable.Range(0, 8).Select(s => Input(tick, s)).ToArray());
+                    replay.Advance(
+                        Enumerable
+                            .Range(0, 8)
+                            .Select(s => Input(tick, s))
+                            .Select(frame => new MatchInput(frame))
+                            .ToArray()
+                    );
                 }
 
                 Console.WriteLine($"FROG_REPLAY_V1 ticks=2400 players=8 hash={replay.HashState():x16}");
@@ -87,6 +94,7 @@ internal static class Program
 
             var timer = Stopwatch.StartNew();
             CompatibilityTests.Run();
+            MatchArchitectureTests.Run();
             SnapshotCoverageTests.Run();
             InterpolationSnapshotTests.Run();
             ReplayTests.ReplayAndSnapshots();

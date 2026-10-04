@@ -58,12 +58,12 @@ public sealed partial class Renderer
 
     private void UpdateConfetti(World world, float dt)
     {
-        float finishAge = (world.Rules.RoundFinishTicks - world.PhaseTicks) / (float)World.TickRate;
+        float finishAge = (world.Rules.RoundFinishTicks - world.Match.PhaseTicks) / (float)World.TickRate;
         if (
-            world.Phase != MatchPhase.RoundFinished
+            world.Match.Phase != MatchPhase.RoundFinished
             || finishAge < 1.5f
-            || world.Winner < 0
-            || !world.Players[world.Winner].Alive
+            || world.Match.Winner < 0
+            || !world.Players[world.Match.Winner].Alive
         )
         {
             return;

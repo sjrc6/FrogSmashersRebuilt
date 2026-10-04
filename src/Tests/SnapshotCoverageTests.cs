@@ -24,7 +24,7 @@ internal static class SnapshotCoverageTests
         for (int sample = 1; sample <= 2; sample++)
         {
             var map = TestFixtures.Map();
-            var rules = new GameRules { PlayerCount = 8, Teams = Enumerable.Range(0, 8).ToArray() };
+            var rules = new GameRules(playerCount: 8, teams: [.. Enumerable.Range(0, 8).ToArray()]);
             var source = new World([map, map], rules, 19, null);
             var target = new World([map, map], rules, 71, null);
             foreach (var player in source.Players)
@@ -44,17 +44,13 @@ internal static class SnapshotCoverageTests
                 if (
                     WorldConfiguration.Contains(field.Name)
                     || field.FieldType == typeof(PlayerState[])
+                    || field.FieldType == typeof(MatchState)
                     || field.FieldType == typeof(FlyState)
                 )
                     continue;
-                object value = field.Name switch
-                {
-                    "<CurrentMapIndex>k__BackingField" => 1,
-                    "<Winner>k__BackingField" => 3,
-                    _ => Sample(field.FieldType, sample),
-                };
-                field.SetValue(source, value);
+                field.SetValue(source, Sample(field.FieldType, sample));
             }
+            PopulateMatch(source.Match, rules, sample);
             target.Restore(source.Capture());
             CompareWorld(source, target);
             byte[] isolated = source.Capture();
@@ -100,7 +96,7 @@ internal static class SnapshotCoverageTests
 
     private static void LobbyState()
     {
-        var rules = new GameRules { PlayerCount = 8, Lobby = true };
+        var rules = new GameRules(playerCount: 8, lobby: true);
         var roster = new LobbyRoster();
         roster.SetPlayers(0, [new(0, Color: 3, Spawned: true), new(1, Color: 5)]);
         var source = new LobbySimulation(new World(TestFixtures.Map(), rules, 1), roster, 123);
@@ -139,6 +135,32 @@ internal static class SnapshotCoverageTests
         CompareWorld(source.World, target.World);
     }
 
+    private static void PopulateMatch(MatchState match, GameRules rules, int sample)
+    {
+        foreach (var player in match.Players)
+            Populate(player, sample);
+        foreach (var field in typeof(MatchState).GetFields(Fields))
+        {
+            if (field.FieldType == typeof(PlayerProgress[]))
+                continue;
+            if (field.FieldType == typeof(int[]))
+            {
+                for (int team = 0; team < 8; team++)
+                    match.TeamSelections[team] = Array.FindIndex(rules.Teams.ToArray(), value => value == team);
+                continue;
+            }
+            field.SetValue(
+                match,
+                field.Name switch
+                {
+                    nameof(MatchState.CurrentMapIndex) => 1,
+                    nameof(MatchState.Winner) => 3,
+                    _ => Sample(field.FieldType, sample),
+                }
+            );
+        }
+    }
+
     private static void Populate(object value, int sample)
     {
         foreach (var field in value.GetType().GetFields(Fields))
@@ -175,6 +197,27 @@ internal static class SnapshotCoverageTests
             if (field.FieldType == typeof(PlayerState[]))
                 for (int index = 0; index < expected.Players.Length; index++)
                     CompareFields(expected.Players[index], actual.Players[index]);
+            else if (field.FieldType == typeof(MatchState))
+            {
+                foreach (var matchField in typeof(MatchState).GetFields(Fields))
+                {
+                    if (matchField.FieldType == typeof(PlayerProgress[]))
+                        for (int index = 0; index < expected.Match.Players.Length; index++)
+                            CompareFields(expected.Match.Players[index], actual.Match.Players[index]);
+                    else if (matchField.FieldType == typeof(int[]))
+                        Check(
+                            ((int[])matchField.GetValue(expected.Match)!).SequenceEqual(
+                                (int[])matchField.GetValue(actual.Match)!
+                            ),
+                            $"Match snapshot omitted {matchField.Name}"
+                        );
+                    else
+                        Check(
+                            Equals(matchField.GetValue(expected.Match), matchField.GetValue(actual.Match)),
+                            $"Match snapshot omitted {matchField.Name}"
+                        );
+                }
+            }
             else if (field.FieldType == typeof(FlyState))
                 CompareFields(expected.Fly, actual.Fly);
             else

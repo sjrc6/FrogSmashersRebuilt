@@ -82,7 +82,7 @@ internal static partial class LobbyTests
             "Independent queued edits failed"
         );
         Check(host.Lobby.EditSlot(5, SlotType.Closed), "Policy change during CPU command failed");
-        Check(!host.Lobby.StartMatch("{}"), "Match started with unapplied slot edits");
+        Check(!host.Lobby.StartMatch(_ => "{}"), "Match started with unapplied slot edits");
         rig.WaitFor(
             () =>
                 rig.Ready

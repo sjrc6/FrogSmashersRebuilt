@@ -6,6 +6,7 @@ import json
 import os
 import socket
 import subprocess
+import time
 from PIL import Image, ImageChops
 
 root = Path(__file__).resolve().parents[1]
@@ -44,6 +45,50 @@ def run(name, options, sound=False, expect_error=False):
     assert (value["Error"] is not None) == expect_error, value
     print(name, value, flush=True)
     return value
+
+
+def menu_center(value, identity, source="MenuRows"):
+    bounds = next(row for row in value[source] if row["Id"] == identity)
+    assert bounds["Width"] > 0 and bounds["Height"] > 0, bounds
+    return bounds["X"] + bounds["Width"] // 2, bounds["Y"] + bounds["Height"] // 2
+
+
+def start_held(name, options):
+    (out / (name + ".json")).unlink(missing_ok=True)
+    return name, subprocess.Popen(command(name, options + ["--hold-result"]), cwd=root, env=env,
+                                  text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+
+def held_results(processes):
+    values = {}
+    deadline = time.monotonic() + 60
+    try:
+        while len(values) < len(processes):
+            assert time.monotonic() < deadline, f"Timed out waiting for {set(name for name, _ in processes) - values.keys()}"
+            for name, process in processes:
+                if name in values:
+                    continue
+                path = out / (name + ".json")
+                if path.exists():
+                    try:
+                        values[name] = json.loads(path.read_text())
+                    except json.JSONDecodeError:
+                        continue
+                elif process.poll() is not None:
+                    raise RuntimeError(f"{name} exited before capturing its result")
+            time.sleep(.02)
+        return [values[name] for name, _ in processes]
+    finally:
+        for _, process in processes:
+            if process.poll() is None:
+                process.terminate()
+        for name, process in processes:
+            try:
+                log, _ = process.communicate(timeout=10)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                log, _ = process.communicate()
+            (out / (name + ".log")).write_text(log)
 
 
 def verify_connections_and_repeat():
@@ -108,8 +153,12 @@ def verify_render_cadence():
 def verify_paused_pixels(first, second):
     with Image.open(out / first) as a, Image.open(out / second) as b:
         difference = ImageChops.difference(a.convert("RGB"), b.convert("RGB"))
-        for left, right in ((440, 472), (808, 840)):
-            difference.paste((0, 0, 0), (left, 310, right, 336))
+        state = json.loads((out / Path(first).with_suffix(".json")).read_text())
+        panel = state["MenuPanel"]
+        row = state["MenuRows"][state["Selected"]]
+        for left, right in ((panel["X"], panel["X"] + 32),
+                            (panel["X"] + panel["Width"] - 32, panel["X"] + panel["Width"])):
+            difference.paste((0, 0, 0), (left, row["Y"], right, row["Y"] + row["Height"]))
         assert difference.getbbox() is None, "Presentation changes outside the animated pause arrows"
 
 
@@ -328,7 +377,7 @@ def verify_lobby_menus():
     assert personal["Page"] == "Settings" and abs(personal["Volume"] - .70) < .001, personal
     assert not any("TEAMS" in row or "WIN SCORE" in row or "MACHINES" in row for row in personal["MenuItems"]), personal
     # Mouse actions still work, and returning from personal settings preserves the party.
-    returned = capture("return-to-lobby", settings + [click(37, 640, 449), key(39, "Escape")], 50)
+    returned = capture("return-to-lobby", settings + [click(37, *menu_center(personal, "back")), key(39, "Escape")], 50)
     assert returned["Page"] == "Seats" and returned["LocalDevices"] == [0, 1], returned
 
     cpu = [key(1, "Enter"), key(3, "U"), key(5, "U"), key(7, "Escape")]
@@ -425,7 +474,7 @@ def verify_lobby_menus():
     rows += [pad(17, 1, "DPadDown")]
     shared_pad = capture("lobby-menu-shared-controller", rows, 19)
     assert shared_pad["Selected"] == 2 and shared_pad["HintDevice"] == 3, shared_pad
-    rows += [click(21, 640, 365)]
+    rows += [click(21, *menu_center(shared_pad, "page-Settings"))]
     shared_mouse = capture("lobby-menu-shared-mouse", rows, 23)
     assert shared_mouse["Page"] == "Settings" and shared_mouse["HintDevice"] == 0, shared_mouse
     rows += [pad(25, 0, "B"), pad(27, 1, "DPadUp"), pad(29, 1, "DPadUp"), pad(31, 1, "DPadUp"), pad(33, 1, "A")]
@@ -453,10 +502,16 @@ def verify_player_menu():
     assert highlighted["Page"] == "ViewPlayers" and highlighted["PlayerActions"]["Accept"] == "BACK OUT", highlighted
     removed = capture("players-direct-backout", players + [key(25, "Enter")], 28)
     assert removed["Page"] == "ViewPlayers" and removed["LocalDevices"] == [1], removed
-    mouse = players + [click(25, 640, 310)]
+    mouse = players + [click(25, *menu_center(highlighted, highlighted["MenuRows"][0]["Id"]))]
     selected = capture("players-click-selects", mouse, 28)
     assert selected["Page"] == "ViewPlayers" and selected["LocalDevices"] == [0, 1], selected
-    mouse += [click(29, 640, 419), click(33, 640, 405), click(37, 640, 423)]
+    mouse += [click(29, *menu_center(selected, "accept", "MenuButtons"))]
+    one_left = capture("players-click-first-backout", mouse, 32)
+    assert one_left["LocalDevices"] == [1], one_left
+    mouse += [click(33, *menu_center(one_left, "accept", "MenuButtons"))]
+    none_left = capture("players-click-second-backout", mouse, 36)
+    assert none_left["LocalDevices"] == [], none_left
+    mouse += [click(37, *menu_center(none_left, "back", "MenuButtons"))]
     empty = capture("players-click-actions", mouse, 40)
     assert empty["Page"] == "LobbyMenu" and empty["LocalDevices"] == [] and "RESUME" not in empty["MenuItems"], empty
     cpu = [key(1, "Enter"), key(3, "Escape"), key(5, "Down"), key(7, "Down"), key(9, "Enter"),
@@ -468,11 +523,69 @@ def verify_player_menu():
     paused = party + [key(11, "Escape"), key(13, "Enter"), key(17, "Escape")]
     pause = capture("pause-without-resume", paused, 20)
     assert pause["Page"] == "Playing" and pause["Paused"] and "RESUME" not in pause["MenuItems"], pause
-    resumed = capture("pause-click-back", paused + [click(21, 720, 448)], 24)
+    resumed = capture("pause-click-back", paused + [click(21, *menu_center(pause, "back", "MenuButtons"))], 24)
     assert resumed["Page"] == "Playing" and not resumed["Paused"], resumed
     readonly = capture("players-match-readonly", paused + [key(21, "Down"), key(23, "Enter"), key(25, "Enter")], 28)
     assert readonly["Page"] == "ViewPlayers" and readonly["PlayerActions"]["DisabledReason"] == "LOBBY ONLY" and readonly["LocalDevices"] == [0, 1], readonly
     print("PASS: direct player actions, clickable footer, CPU kick, read-only match list and pause without Resume.")
+
+
+def verify_match_configuration():
+    def key(frame, name):
+        return dict(From=frame, To=frame + 1, Keys=[name])
+    rows = [key(frame, name) for frame, name in
+            [(1, "Enter"), (3, "U"), (5, "U"), (7, "OemPeriod"), (9, "OemPeriod"),
+             (11, "Escape"), (13, "Down"), (15, "Enter"), (17, "Right"), (19, "Right"),
+             (21, "Down"), (23, "Right")]]
+    script = out / "match-configuration-input.json"
+    script.write_text(json.dumps(rows))
+    value = run("match-configuration", ["--no-intro", "--input-script", str(script), "--frames", "25",
+                                        "--capture", str(out / "match-configuration.png")])
+    assert value["Page"] == "MatchSettings" and "FORMAT: CREWS" in value["MenuItems"], value
+    assert "SCORING: STOCKS" in value["MenuItems"], value
+    assert next(row for row in value["MenuRows"] if row["Id"] == "scoring")["DisabledReason"] == "CREWS REQUIRES STOCKS", value
+    script.write_text(json.dumps(rows + [key(27, "Escape"), key(29, "Up"), key(31, "Enter")]))
+    blocked = run("unfinished-mode-start", ["--no-intro", "--input-script", str(script), "--frames", "34"])
+    assert blocked["Page"] == "LobbyMenu" and blocked["TickNumber"] is None, blocked
+    assert next(row for row in blocked["MenuRows"] if row["Id"] == "start-match")["DisabledReason"] == "STOCKS NOT AVAILABLE", blocked
+    print("PASS: match format and scoring controls enforce Crews constraints and reject unfinished mode starts.")
+
+
+def verify_guest_match_settings():
+    def key(frame, name):
+        return dict(From=frame, To=frame + 1, Keys=[name])
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as reserve:
+        reserve.bind(("127.0.0.1", 0))
+        port = reserve.getsockname()[1]
+    host_rows = [key(160, "Escape"), key(162, "Down"), key(164, "Enter"), key(166, "Right"),
+                 key(168, "Down"), key(170, "Down"), key(172, "Right")]
+    guest_rows = [key(210, "Escape"), key(212, "Enter"), key(214, "Right"),
+                  key(216, "Down"), key(218, "Down"), key(220, "Right")]
+    processes = []
+    try:
+        for name, rows, target, frames in [
+            ("settings-host", host_rows, ["--host", "udp"], 340),
+            ("settings-guest", guest_rows, ["--join", "udp:127.0.0.1"], 390),
+        ]:
+            path = out / (name + "-input.json")
+            path.write_text(json.dumps(rows))
+            args = target + ["--local-players", "1", "--port", str(port), "--frames", str(frames),
+                             "--input-script", str(path), "--capture", str(out / (name + ".png"))]
+            processes.append(start_held(name, args))
+        values = held_results(processes)
+        for value in values:
+            assert value["Error"] is None and value["Page"] == "MatchSettings", value
+        host, guest = values
+        assert host["MenuItems"] == guest["MenuItems"] and "FORMAT: TEAMS" in guest["MenuItems"], values
+        assert "ROUND TARGET: 1" in guest["MenuItems"], values
+        assert all(row["DisabledReason"] == "HOST ONLY" for row in guest["MenuRows"] if row["Id"] != "back"), guest
+        assert guest["MatchSettings"]["Format"] == 0 and guest["MatchSettings"]["WinScore"] == 0, guest
+        print("PASS: guests see live host settings, cannot edit them, and retain their own local draft.")
+    finally:
+        for _, process in processes:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
 
 
 def verify_player_network_actions():
@@ -483,7 +596,7 @@ def verify_player_network_actions():
             reserve.bind(("127.0.0.1", 0))
             port = reserve.getsockname()[1]
         host_rows = [key(160, "Escape")] + [key(t, "Down") for t in (162, 164, 166, 168)] + [key(170, "Enter"), key(172, "Down")]
-        guest_rows = [key(160, "Escape"), key(162, "Down"), key(164, "Enter"), key(166, "Down"), key(180, "Enter"), key(220, "Enter")]
+        guest_rows = [key(158, "Escape"), key(160, "Down"), key(162, "Down"), key(164, "Enter"), key(166, "Down"), key(180, "Enter"), key(220, "Enter")]
         if unspectate:
             guest_rows += [key(260, "Enter")]
         processes = []
@@ -495,16 +608,11 @@ def verify_player_network_actions():
             path = out / (name + "-input.json")
             path.write_text(json.dumps(rows))
             args = options + ["--port", str(port), "--frames", str(frames), "--input-script", str(path), "--capture", str(out / (name + ".png"))]
-            processes.append((name, subprocess.Popen(command(name, args), cwd=root, env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)))
+            processes.append(start_held(name, args))
         try:
-            values = []
-            for name, process in processes:
-                log, _ = process.communicate(timeout=60)
-                (out / (name + ".log")).write_text(log)
-                assert process.returncode == 0, (name, log)
-                value = json.loads((out / (name + ".json")).read_text())
+            values = held_results(processes)
+            for value in values:
                 assert value["Error"] is None and value["Page"] == "ViewPlayers", value
-                values.append(value)
             host, guest = values
             expected = "SPECTATE" if unspectate else "UNSPECTATE"
             assert guest["PlayerActions"] == dict(Accept=expected, Remove=None, DisabledReason=None), guest
@@ -551,8 +659,8 @@ def verify_online_creation():
         return dict(From=frame, To=frame + 1, Keys=[name])
     actions = [(1, "Enter"), (3, "Escape"), (5, "Down"), (7, "Down"), (11, "Enter"),
                (13, "Enter"), (15, "Escape"), (17, "Down"), (19, "Down"), (21, "Down"), (23, "Enter"),
-               (25, "Enter"), (27, "Left"), (29, "Down"), (31, "Left"), (33, "Left"), (35, "Left"),
-               (37, "Left"), (39, "Down"), (41, "Enter")]
+               (25, "Enter"), (27, "Left"), (29, "Left"), (31, "Left"), (33, "Left"), (35, "Down"),
+               (37, "Right"), (39, "Down"), (41, "Enter")]
     rows = [key(frame, name) for frame, name in actions]
     script = out / "open-local-cpu-input.json"
     script.write_text(json.dumps(rows))
@@ -585,12 +693,9 @@ def verify_lobby_network():
         ('forming-host',base+['--host','udp','--slots','8','--frames','260','--input-script',str(script)]),
         ('forming-peer',base+['--join','udp:127.0.0.1','--frames','290'])]:
         args+=['--capture',str(out/(name+'.png'))]
-        processes.append((name,subprocess.Popen(command(name,args),cwd=root,env=env,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)))
+        processes.append(start_held(name, args))
     try:
-        for name,p in processes:
-            log,_=p.communicate(timeout=60);(out/(name+'.log')).write_text(log)
-            assert p.returncode==0,(name,log)
-        values=[json.loads((out/(n+'.json')).read_text()) for n,_ in processes]
+        values = held_results(processes)
         for value in values:
             assert value['Page']=='Seats' and value['Error'] is None,value
             assert sum(s['Open'] for s in value['LobbySlots'])==6,value
@@ -646,7 +751,7 @@ def verify_spectator_direct_join():
         try:
             value = run(name, ["--join", "udp:127.0.0.1", "--port", str(port), "--spectate",
                                "--input-script", str(script), "--frames", "181" if pending else "350",
-                               "--capture", str(out / (name + ".png"))])
+                               "--capture", str(out / (name + ".png"))] + ([] if pending else ["--wait-for-lobby"]))
             assert value["Page"] == "Seats", value
             if pending:
                 assert value["LobbyProgress"] is not None and "JOINING..." in value["LobbyRoomStatus"], value
@@ -765,9 +870,11 @@ def main():
     verify_replay_exit(record)
     verify_lobby_menus()
     verify_player_menu()
+    verify_match_configuration()
     if not args.quick:
         verify_arenas()
     if args.network:
+        verify_guest_match_settings()
         verify_player_network_actions()
         verify_online_creation()
         verify_lobby_network()

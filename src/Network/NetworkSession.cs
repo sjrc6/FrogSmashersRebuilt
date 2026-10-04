@@ -273,7 +273,7 @@ public sealed class NetworkSession : IRollbackSession
             WaitReason = "PAUSED FOR LOBBY CHANGE";
             playing?.ConfirmState(SessionFrame(stopAtTick.Value));
         }
-        if (World.Phase == MatchPhase.MatchFinished)
+        if (World.Match.Phase == MatchPhase.MatchFinished)
             playing?.ConfirmState(SessionFrame(World.TickNumber));
     }
 

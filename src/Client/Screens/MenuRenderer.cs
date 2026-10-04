@@ -14,6 +14,27 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
         .FrameSeconds;
     private const float HintGap = 4;
 
+    public MenuLayout.Measurement Measure(IReadOnlyList<MenuEntry> entries) =>
+        MenuLayout.Measure(
+            menu.Screen,
+            entries,
+            game.Assets.Font,
+            menu.ShowStickInputs,
+            menu.Selected,
+            accessorySize: EntryGlyphSize
+        );
+
+    private Vector2 EntryGlyphSize(MenuEntry entry)
+    {
+        ButtonGlyph[] glyphs = entry.Key is { } key
+            ? [ButtonGlyph.Key(key)]
+            : ButtonGlyph.PadBinding(entry.Button!.Value);
+        return new Vector2(
+            glyphs.Sum(GlyphWidth) + HintGap * (glyphs.Length - 1),
+            glyphs.Max(glyph => game.Renderer.ImageSize(GlyphSource(glyph), GlyphSource(glyph).Width * 2).Y)
+        );
+    }
+
     public void Draw()
     {
         if (menu.Screen is GameScreen.Intro or GameScreen.Title)
@@ -41,7 +62,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             return;
         }
         var entries = menu.Entries();
-        var layout = MenuLayout.Measure(menu.Screen, entries, game.Assets.Font, menu.ShowStickInputs);
+        var layout = Measure(entries);
         var panel = layout.Panel;
         game.Renderer.MenuPanel(panel);
         if (menu.Screen == GameScreen.Main)
@@ -69,17 +90,15 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
         for (int i = 0; i < entries.Count; i++)
         {
             var rect = layout.Rows[i].Bounds;
+            if (rect.IsEmpty)
+                continue;
             var entry = entries[i];
-            if (entry.SeparatorBefore)
+            if (entry.SeparatorBefore && i != layout.PageStarts[layout.Page])
                 Separator(panel, MenuLayout.SectionLine(rect));
             if (entry.IsTitle)
                 continue;
             bool selected = i == menu.Selected;
-            var color = entry.Color ?? Color.White;
-            if (entry.DisabledReason != null)
-                color = new Color(135, 145, 136);
-            else if (selected)
-                color = entry.Color.HasValue ? Color.Lerp(color, Color.White, .55f) : Selected;
+            var color = entry.DisplayColor(selected);
             DrawEntry(entry, layout.Rows[i], panel, color);
             if (selected)
                 DrawArrows(panel, rect.Center.Y);
@@ -87,6 +106,19 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
         if (menu.ShowStickInputs)
             DrawStickInputs(panel);
         DrawFooter(panel);
+        if (layout.Paginated)
+        {
+            var previous = MenuLayout.PageButton(layout, -1);
+            var next = MenuLayout.PageButton(layout, 1);
+            game.Renderer.CenteredText(
+                $"< {layout.Page + 1}/{layout.PageStarts.Length}",
+                previous.Center.X,
+                previous.Center.Y,
+                Color.White,
+                center: true
+            );
+            game.Renderer.CenteredText("NEXT >", next.Center.X, next.Center.Y, Color.White, center: true);
+        }
         if (
             menu.Screen == GameScreen.Main
             && game.FirewallCheck.IsCompletedSuccessfully
@@ -134,7 +166,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
                 ? [ButtonGlyph.Key(key)]
                 : ButtonGlyph.PadBinding(entry.Button!.Value);
             float glyphWidth = glyphs.Sum(GlyphWidth) + HintGap * (glyphs.Length - 1);
-            string label = font.Wrap(entry.Label, width - glyphWidth - 16, 2);
+            string label = text.Label;
             game.Renderer.CenteredText(label, left, row.Center.Y, color);
             float x = right - glyphWidth;
             foreach (var glyph in glyphs)
@@ -322,13 +354,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
         var actions = menu.PlayerActions();
         bool paired = actions.Accept != null && actions.Remove != null;
         void Draw(MenuEntry entry, ButtonGlyph glyph, Rectangle rect) =>
-            CenteredHint(
-                glyph,
-                entry.Label,
-                rect.Center.X,
-                rect.Center.Y,
-                entry.DisabledReason == null ? Color.White : new Color(135, 145, 136)
-            );
+            CenteredHint(glyph, entry.Label, rect.Center.X, rect.Center.Y, entry.DisplayColor(false));
         if (actions.Accept != null)
             Draw(actions.Accept, ButtonGlyph.Accept(menu.HintDevice), MenuLayout.PlayerAction(panel, false, paired));
         if (actions.Remove != null)
@@ -448,7 +474,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
                 player.Cpu ? "CPU"
                 : player.Peer == game.Lobby.LocalPeer ? new LocalSeat(player.Id).Label
                 : $"PLAYER {room + 1}";
-            if (game.Lobby.TeamMode)
+            if (game.Lobby.UsesTeams)
                 label += $" / TEAM {player.Team + 1}";
             game.Renderer.CenteredText(label, rect.Center.X, rect.Top + 24, Color.Black, center: true);
             if (player.Cpu || menu.Screen != GameScreen.Seats || player.Peer != game.Lobby.LocalPeer)
@@ -461,7 +487,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
                         : ButtonGlyph.Key(game.Settings.Keyboard[player.Id].Tongue);
                 CenteredHint(
                     colorButton,
-                    game.Lobby.TeamMode ? $"COLOR / TEAM {player.Team + 1}" : "COLOR",
+                    game.Lobby.UsesTeams ? $"COLOR / TEAM {player.Team + 1}" : "COLOR",
                     rect.Center.X,
                     rect.Bottom - 72,
                     Color.Black
@@ -484,7 +510,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             else if (game.Lobby.CanChooseAgain(room))
                 CenteredHint(
                     LobbyJoinGlyph(player.Id),
-                    game.Lobby.TeamMode ? "COLOR / TEAM" : "CHANGE COLOR",
+                    game.Lobby.UsesTeams ? "COLOR / TEAM" : "CHANGE COLOR",
                     rect.Center.X,
                     rect.Bottom - 46,
                     Color.Black

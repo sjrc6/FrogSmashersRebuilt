@@ -235,14 +235,21 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
 
     public void SetMatchSettings(string settings)
     {
-        if (!IsHost || Starting || settings.Length > 4096 || settings == MatchSettingsJson)
+        if (
+            !IsHost
+            || Starting
+            || matchRequested
+            || checkpoint != null
+            || settings.Length > 4096
+            || settings == MatchSettingsJson
+        )
             return;
         MatchSettingsJson = settings;
         revision++;
         lastSend = -1000;
     }
 
-    public bool StartMatch(string settings)
+    public bool StartMatch(Func<LobbyRoster, string> createSettings)
     {
         RefreshSelections();
         if (
@@ -254,9 +261,16 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
             || rosterChanged
             || !SimulationReady
             || Roster.Count < 2
-            || settings.Length > 4096
         )
             return false;
+        if (
+            !Roster.Slots.Select(slot => slot.Player).SequenceEqual(simulation!.Membership.Rooms)
+            || !Roster.Spectators.SequenceEqual(simulation.Membership.Spectators)
+        )
+        {
+            Notice = "LOBBY UPDATING";
+            return false;
+        }
         if (Roster.Slots.Any(slot => slot.Player is { Spawned: false }))
         {
             Notice = "SPAWN ALL PLAYERS";
@@ -267,9 +281,13 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
             Notice = "JOIN OR SPECTATE FIRST";
             return false;
         }
+        string settings = createSettings(Roster);
+        if (settings.Length > 4096)
+            return false;
         MatchSettingsJson = settings;
         matchRequested = true;
         Changed();
+        BeginCheckpoint();
         return true;
     }
 

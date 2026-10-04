@@ -103,7 +103,7 @@ internal sealed partial class PresentationChecks
         True(clock.Frame == 1, "SimpleAnim advances once per Update");
         True(EffectAnimation.Powered(true, false, true), "fly power remains after stale Burping phase");
         True(!EffectAnimation.Powered(true, true, true), "fly power hidden during burp animation");
-        var world = new World(assets.Data, new GameRules { PlayerCount = 2 });
+        var world = new World(assets.Data, new GameRules(playerCount: 2));
         var p = world.Players[0];
         p.Alive = true;
         p.Mode = CharacterMode.Normal;
