@@ -94,7 +94,7 @@ public class FrogGame : Game
         Audio = new Audio(Assets, !Options.NoAudio) { Volume = Settings.Volume, TitleVolume = Settings.TitleVolume };
         Cinematics = new CinematicPlayer(GraphicsDevice, Assets, Audio) { ShakeEnabled = Settings.ScreenShake };
         Match = new MatchController(Assets.Data, Renderer, Audio, Controls, Options.Record);
-        Online = new OnlineController(Options, Assets.Data.ContentHash);
+        Online = new OnlineController(Options, Assets.Data.ComputeGameplayHash());
         Lobby = new LobbyController(this);
         Menus = new MenuController(this);
         menuRenderer = new MenuRenderer(this, Menus);
@@ -272,7 +272,7 @@ public class FrogGame : Game
         ShowMatch();
     }
 
-    internal void BeginLobby(string target, bool host, bool invited = true)
+    internal void BeginLobby(string target, bool host)
     {
         if (
             !host
@@ -307,7 +307,7 @@ public class FrogGame : Game
                 Setup.CreateOptions(Options.MapOrder),
                 Menus.AllowLan,
                 Menus.HintDevice,
-                invited,
+                Menus.Creation.Privacy,
                 Settings.SteamTransport
             );
             Lobby.Open();

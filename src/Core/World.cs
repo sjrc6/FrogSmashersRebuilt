@@ -4,8 +4,12 @@ namespace FrogSmashers.Core;
 
 public sealed partial class World
 {
-    public const int TickRate = 120;
+    public const int TickRate = 100;
     public static readonly Fixed TickDuration = (Fixed)1 / TickRate;
+
+    public static int TicksFromSeconds(decimal seconds) =>
+        checked((int)decimal.Round(seconds * TickRate, MidpointRounding.AwayFromZero));
+
     private readonly IReadOnlyList<MapData> maps;
     private readonly CollisionMap[] collisionMaps;
     private readonly CharacterTuning tuning;

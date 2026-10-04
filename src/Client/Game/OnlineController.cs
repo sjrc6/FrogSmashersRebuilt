@@ -11,10 +11,10 @@ internal sealed class OnlineController : IDisposable
     public IGameLobby? Lobby { get; private set; }
     public ILobbyBrowser? Browser { get; private set; }
 
-    public OnlineController(LaunchOptions options, string contentHash)
+    public OnlineController(LaunchOptions options, string gameplayHash)
     {
         this.options = options;
-        fingerprint = NetworkBuild.ContentFingerprint(contentHash);
+        fingerprint = NetworkBuild.Identity(gameplayHash);
     }
 
     public void PrepareSteam()
@@ -56,7 +56,7 @@ internal sealed class OnlineController : IDisposable
         MatchOptions match,
         bool allowLan,
         int joinDevice,
-        bool invited = true,
+        LobbyPrivacy privacy = LobbyPrivacy.Private,
         SteamTransport steamTransport = SteamTransport.Sockets
     )
     {
@@ -90,12 +90,13 @@ internal sealed class OnlineController : IDisposable
                     fingerprint,
                     settings,
                     initialRooms: localRoster.Slots,
-                    transport: steamTransport
+                    transport: steamTransport,
+                    privacy: privacy
                 ),
                 _ => throw new ArgumentException("Host transport must be udp or steam"),
             };
         else if (target.StartsWith("steam:", StringComparison.Ordinal))
-            Lobby = SteamLobby.Join(ulong.Parse(target[6..]), players, fingerprint, invited: invited);
+            Lobby = SteamLobby.Join(ulong.Parse(target[6..]), players, fingerprint);
         else if (target.StartsWith("udp:", StringComparison.Ordinal))
             Lobby = UdpLobby.Join(target[4..], options.Port, players, fingerprint);
         else

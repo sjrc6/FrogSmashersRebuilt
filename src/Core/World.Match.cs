@@ -20,7 +20,7 @@ public sealed partial class World
                 ColorIndex = prior.ColorIndex,
                 RoundWins = prior.RoundWins,
                 Eliminated = prior.Eliminated,
-                SpawnTicks = 60 + 24 * i,
+                SpawnTicks = TicksFromSeconds(.5m + .2m * i),
             };
         }
     }

@@ -5,6 +5,14 @@ namespace FrogSmashers.Core;
 
 public static class BotController
 {
+    private static readonly int ActionCycle = World.TicksFromSeconds(1.75m);
+    private static readonly int PhaseOffset = World.TicksFromSeconds(.24m);
+    private static readonly int JumpCycle = World.TicksFromSeconds(.83m);
+    private static readonly int JumpHold = World.TicksFromSeconds(.54m);
+    private static readonly int AttackHold = World.TicksFromSeconds(.92m);
+    private static readonly int TongueStart = World.TicksFromSeconds(1.34m);
+    private static readonly int TongueEnd = World.TicksFromSeconds(1.36m);
+
     public static InputFrame GetInput(World world, int slot, int? targetSlot = null)
     {
         var player = world.Players[slot];
@@ -59,7 +67,7 @@ public static class BotController
                 : (sbyte)0;
         }
 
-        long phase = (world.TickNumber + slot * 29) % 210;
+        long phase = (world.TickNumber + slot * PhaseOffset) % ActionCycle;
         bool isGapAhead = true;
         var ahead = player.X + x * 3;
         foreach (var box in world.Map.Collision)
@@ -92,14 +100,14 @@ public static class BotController
             !descending
             && !(dy < -2 && player.VY <= 0 && HasLanding(world.Map, ahead, player.Y - 1))
             && (dy > 2 || isGapAhead || player.WallSliding)
-            && phase % 100 < 65
+            && phase % JumpCycle < JumpHold
         )
         {
             buttons |= InputButtons.Jump;
         }
 
         bool canFight = !descending && HasClearAttack(world.Map, player.Center, target.Center);
-        if (canFight && nearestDistanceSquared < 64 && phase < 110)
+        if (canFight && nearestDistanceSquared < 64 && phase < AttackHold)
         {
             buttons |= InputButtons.Attack;
             if (dy > 3)
@@ -117,7 +125,13 @@ public static class BotController
             }
         }
 
-        if (canFight && nearestDistanceSquared > 50 && nearestDistanceSquared < 250 && phase is > 160 and < 163)
+        if (
+            canFight
+            && nearestDistanceSquared > 50
+            && nearestDistanceSquared < 250
+            && phase >= TongueStart
+            && phase < TongueEnd
+        )
         {
             buttons |= InputButtons.Tongue;
             if (dy > 3)

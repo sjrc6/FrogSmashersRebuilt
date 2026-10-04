@@ -61,7 +61,8 @@ internal static class LanDiscovery
             if (reader == null || reader.ReadUInt32() != Magic || reader.ReadByte() != 1)
                 return false;
             nonce = reader.ReadUInt64();
-            return reader.ReadString() == fingerprint && reader.BaseStream.Position == packet.Length;
+            return NetworkCompatibility.Rejection(fingerprint, reader.ReadString()) == null
+                && reader.BaseStream.Position == packet.Length;
         }
         catch (Exception ex) when (ex is IOException or FormatException or ArgumentException)
         {
@@ -79,7 +80,7 @@ internal static class LanDiscovery
                 || reader.ReadUInt32() != Magic
                 || reader.ReadByte() != 2
                 || reader.ReadUInt64() != nonce
-                || reader.ReadString() != fingerprint
+                || NetworkCompatibility.Rejection(fingerprint, reader.ReadString()) != null
             )
                 return null;
             string id = new Guid(reader.ReadBytes(16)).ToString("N");

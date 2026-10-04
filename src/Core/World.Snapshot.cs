@@ -1,5 +1,4 @@
 using System.Text;
-using static FrogSmashers.Core.Fixed;
 
 namespace FrogSmashers.Core;
 
@@ -167,35 +166,7 @@ public sealed partial class World
         }
 
         tuning.WriteConfiguration(writer);
-        writer.Write(maps.Count);
-        foreach (var map in maps)
-        {
-            writer.Write(map.Id);
-            writer.Write(map.Name);
-            writer.Write(FromDecimal(map.KillBounds.Left).Raw);
-            writer.Write(FromDecimal(map.KillBounds.Right).Raw);
-            writer.Write(FromDecimal(map.KillBounds.Bottom).Raw);
-            writer.Write(FromDecimal(map.KillBounds.Top).Raw);
-            writer.Write(map.Collision.Count);
-            foreach (var box in map.Collision)
-            {
-                writer.Write(FromDecimal(box.X).Raw);
-                writer.Write(FromDecimal(box.Y).Raw);
-                writer.Write(FromDecimal(box.Width).Raw);
-                writer.Write(FromDecimal(box.Height).Raw);
-                writer.Write(box.OneWay);
-            }
-
-            writer.Write(map.Spawns.Count);
-            foreach (var spawn in map.Spawns)
-            {
-                writer.Write(FromDecimal(spawn.X).Raw);
-                writer.Write(FromDecimal(spawn.Y).Raw);
-            }
-
-            writer.Write(FromDecimal(map.FlySpawn.X).Raw);
-            writer.Write(FromDecimal(map.FlySpawn.Y).Raw);
-        }
+        GameplayData.WriteMaps(writer, maps);
 
         return Hash(stream.ToArray());
     }

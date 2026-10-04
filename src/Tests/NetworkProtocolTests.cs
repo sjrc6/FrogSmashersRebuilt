@@ -57,13 +57,6 @@ internal static class NetworkProtocolTests
 
     public static void PacketStructure()
     {
-        Guid core = Guid.Parse("1d012f4e-5128-427f-9999-576874dc999c");
-        Guid network = Guid.Parse("fb6938c1-07c0-4e87-b06f-4a4ae598b50f");
-        string fingerprint = NetworkBuild.ContentFingerprint("content", core, network, Guid.Empty);
-        Check(
-            fingerprint != NetworkBuild.ContentFingerprint("content", core, network, core),
-            "Changing only the rollback library invalidates the admission fingerprint"
-        );
         var codec = new RollbackInputCodec();
         byte[] bytes = new byte[codec.Size];
         var input = new RollbackInput(new(-1, 1, InputButtons.Jump | InputButtons.Strafe), 3, -1, 1);

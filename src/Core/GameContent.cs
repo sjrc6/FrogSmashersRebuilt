@@ -29,6 +29,8 @@ public sealed class GameContent
     public float CharacterScaleY { get; set; } = 1;
     public string ContentHash { get; set; } = "";
 
+    public string ComputeGameplayHash() => GameplayData.Hash(this);
+
     public static GameContent Load(string path) =>
         JsonSerializer.Deserialize<GameContent>(
             File.ReadAllText(path),

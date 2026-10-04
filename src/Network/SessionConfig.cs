@@ -22,11 +22,11 @@ public sealed class SessionConfig
     public SessionConfig(
         int[][] peerSlots,
         int localPeer,
-        string contentHash,
+        string gameplayHash,
         World initialWorld,
         ulong generation,
         int maxPrediction = RollbackPreferences.PredictionFrames,
-        int historyFrames = 360,
+        int historyFrames = RollbackPreferences.HistoryFrames,
         int[]? activePeers = null,
         IReadOnlyDictionary<int, RollbackInput[]>? initialInputs = null,
         RollbackPreferences? rollback = null,
@@ -88,8 +88,7 @@ public sealed class SessionConfig
             );
         using var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream, Encoding.UTF8, true);
-        writer.Write("FrogSmashersRebuilt.GGCS.GameplayAndLobby.1");
-        writer.Write(NetworkBuild.ContentFingerprint(contentHash));
+        writer.Write(NetworkBuild.Identity(gameplayHash));
         writer.Write(peerSlots.Length);
         foreach (var peer in PeerSlots)
         {

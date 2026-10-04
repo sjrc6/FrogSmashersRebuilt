@@ -21,14 +21,10 @@ DEVELOPMENT_EXECUTABLES = (
     "FrogSmashers.Client.Automation*",
 )
 PROTOCOL_FIELDS = (
-    "CoreModuleId",
-    "NetworkModuleId",
-    "RollbackModuleId",
-    "CoreSha256",
-    "NetworkSha256",
-    "RollbackSha256",
-    "ContentManifestSha256",
-    "NetworkFingerprint",
+    "Protocol",
+    "CodeHash",
+    "GameplayHash",
+    "NetworkIdentity",
 )
 
 

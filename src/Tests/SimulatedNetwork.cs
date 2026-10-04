@@ -16,6 +16,7 @@ internal sealed class SimulatedNetwork
     public long PacketsSent { get; private set; }
     public long BytesSent { get; private set; }
     public int MaximumPacketBytes { get; private set; }
+    public int ClockRate { get; init; } = FrogSmashers.Core.World.TickRate;
 
     public SimulatedNetwork(
         int peers,
@@ -81,7 +82,7 @@ internal sealed class SimulatedNetwork
     private sealed class EndpointTransport(SimulatedNetwork network, int peer) : IPeerTransport
     {
         public string? Error => null;
-        public long TimeMilliseconds => network.Time * 1000 / 120;
+        public long TimeMilliseconds => network.Time * 1000 / network.ClockRate;
 
         public void Poll() { }
 

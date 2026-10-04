@@ -56,7 +56,7 @@ internal sealed partial class MenuController
                     lobby.Id,
                     new(
                         lobby.Name,
-                        () => game.BeginLobby(lobby.Target, false, invited: false),
+                        () => game.BeginLobby(lobby.Target, false),
                         Value: $"{lobby.Players}/{lobby.Capacity}"
                     )
                 )

@@ -6,9 +6,10 @@ namespace FrogSmashers.Network;
 
 public sealed record RollbackPreferences
 {
-    public const int PredictionFrames = 30;
-    public const int MaximumDelayFrames = 119;
-    public const int MaximumExtraDelayFrames = 119;
+    public const int PredictionFrames = World.TickRate / 4;
+    public const int HistoryFrames = World.TickRate * 3;
+    public const int MaximumDelayFrames = World.TickRate - 1;
+    public const int MaximumExtraDelayFrames = World.TickRate - 1;
     public const int InputCapacityFrames = MaximumDelayFrames + MaximumExtraDelayFrames;
     public int Delay { get; init; } = 2;
     public int Donation { get; init; }

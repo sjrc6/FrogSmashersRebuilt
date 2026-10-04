@@ -18,14 +18,14 @@ internal static class FrogWorldTests
         new()
         {
             FramesPerSecond = World.TickRate,
-            MaxPredictionFrames = 24,
-            HistoryFrames = 96,
+            MaxPredictionFrames = World.TickRate / 5,
+            HistoryFrames = World.TickRate * 4 / 5,
             MaxInputDelay = 4,
         };
 
     private static void DelayedWorldInputsConverge(int players)
     {
-        const int target = 720;
+        const int target = World.TickRate * 6;
         var baseline = CreateWorld(players);
         var expected = new ulong[target];
         var generated = new InputFrame[players];
@@ -86,7 +86,7 @@ internal static class FrogWorldTests
         Check.True(replayed > 0, "World scenario exercises rollback");
         Check.True(stalls > 0, "World scenario reaches prediction limit during outage");
         Console.WriteLine(
-            $"GGCS world: {players} players, {target} ticks at 120 Hz, {replayed} replayed frames, {stalls} waits; all confirmed hashes match."
+            $"GGCS world: {players} players, {target} ticks at {World.TickRate} Hz, {replayed} replayed frames, {stalls} waits; all confirmed hashes match."
         );
     }
 
@@ -139,10 +139,10 @@ internal static class FrogWorldTests
     {
         Measure(128, 0);
         var normal = Measure(1200, 0);
-        var rollback = Measure(48, 24);
+        var rollback = Measure(48, World.TickRate / 5);
         Console.WriteLine(
             $"GGCS world timing (8 players): normal {normal.ElapsedMilliseconds / normal.Samples:F3} ms/tick, "
-                + $"{normal.AllocatedBytes / normal.Samples:F0} B/tick; 24-frame repair {rollback.ElapsedMilliseconds / rollback.Samples:F3} ms/repair, "
+                + $"{normal.AllocatedBytes / normal.Samples:F0} B/tick; 200 ms repair {rollback.ElapsedMilliseconds / rollback.Samples:F3} ms/repair, "
                 + $"{rollback.AllocatedBytes / rollback.Samples:F0} B/repair. Includes World snapshot/hash work; environment-specific measurements."
         );
     }

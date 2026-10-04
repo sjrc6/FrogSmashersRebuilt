@@ -10,14 +10,14 @@ public enum SlotType
     Cpu,
 }
 
-public readonly record struct LobbyAccess(bool Invited = false, bool Friend = false)
+public readonly record struct LobbyAccess(bool Friend = false)
 {
     public bool Allows(SlotType type, int peer) =>
         type switch
         {
             SlotType.Open => true,
             SlotType.Local => peer == 0,
-            SlotType.Private => peer == 0 || Invited,
+            SlotType.Private => true,
             SlotType.Friend => peer == 0 || Friend,
             _ => false,
         };

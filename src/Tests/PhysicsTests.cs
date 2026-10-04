@@ -53,7 +53,7 @@ internal static class PhysicsTests
         Check(momentum.Players[0].VX == 20, "steering with excess momentum applies the original one-sided run cap");
         var footsteps = CreateWorld();
         int footstepCount = 0;
-        for (int i = 0; i < 60; i++)
+        for (int i = 0; i < World.TickRate / 2; i++)
         {
             Step(footsteps, new(1, 0, 0));
             footstepCount += footsteps.Events.Count(e => e.Kind == SimulationEventKind.Footstep);

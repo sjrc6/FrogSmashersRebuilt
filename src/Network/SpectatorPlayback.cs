@@ -2,8 +2,8 @@ namespace FrogSmashers.Network;
 
 internal sealed class SpectatorPlayback
 {
-    private const int BufferFrames = 6;
-    private const int CatchUpFrames = BufferFrames + 2;
+    private const int BufferFrames = FrogSmashers.Core.World.TickRate / 20;
+    private const int CatchUpFrames = BufferFrames + FrogSmashers.Core.World.TickRate / 50;
     private const int FlushMilliseconds = 100;
     private int receivedFrames = -1;
     private long lastInputAt;

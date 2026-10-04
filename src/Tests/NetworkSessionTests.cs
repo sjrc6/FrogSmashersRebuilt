@@ -1,3 +1,4 @@
+using FrogSmashers.Core;
 using FrogSmashers.Network;
 using static FrogSmashers.Tests.TestAssert;
 using static FrogSmashers.Tests.TestFixtures;
@@ -518,7 +519,7 @@ internal static class NetworkSessionTests
     public static void HighLatencyThroughput()
     {
         const int peers = 8;
-        var wire = new SimulatedNetwork(peers, 8721, 18, 3, 2, 1);
+        var wire = new SimulatedNetwork(peers, 8721, World.TicksFromSeconds(.15m), World.TicksFromSeconds(.025m), 2, 1);
         var slots = Enumerable.Range(0, peers).Select(peer => new[] { peer }).ToArray();
         var sessions = Enumerable
             .Range(0, peers)
@@ -534,7 +535,7 @@ internal static class NetworkSessionTests
             .ToArray();
         Synchronize(wire, sessions);
         double[] accumulators = new double[peers];
-        for (int tick = 0; tick < 1200; tick++)
+        for (int tick = 0; tick < World.TickRate * 10; tick++)
         {
             wire.Advance();
             foreach (var session in sessions)
@@ -556,7 +557,7 @@ internal static class NetworkSessionTests
             }
         }
         double minimumRate = sessions.Min(session => session.World.TickNumber) / 10.0;
-        Check(minimumRate >= 116, $"300 ms RTT reduced normal game speed to {minimumRate:F1} Hz");
+        Check(minimumRate >= World.TickRate * .967, $"300 ms RTT reduced normal game speed to {minimumRate:F1} Hz");
         foreach (var session in sessions)
             session.Dispose();
         Console.WriteLine($"Game adapter: 8 machines, 300 ms RTT, jitter/loss, slowest {minimumRate:F1} Hz");

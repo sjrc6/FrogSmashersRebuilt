@@ -4,9 +4,11 @@ namespace FrogSmashers.Network;
 
 internal sealed class SteamLegacyWire : IWire
 {
+    private const int ReliableSendTimeoutMs = 10000;
+
     private sealed class Peer
     {
-        public readonly Queue<byte[]> Pending = new();
+        public readonly Queue<(byte[] Data, long QueuedAt)> Pending = new();
         public bool Connected;
     }
 
@@ -78,7 +80,7 @@ internal sealed class SteamLegacyWire : IWire
     }
 
     public bool IsConnected(string address) =>
-        ulong.TryParse(address, out ulong id) && peers.TryGetValue(id, out var peer) && peer.Connected;
+        ulong.TryParse(address, out ulong id) && Allowed(id) && peers.TryGetValue(id, out var peer) && peer.Connected;
 
     public bool TakeDisconnected(out string address) => disconnected.TryDequeue(out address!);
 
@@ -101,15 +103,20 @@ internal sealed class SteamLegacyWire : IWire
             received++;
             incoming.Enqueue(new(source.ToString(), data));
         }
-        foreach (var (id, peer) in peers)
-            Flush(id, peer);
+        foreach (var (id, peer) in peers.ToArray())
+        {
+            if (!Allowed(id))
+                Fail(id, "Peer left Steam lobby");
+            else
+                Flush(id, peer);
+        }
     }
 
     public void Send(string address, byte[] data, bool reliable)
     {
         if (data.Length is < 1 or > 8192 || (!reliable && data.Length > 1200))
             throw new ArgumentOutOfRangeException(nameof(data));
-        if (disposed || !ulong.TryParse(address, out ulong id) || !Allowed(id))
+        if (disposed || Error != null || !ulong.TryParse(address, out ulong id) || !Allowed(id))
         {
             ignored++;
             return;
@@ -126,14 +133,23 @@ internal sealed class SteamLegacyWire : IWire
             Fail(id, "Reliable send queue filled");
             return;
         }
-        peer.Pending.Enqueue(data.ToArray());
+        peer.Pending.Enqueue((data.ToArray(), TimeMilliseconds));
         Flush(id, peer);
     }
 
     private void Flush(ulong id, Peer peer)
     {
-        while (peer.Pending.TryPeek(out var data) && TrySend(id, data, EP2PSend.k_EP2PSendReliable))
+        while (peer.Pending.TryPeek(out var packet))
+        {
+            if (TimeMilliseconds - packet.QueuedAt >= ReliableSendTimeoutMs)
+            {
+                Fail(id, "Reliable send timed out");
+                return;
+            }
+            if (!TrySend(id, packet.Data, EP2PSend.k_EP2PSendReliable))
+                return;
             peer.Pending.Dequeue();
+        }
     }
 
     private bool TrySend(ulong id, byte[] data, EP2PSend mode)
@@ -169,7 +185,8 @@ internal sealed class SteamLegacyWire : IWire
         disposed = true;
         foreach (var (id, peer) in peers.ToArray())
         {
-            Flush(id, peer);
+            if (Allowed(id))
+                Flush(id, peer);
             Close(id);
         }
         api.SessionRequested -= OnSessionRequested;

@@ -33,6 +33,19 @@ internal sealed partial class MeshLobby
     private Bootstrap? incomingBootstrap;
     private Control? localPreparation;
 
+    internal void RevokePendingAdmissions()
+    {
+        if (!IsHost)
+            throw new InvalidOperationException("Only the host controls admission");
+        foreach (var (address, peer) in addresses.ToArray())
+        {
+            if (preparedPeers.Contains(peer) || passivePeers.Contains(peer))
+                continue;
+            Reject(address, "LOBBY CODE CHANGED", clientNonces[peer]);
+            RemovePeer(address);
+        }
+    }
+
     private void UpdateParticipation()
     {
         if (simulation == null || Starting || checkpoint != null || matchRequested)
@@ -314,7 +327,7 @@ internal sealed partial class MeshLobby
             simulation,
             LocalPeer,
             SessionId,
-            contentHash,
+            compatibility,
             CreateTransport(),
             rollback,
             offer.Spectating,

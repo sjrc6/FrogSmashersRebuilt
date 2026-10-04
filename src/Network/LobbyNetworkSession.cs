@@ -49,7 +49,8 @@ public sealed class LobbyNetworkSession : IRollbackSession
             InputDelay = preferences.Delay,
             MaxInputDelay = RollbackPreferences.InputCapacityFrames,
             MaxPredictionFrames = RollbackPreferences.PredictionFrames,
-            HistoryFrames = 360,
+            HistoryFrames = RollbackPreferences.HistoryFrames,
+            ChecksumInterval = World.TickRate / 2,
             MaxPacketBytes = 1184,
             SynchronizationRoundTrips = 1,
         };

@@ -7,6 +7,13 @@ internal sealed class LobbyCreation
     private int type = 2;
     private int capacity = 8;
     public bool Lan => type == 3;
+    public LobbyPrivacy Privacy =>
+        type switch
+        {
+            0 => LobbyPrivacy.Private,
+            1 => LobbyPrivacy.Friends,
+            _ => LobbyPrivacy.Public,
+        };
     public string TypeLabel => new[] { "PRIVATE", "FRIENDS", "PUBLIC", "LAN / UDP" }[type];
     public SlotType SlotType =>
         type switch

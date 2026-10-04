@@ -10,7 +10,7 @@ namespace FrogSmashers.Client;
 
 internal sealed partial class MenuController
 {
-    private static readonly int[] FrameRates = [60, 90, 120, 144, 165, 240, 360, 500];
+    private static readonly int[] FrameRates = [60, 90, 100, 120, 144, 165, 240, 360, 500];
     private readonly FrogGame game;
     private readonly Stack<(GameScreen Screen, int Selected)> history = new();
     private GameScreen context = GameScreen.Main;

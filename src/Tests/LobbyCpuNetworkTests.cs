@@ -49,7 +49,7 @@ internal static partial class LobbyTests
     {
         using var rig = new Rig { Delay = 80, Jitter = 20 };
         var host = rig.Add("host", [new(0, Spawned: true)]);
-        host.Lobby.SetRollbackSettings(new() { Delay = 100, MaxExtraDelay = 0 });
+        host.Lobby.SetRollbackSettings(new() { Delay = RollbackPreferences.MaximumDelayFrames, MaxExtraDelay = 0 });
         var leaving = rig.Add("leaving", [new(0, Spawned: true)]);
         var staying = rig.Add("staying", [new(0, Spawned: true)]);
         rig.WaitFor(() => rig.Ready, "Departure fixture did not connect");

@@ -19,7 +19,7 @@ public sealed class GameRules
     public int WinScore { get; set; }
     public int MatchRounds { get; set; } = 6;
     public bool Showdown { get; set; }
-    public int RoundFinishTicks { get; set; } = 900;
-    public int ScoreScreenTicks { get; set; } = 720;
+    public int RoundFinishTicks { get; set; } = World.TickRate * 15 / 2;
+    public int ScoreScreenTicks { get; set; } = World.TickRate * 6;
     public int[] MapOrder { get; set; } = [];
 }

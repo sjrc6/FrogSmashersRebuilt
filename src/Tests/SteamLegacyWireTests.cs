@@ -29,6 +29,7 @@ internal static class SteamLegacyWireTests
         }
         AdmissionAndPackets();
         BackpressureAndFailure();
+        MembershipTimeoutAndRejoin();
         FullMeshLobby();
     }
 
@@ -145,6 +146,49 @@ internal static class SteamLegacyWireTests
         while (receiver.Receive(out _))
             count++;
         Check(count == 4096 && receiver.Statistics.Ignored == 904, "Legacy receive queue cannot grow without limit");
+    }
+
+    private static void MembershipTimeoutAndRejoin()
+    {
+        var api = new FakeApi(1) { BlockSends = true };
+        using var host = new SteamLegacyWire(api, true, 1);
+        api.Incoming.Enqueue((2, new byte[] { 7 }));
+        host.Poll();
+        host.Receive(out _);
+        host.Send("2", [1], true);
+        api.Members.Remove(2);
+        Check(!host.IsConnected("2"), "A departed Steam member is no longer connected");
+        api.BlockSends = false;
+        host.Poll();
+        Check(
+            api.Sent.Count == 0 && host.TakeDisconnected(out var id) && id == "2",
+            "Departure closes even a peer awaiting mesh approval, without flushing its queued data"
+        );
+        api.Members.Add(2);
+        api.Requests.Enqueue(2);
+        api.Incoming.Enqueue((2, new byte[] { 8 }));
+        host.Poll();
+        host.Send("2", [2], true);
+        Check(
+            host.IsConnected("2") && api.Sent.Single().Data.SequenceEqual(new byte[] { 2 }),
+            "A rejoining Steam member starts with a fresh send queue"
+        );
+
+        var stalled = new FakeApi(2) { BlockSends = true };
+        using var guest = new SteamLegacyWire(stalled, false, 1);
+        guest.Send("1", [1], true);
+        stalled.TimeMilliseconds = 9999;
+        guest.Poll();
+        Check(guest.Error == null, "Temporary native backpressure can recover before the deadline");
+        stalled.TimeMilliseconds++;
+        guest.Poll();
+        Check(
+            guest.Error == "Reliable send timed out" && guest.TakeDisconnected(out id) && id == "1",
+            "Even one stalled reliable packet has a deadline without a native failure callback"
+        );
+        stalled.BlockSends = false;
+        guest.Send("1", [2], true);
+        Check(stalled.Sent.Count == 0, "A terminal guest wire cannot reopen its failed host connection");
     }
 
     private static void FullMeshLobby()
@@ -265,6 +309,7 @@ internal static class SteamLegacyWireTests
         public readonly Queue<ulong> Requests = new();
         public readonly Queue<(ulong Source, byte[] Data)> Incoming = new();
         public readonly HashSet<ulong> Accepted = new();
+        public readonly HashSet<ulong> Members = [1, 2, 3];
         public readonly List<ulong> Closed = new();
         public readonly List<SentPacket> Sent = new();
         public (ulong Source, EP2PSessionError Error)? Failure;
@@ -272,7 +317,7 @@ internal static class SteamLegacyWireTests
         public bool BlockSends;
         public int DisposeCount;
 
-        public bool IsMember(ulong peer) => peer is >= 1 and <= 3;
+        public bool IsMember(ulong peer) => Members.Contains(peer);
 
         public void Poll()
         {

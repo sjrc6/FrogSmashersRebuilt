@@ -43,11 +43,11 @@ public sealed class SteamLobbyBrowser : ILobbyBrowser
         );
         SteamMatchmaking.AddRequestLobbyListStringFilter(
             "protocol",
-            SteamLobby.Protocol,
+            NetworkBuild.Protocol,
             ELobbyComparison.k_ELobbyComparisonEqual
         );
         SteamMatchmaking.AddRequestLobbyListStringFilter(
-            "content",
+            "compatibility",
             fingerprint,
             ELobbyComparison.k_ELobbyComparisonEqual
         );
@@ -124,8 +124,8 @@ public sealed class SteamLobbyBrowser : ILobbyBrowser
     {
         if (
             read("game") != SteamLobby.GameTag
-            || read("protocol") != SteamLobby.Protocol
-            || read("content") != fingerprint
+            || read("protocol") != NetworkBuild.Protocol
+            || NetworkCompatibility.Rejection(fingerprint, read("compatibility")) != null
             || read("state") != "forming"
         )
             return null;

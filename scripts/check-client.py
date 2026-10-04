@@ -64,7 +64,7 @@ def verify_connections_and_repeat():
     shown = capture("connections-eight", held, 60, ["--demo", "--players", "8"])
     hidden = capture("connections-released", held, 90, ["--demo", "--players", "8"])
     assert shown["ConnectionsVisible"] and len(shown["ConnectionPlayers"]) == 8, shown
-    assert shown["TickNumber"] == 120 and not hidden["ConnectionsVisible"], (shown, hidden)
+    assert shown["TickNumber"] == shown["TickRate"] and not hidden["ConnectionsVisible"], (shown, hidden)
     lobby = [key(1, "Enter"), key(3, "U"), key(5, "OemPeriod"), dict(From=7, To=30, Keys=["Tab"])]
     shown = capture("connections-lobby", lobby, 25)
     assert shown["Page"] == "Seats" and len(shown["ConnectionPlayers"]) == 2, shown
@@ -89,18 +89,18 @@ def verify_connections_and_repeat():
     rollback = settings + [key(frame, "Down") for frame in (7, 9, 11, 13, 15, 17, 19)] + [key(21, "Enter")]
     adjusted = capture("repeat-rollback", rollback + [dict(From=23, To=80, Keys=["Right"])], 85)
     assert adjusted["Page"] == "Rollback" and len(adjusted["MenuItems"]) == 4, adjusted
-    assert adjusted["MenuItems"][0] != "DELAY: 16.7 MS", adjusted
+    assert adjusted["MenuItems"][0] != "DELAY: 20.0 MS", adjusted
     settings_file.write_bytes(initial_settings)
     print("PASS: Tab visibility, eight-player layout, local lobby, slot editor, numeric repeat and single-press toggles.")
 
 
 def verify_render_cadence():
     hashes = []
-    for fps in (60, 144, 240):
+    for fps in (60, 100, 120, 144, 165, 240):
         value = run(
             f"timing-{fps}", ["--demo", "--players", "8", "--frames", str(fps * 4), "--render-fps", str(fps)]
         )
-        assert value["TickNumber"] == 480
+        assert value["TickNumber"] == value["TickRate"] * 4
         hashes.append(value["Hash"])
     assert len(set(hashes)) == 1, hashes
 
@@ -209,7 +209,7 @@ def verify_menu_background():
         )
         assert (
             value["Page"] == "Main" and value["MenuBackground"] and value["Map"] == "2DownSmash"
-            and value["Players"] == 4 and value["TickNumber"] == 360 and value["Phase"] == "Playing"
+            and value["Players"] == 4 and value["TickNumber"] == value["TickRate"] * 3 and value["Phase"] == "Playing"
             and value["MatchSettings"]["FirstMap"] == 4
         ), value
         hashes.append(value["Hash"])

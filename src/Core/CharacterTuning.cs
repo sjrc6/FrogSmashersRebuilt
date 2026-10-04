@@ -33,7 +33,7 @@ internal sealed class CharacterTuning
 
     public CharacterTuning(Dictionary<string, decimal>? source)
     {
-        parameters = source?.ToDictionary(pair => pair.Key, pair => Fixed.FromDecimal(pair.Value)) ?? [];
+        parameters = new();
         MaxRunSpeed = Read("maxRunSpeed", 20);
         RunAccel = Read("runAccel", 175);
         JumpVel = Read("jumpVel", 40);
@@ -61,11 +61,14 @@ internal sealed class CharacterTuning
         AirAccel = Read("airAccel", 200);
         MaxFallSpeedWallSlide = Read("maxFallSpeedWallSlide", -10);
         TongueRetractSpeedMissed = Read("tongueRetractSpeedMissed", 27.5m);
-    }
 
-    private Fixed Read(string name, decimal fallback)
-    {
-        return parameters.TryGetValue(name, out var value) ? value : Fixed.FromDecimal(fallback);
+        Fixed Read(string name, decimal fallback)
+        {
+            decimal value = source != null && source.TryGetValue(name, out var authored) ? authored : fallback;
+            var resolved = Fixed.FromDecimal(value);
+            parameters.Add(name, resolved);
+            return resolved;
+        }
     }
 
     public void WriteConfiguration(BinaryWriter writer)

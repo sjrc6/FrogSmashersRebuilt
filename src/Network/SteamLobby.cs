@@ -5,13 +5,13 @@ namespace FrogSmashers.Network;
 public sealed class SteamLobby : GameLobby
 {
     internal const string GameTag = "FrogSmashersRebuilt";
-    internal const string Protocol = "8";
     private readonly bool hosting;
-    private readonly bool invited;
+    private readonly LobbyAdmissionPolicy? admission;
+    private readonly string admissionSecret;
     private readonly int capacity;
     private readonly LobbyPlayer[] players;
     private readonly LobbySlot[]? initialRooms;
-    private readonly string contentHash;
+    private readonly string compatibility;
     private readonly string settings;
     private readonly List<IDisposable> callbacks = new();
     private readonly System.Diagnostics.Stopwatch startup = System.Diagnostics.Stopwatch.StartNew();
@@ -19,6 +19,8 @@ public sealed class SteamLobby : GameLobby
     private IWire? wire;
     private CSteamID owner;
     public SteamTransport Transport { get; private set; }
+    public LobbyPrivacy Privacy { get; private set; }
+    public string AdmissionSecret => admission?.Secret ?? "";
     private CSteamID lobbyId;
     private bool initialized;
     private bool disposed;
@@ -35,20 +37,33 @@ public sealed class SteamLobby : GameLobby
     public static SteamLobby Host(
         int capacity,
         LobbyPlayer[] players,
-        string contentHash,
+        string compatibility,
         string settingsJson,
         uint appId = 480,
         IReadOnlyList<LobbySlot>? initialRooms = null,
-        SteamTransport transport = SteamTransport.Sockets
-    ) => new(true, 0, capacity, players, contentHash, settingsJson, appId, initialRooms, transport: transport);
+        SteamTransport transport = SteamTransport.Sockets,
+        LobbyPrivacy privacy = LobbyPrivacy.Private
+    ) =>
+        new(
+            true,
+            0,
+            capacity,
+            players,
+            compatibility,
+            settingsJson,
+            appId,
+            initialRooms,
+            transport: transport,
+            privacy: privacy
+        );
 
     public static SteamLobby Join(
         ulong lobbyId,
         LobbyPlayer[] players,
-        string contentHash,
+        string compatibility,
         uint appId = 480,
-        bool invited = true
-    ) => new(false, lobbyId, 8, players, contentHash, "", appId, invited: invited);
+        string admissionSecret = ""
+    ) => new(false, lobbyId, 8, players, compatibility, "", appId, admissionSecret: admissionSecret);
 
     private SteamLobby(
         bool hosting,
@@ -59,24 +74,33 @@ public sealed class SteamLobby : GameLobby
         string settings,
         uint appId,
         IReadOnlyList<LobbySlot>? initialRooms = null,
-        bool invited = false,
-        SteamTransport transport = SteamTransport.Sockets
+        string admissionSecret = "",
+        SteamTransport transport = SteamTransport.Sockets,
+        LobbyPrivacy privacy = LobbyPrivacy.Private
     )
     {
         var validation = new LobbyRoster();
-        if (!validation.SetPlayers(0, players) || !validation.SetCapacity(capacity))
+        if (!validation.SetPlayers(0, players) || !validation.SetCapacity(capacity) || admissionSecret.Length > 64)
             throw new ArgumentException("Invalid Steam lobby configuration");
+        Privacy = privacy;
+        admission = hosting ? new LobbyAdmissionPolicy(privacy) : null;
         if (hosting && initialRooms == null)
         {
-            validation.ConfigureEmpty(SlotType.Private, capacity);
+            var type = privacy switch
+            {
+                LobbyPrivacy.Public => SlotType.Open,
+                LobbyPrivacy.Friends => SlotType.Friend,
+                _ => SlotType.Private,
+            };
+            validation.ConfigureEmpty(type, capacity);
             initialRooms = validation.Slots;
         }
         this.hosting = hosting;
-        this.invited = invited;
+        this.admissionSecret = admissionSecret;
         this.capacity = capacity;
         this.players = players.ToArray();
         this.initialRooms = initialRooms?.ToArray();
-        contentHash = hash;
+        compatibility = hash;
         this.settings = settings;
         SteamTransportMetadata.Name(transport);
         Transport = transport;
@@ -107,9 +131,7 @@ public sealed class SteamLobby : GameLobby
                     }
                 );
                 callbacks.Add(created);
-                created.Set(
-                    SteamMatchmaking.CreateLobby(Visibility(initialRooms ?? validation.Slots), LobbyRoster.MaxPeers)
-                );
+                created.Set(SteamMatchmaking.CreateLobby(Visibility(Privacy), LobbyRoster.MaxPeers));
             }
             else
             {
@@ -161,14 +183,15 @@ public sealed class SteamLobby : GameLobby
 
         lobbyId = new CSteamID(c.m_ulSteamIDLobby);
         SteamMatchmaking.SetLobbyData(lobbyId, "game", GameTag);
-        SteamMatchmaking.SetLobbyData(lobbyId, "protocol", Protocol);
+        SteamMatchmaking.SetLobbyData(lobbyId, "protocol", NetworkBuild.Protocol);
         SteamMatchmaking.SetLobbyData(lobbyId, "transport", SteamTransportMetadata.Name(Transport));
+        SteamMatchmaking.SetLobbyData(lobbyId, "privacy", Privacy.ToString());
         SteamMatchmaking.SetLobbyData(
             lobbyId,
             "name",
             LobbyListing.DisplayName(SteamFriends.GetPersonaName(), "STEAM LOBBY")
         );
-        SteamMatchmaking.SetLobbyData(lobbyId, "content", contentHash);
+        SteamMatchmaking.SetLobbyData(lobbyId, "compatibility", compatibility);
         SteamMatchmaking.SetLobbyData(lobbyId, "state", "forming");
         StartCoordinator();
     }
@@ -189,11 +212,19 @@ public sealed class SteamLobby : GameLobby
         lobbyId = new CSteamID(c.m_ulSteamIDLobby);
         if (
             SteamMatchmaking.GetLobbyData(lobbyId, "game") != GameTag
-            || SteamMatchmaking.GetLobbyData(lobbyId, "protocol") != Protocol
-            || SteamMatchmaking.GetLobbyData(lobbyId, "content") != contentHash
+            || SteamMatchmaking.GetLobbyData(lobbyId, "protocol") != NetworkBuild.Protocol
         )
         {
-            error = "Steam lobby belongs to another game/build/content version";
+            error = "NETWORK PROTOCOL MISMATCH";
+            return;
+        }
+
+        if (
+            NetworkCompatibility.Rejection(compatibility, SteamMatchmaking.GetLobbyData(lobbyId, "compatibility")) is
+            { } rejection
+        )
+        {
+            error = rejection;
             return;
         }
 
@@ -205,6 +236,12 @@ public sealed class SteamLobby : GameLobby
 
         try
         {
+            if (
+                !Enum.TryParse<LobbyPrivacy>(SteamMatchmaking.GetLobbyData(lobbyId, "privacy"), out var privacy)
+                || !Enum.IsDefined(privacy)
+            )
+                throw new ArgumentException("Unsupported lobby privacy policy");
+            Privacy = privacy;
             Transport = SteamTransportMetadata.Parse(SteamMatchmaking.GetLobbyData(lobbyId, "transport"));
         }
         catch (ArgumentException exception)
@@ -232,14 +269,16 @@ public sealed class SteamLobby : GameLobby
             hosting ? null : owner.m_SteamID.ToString(),
             capacity,
             players,
-            contentHash,
+            compatibility,
             settings,
             initialRooms,
-            invited: invited,
+            admissionSecret: admissionSecret,
             isFriend: address =>
                 ulong.TryParse(address, out var id)
                 && SteamFriends.GetFriendRelationship(new CSteamID(id))
-                    == EFriendRelationship.k_EFriendRelationshipFriend
+                    == EFriendRelationship.k_EFriendRelationshipFriend,
+            authorize: (address, secret) =>
+                admission != null && ulong.TryParse(address, out var id) && admission.Allows(id, secret)
         );
         AttachPendingSimulation();
     }
@@ -288,9 +327,7 @@ public sealed class SteamLobby : GameLobby
             int open = Roster.Slots.Count(slot => slot.Open && slot.Type == SlotType.Open && slot.Player == null);
             int friends = Roster.Slots.Count(slot => slot.Type == SlotType.Friend && slot.Player == null);
             int privateSlots = Roster.Slots.Count(slot => slot.Type == SlotType.Private && slot.Player == null);
-            var visibility = Visibility(Roster.Slots);
-            string advertisement =
-                $"{capacity}:{occupied}:{open}:{friends}:{privateSlots}:{visibility}:{Roster.Spectators.Count}";
+            string advertisement = $"{capacity}:{occupied}:{open}:{friends}:{privateSlots}:{Roster.Spectators.Count}";
             if (advertisement != advertisedCapacity)
             {
                 SteamMatchmaking.SetLobbyData(lobbyId, "capacity", capacity.ToString());
@@ -299,7 +336,6 @@ public sealed class SteamLobby : GameLobby
                 SteamMatchmaking.SetLobbyData(lobbyId, "friend_slots", friends.ToString());
                 SteamMatchmaking.SetLobbyData(lobbyId, "private_slots", privateSlots.ToString());
                 SteamMatchmaking.SetLobbyData(lobbyId, "spectators", Roster.Spectators.Count.ToString());
-                SteamMatchmaking.SetLobbyType(lobbyId, visibility);
                 advertisedCapacity = advertisement;
             }
         }
@@ -312,19 +348,37 @@ public sealed class SteamLobby : GameLobby
         }
     }
 
-    internal static ELobbyType Visibility(IEnumerable<LobbySlot> slots)
+    internal static ELobbyType Visibility(LobbyPrivacy privacy) =>
+        privacy switch
+        {
+            LobbyPrivacy.Public => ELobbyType.k_ELobbyTypePublic,
+            LobbyPrivacy.Friends => ELobbyType.k_ELobbyTypeFriendsOnly,
+            LobbyPrivacy.Private or LobbyPrivacy.PrivateCode => ELobbyType.k_ELobbyTypePrivate,
+            _ => throw new ArgumentOutOfRangeException(nameof(privacy)),
+        };
+
+    public bool InviteFriend(ulong steamId)
     {
-        var types = slots.Where(slot => slot.Player?.Peer != 0).Select(slot => slot.Type).ToArray();
-        if (types.Contains(SlotType.Open))
-            return ELobbyType.k_ELobbyTypePublic;
-        if (types.Contains(SlotType.Friend))
-            return ELobbyType.k_ELobbyTypeFriendsOnly;
-        return ELobbyType.k_ELobbyTypePrivate;
+        if (!hosting || !Connected || Error != null || disposed)
+            return false;
+        bool added = admission!.Grant(steamId);
+        bool sent = SteamMatchmaking.InviteUserToLobby(lobbyId, new CSteamID(steamId));
+        if (!sent && added)
+            admission.Revoke(steamId);
+        return sent;
+    }
+
+    public void RotateAdmissionSecret()
+    {
+        if (!hosting || !Connected || Error != null || disposed)
+            throw new InvalidOperationException("Only a connected host can change lobby access");
+        admission!.Rotate();
+        coordinator!.RevokePendingAdmissions();
     }
 
     public void InviteFriends()
     {
-        if (initialized && lobbyId.m_SteamID != 0)
+        if (initialized && lobbyId.m_SteamID != 0 && Privacy != LobbyPrivacy.PrivateCode)
         {
             SteamFriends.ActivateGameOverlayInviteDialog(lobbyId);
         }

@@ -70,7 +70,7 @@ internal sealed partial class MeshLobby
             simulation,
             LocalPeer,
             SessionId,
-            contentHash,
+            compatibility,
             CreateTransport(),
             rollback,
             false,

@@ -58,6 +58,12 @@ internal static class Program
                 return 0;
             }
 
+            if (args.Contains("--tick-rate-study"))
+            {
+                TickRateStudy.Run();
+                return 0;
+            }
+
             if (args.Length > 0 && args[0] == "--steam-probe")
             {
                 using var client = SteamClient.Connect();
@@ -80,6 +86,7 @@ internal static class Program
             }
 
             var timer = Stopwatch.StartNew();
+            CompatibilityTests.Run();
             SnapshotCoverageTests.Run();
             InterpolationSnapshotTests.Run();
             ReplayTests.ReplayAndSnapshots();

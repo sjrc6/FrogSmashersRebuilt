@@ -123,7 +123,7 @@ internal sealed class MatchController : IDisposable
             new SessionConfig(
                 lobby.PeerSlots,
                 lobby.LocalPeer,
-                content.ContentHash,
+                content.ComputeGameplayHash(),
                 World!,
                 lobby.SessionId,
                 activePeers: lobby.PeerIds.ToArray(),

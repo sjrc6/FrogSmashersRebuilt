@@ -170,6 +170,7 @@ internal sealed class AutomatedGame : FrogGame
             BackBufferWidth = buffer.BackBufferWidth,
             BackBufferHeight = buffer.BackBufferHeight,
             TickNumber = Match.World?.TickNumber,
+            TickRate = World.TickRate,
             Hash = Match.World?.HashState().ToString("x16"),
             Map = Match.World?.Map.Id,
             RoundNumber = Match.World?.RoundNumber,

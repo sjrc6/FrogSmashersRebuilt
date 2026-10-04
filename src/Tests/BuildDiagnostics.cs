@@ -17,33 +17,59 @@ internal static class BuildDiagnostics
         string network = Path.Combine(directory, "FrogSmashers.Network.dll");
         string rollback = Path.Combine(directory, "GGCS.dll");
         string content = Path.Combine(directory, "Content", "content.json");
-        Guid ModuleId(string file)
+        string Metadata(string file, string key)
         {
             using var stream = File.OpenRead(file);
             using var pe = new PEReader(stream);
             var metadata = pe.GetMetadataReader();
-            return metadata.GetGuid(metadata.GetModuleDefinition().Mvid);
+            foreach (var handle in metadata.GetAssemblyDefinition().GetCustomAttributes())
+            {
+                var attribute = metadata.GetCustomAttribute(handle);
+                if (attribute.Constructor.Kind != HandleKind.MemberReference)
+                    continue;
+                var constructor = metadata.GetMemberReference((MemberReferenceHandle)attribute.Constructor);
+                if (constructor.Parent.Kind != HandleKind.TypeReference)
+                    continue;
+                var type = metadata.GetTypeReference((TypeReferenceHandle)constructor.Parent);
+                if (
+                    metadata.GetString(type.Namespace) != "System.Reflection"
+                    || metadata.GetString(type.Name) != "AssemblyMetadataAttribute"
+                )
+                    continue;
+                var value = metadata.GetBlobReader(attribute.Value);
+                if (value.ReadUInt16() == 1 && value.ReadSerializedString() == key)
+                    return value.ReadSerializedString()
+                        ?? throw new InvalidDataException("Missing assembly metadata value");
+            }
+            throw new InvalidDataException($"Missing {key} in {file}");
         }
 
         string Sha(string file) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(file)));
-        Guid coreId = ModuleId(core);
-        Guid networkId = ModuleId(network);
-        Guid rollbackId = ModuleId(rollback);
-        string contentHash = GameContent.Load(content).ContentHash;
+        string coreInputHash = Metadata(core, NetworkBuild.IdentityMetadataKey);
+        string networkInputHash = Metadata(network, NetworkBuild.IdentityMetadataKey);
+        string rollbackInputHash = Metadata(rollback, NetworkBuild.IdentityMetadataKey);
+        var data = GameContent.Load(content);
+        var compatibility = new NetworkCompatibility(
+            Metadata(network, "NetworkProtocol"),
+            NetworkBuild.CombineCodeHashes(coreInputHash, networkInputHash, rollbackInputHash),
+            data.ComputeGameplayHash()
+        );
         Console.WriteLine(
             JsonSerializer.Serialize(
                 new
                 {
-                    NetworkBuild.Protocol,
-                    CoreModuleId = coreId,
-                    NetworkModuleId = networkId,
-                    RollbackModuleId = rollbackId,
+                    compatibility.Protocol,
+                    compatibility.CodeHash,
+                    compatibility.GameplayHash,
+                    CoreInputHash = coreInputHash,
+                    NetworkInputHash = networkInputHash,
+                    RollbackInputHash = rollbackInputHash,
                     CoreSha256 = Sha(core),
                     NetworkSha256 = Sha(network),
                     RollbackSha256 = Sha(rollback),
                     ContentManifestSha256 = Sha(content),
-                    ContentHash = contentHash,
-                    NetworkFingerprint = NetworkBuild.ContentFingerprint(contentHash, coreId, networkId, rollbackId),
+                    data.ContentHash,
+                    NetworkIdentity = compatibility.Identifier,
                 },
                 new JsonSerializerOptions { WriteIndented = true }
             )

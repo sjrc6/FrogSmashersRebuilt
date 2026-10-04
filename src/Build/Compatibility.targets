@@ -1,0 +1,54 @@
+<Project>
+  <PropertyGroup>
+    <CompatibilityRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../..'))/</CompatibilityRoot>
+    <NetworkProtocol>FrogSmashersRebuilt.GGCS.2</NetworkProtocol>
+  </PropertyGroup>
+  <UsingTask
+    TaskName="GenerateCompatibilityIdentity"
+    TaskFactory="RoslynCodeTaskFactory"
+    AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll"
+  >
+    <Task>
+      <Code
+        Type="Class"
+        Language="cs"
+        Source="$(MSBuildThisFileDirectory)GenerateCompatibilityIdentity.cs"
+      />
+    </Task>
+  </UsingTask>
+  <Target
+    Name="GenerateSimulationIdentity"
+    BeforeTargets="GetAssemblyAttributes"
+    DependsOnTargets="ResolveReferences"
+  >
+    <ItemGroup>
+      <CompatibilityInput Include="@(Compile)" Exclude="$(IntermediateOutputPath)**" />
+      <CompatibilityInput Include="$(MSBuildProjectFullPath);$(CompatibilityRoot)global.json;$(CompatibilityRoot)src/Directory.Build.props;$(CompatibilityRoot)src/Directory.Build.targets;$(CompatibilityRoot)src/Build/*" />
+      <CompatibilityReference
+        Include="@(ReferencePath)"
+        Condition="'%(ReferencePath.ReferenceSourceTarget)' != 'ProjectReference'"
+      />
+    </ItemGroup>
+    <GenerateCompatibilityIdentity
+      Root="$(CompatibilityRoot)"
+      Inputs="@(CompatibilityInput)"
+      References="@(CompatibilityReference)"
+      Options="sdk=$(NETCoreSdkVersion)|framework=$(TargetFramework)|language=$(LangVersion)|nullable=$(Nullable)|defines=$(DefineConstants)|optimize=$(Optimize)|overflow=$(CheckForOverflowUnderflow)|unsafe=$(AllowUnsafeBlocks)|features=$(Features)"
+    >
+      <Output TaskParameter="Identity" PropertyName="SimulationInputHash" />
+    </GenerateCompatibilityIdentity>
+    <ItemGroup>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>SimulationInputHash</_Parameter1>
+        <_Parameter2>$(SimulationInputHash)</_Parameter2>
+      </AssemblyAttribute>
+      <AssemblyAttribute
+        Include="System.Reflection.AssemblyMetadataAttribute"
+        Condition="'$(MSBuildProjectName)' == 'FrogSmashers.Network'"
+      >
+        <_Parameter1>NetworkProtocol</_Parameter1>
+        <_Parameter2>$(NetworkProtocol)</_Parameter2>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
+</Project>

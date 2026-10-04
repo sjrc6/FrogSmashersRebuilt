@@ -14,7 +14,7 @@ public sealed class UdpLobby : GameLobby
         int port,
         int capacity,
         LobbyPlayer[] players,
-        string contentHash,
+        string compatibility,
         string settingsJson,
         bool allowLan = false,
         IReadOnlyList<LobbySlot>? initialRooms = null
@@ -24,13 +24,13 @@ public sealed class UdpLobby : GameLobby
             null,
             capacity,
             players,
-            contentHash,
+            compatibility,
             settingsJson,
             initialRooms,
             advertise: allowLan
         );
 
-    public static UdpLobby Join(string hostname, int port, LobbyPlayer[] players, string contentHash)
+    public static UdpLobby Join(string hostname, int port, LobbyPlayer[] players, string compatibility)
     {
         if (!LobbyAddress.TryUdp(hostname, port, out hostname, out port))
             throw new ArgumentException("Invalid UDP address");
@@ -40,7 +40,7 @@ public sealed class UdpLobby : GameLobby
             new IPEndPoint(ip, port).ToString(),
             8,
             players,
-            contentHash,
+            compatibility,
             ""
         );
     }

@@ -84,8 +84,8 @@ internal static class LobbyDiscoveryTests
         var data = new Dictionary<string, string>
         {
             ["game"] = SteamLobby.GameTag,
-            ["protocol"] = SteamLobby.Protocol,
-            ["content"] = "build",
+            ["protocol"] = NetworkBuild.Protocol,
+            ["compatibility"] = "build",
             ["state"] = "forming",
             ["capacity"] = "8",
             ["players"] = "3",
@@ -105,7 +105,7 @@ internal static class LobbyDiscoveryTests
             "Friend slots require host friendship and fit the entire local party"
         );
         Check(Read(true, 4) == null, "Private slots do not count as browser admission");
-        foreach (string key in new[] { "game", "protocol", "content", "state" })
+        foreach (string key in new[] { "game", "protocol", "compatibility", "state" })
         {
             string original = data[key];
             data[key] = "different";

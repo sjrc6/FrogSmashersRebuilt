@@ -44,6 +44,7 @@ internal static partial class LobbyTests
         RejectedJoinDoesNotPauseLobby();
         SteadyLobbyUsesCompactControls();
         CompactControlValidation();
+        PrivateLobbyAdmission();
     }
 
     private static void SpectatorTransitionAtLatency()
@@ -850,7 +851,7 @@ internal static partial class LobbyTests
         public int CheckpointMessages;
         public readonly HashSet<(string, string)> Blocked = new();
         public int Frame;
-        public long Now => Frame * 1000L / 120;
+        public long Now => Frame * 1000L / World.TickRate;
         public int Delay = 16;
         public int Jitter;
         public double Loss;
@@ -883,7 +884,14 @@ internal static partial class LobbyTests
                     && node.Lobby.SessionId == Nodes[0].Lobby.SessionId
                 );
 
-        public Node Add(string address, LobbyPlayer[] players, string hash = "mesh-fixture", bool attach = true)
+        public Node Add(
+            string address,
+            LobbyPlayer[] players,
+            string hash = "mesh-fixture",
+            bool attach = true,
+            LobbyAdmissionPolicy? admission = null,
+            string admissionSecret = ""
+        )
         {
             var wire = new ManualWire(this, address);
             var lobby = new MeshLobby(
@@ -892,7 +900,11 @@ internal static partial class LobbyTests
                 8,
                 players,
                 hash,
-                "{}"
+                "{}",
+                admissionSecret: admissionSecret,
+                authorize: admission == null
+                    ? null
+                    : (source, secret) => ulong.TryParse(source, out var id) && admission.Allows(id, secret)
             );
             var simulation = new LobbySimulation(
                 new World(TestFixtures.Map(), new GameRules { Lobby = true, PlayerCount = 8 }, 13),

@@ -120,10 +120,10 @@ internal static partial class LobbyTests
         rig.WaitFor(() => rig.Ready, "Apply-all fixture did not connect");
         Check(host.Lobby.EditSlot(7, SlotType.Cpu), "CPU request failed");
         rig.WaitFor(() => host.Lobby.HostCommand.Revision > 0, "CPU command was not submitted");
-        Check(host.Lobby.ApplySlotType(SlotType.Private), "Apply-all was rejected during a CPU command");
+        Check(host.Lobby.ApplySlotType(SlotType.Friend), "Apply-all was rejected during a CPU command");
         Check(host.Lobby.EditSlot(4, SlotType.Closed), "Individual override after apply-all failed");
         Check(
-            host.Lobby.GetSlotType(7) == SlotType.Private && host.Lobby.GetSlotType(4) == SlotType.Closed,
+            host.Lobby.GetSlotType(7) == SlotType.Friend && host.Lobby.GetSlotType(4) == SlotType.Closed,
             "Apply-all did not preserve the latest individual choices"
         );
         rig.WaitFor(
@@ -134,7 +134,7 @@ internal static partial class LobbyTests
         rig.WaitFor(
             () =>
                 rig.Nodes.All(node =>
-                    node.Lobby.Roster.Slots[7].Type == SlotType.Private
+                    node.Lobby.Roster.Slots[7].Type == SlotType.Friend
                     && node.Lobby.Roster.Slots[4].Type == SlotType.Closed
                 ),
             "Final apply-all metadata did not arrive"
@@ -145,7 +145,7 @@ internal static partial class LobbyTests
         );
         var denied = rig.Add("denied", [new(0)]);
         denied.AllowError = true;
-        rig.WaitFor(() => denied.Lobby.Error != null, "Admission ignored the latest private/closed policies");
+        rig.WaitFor(() => denied.Lobby.Error != null, "Admission ignored the latest friend/closed policies");
         Check(!denied.Lobby.Connected && host.Lobby.Roster.Count == 2, "Admission consumed an ineligible slot");
         rig.Steps(120);
         rig.AssertConfirmedStates();

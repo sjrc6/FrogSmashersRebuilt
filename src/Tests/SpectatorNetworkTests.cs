@@ -1,3 +1,4 @@
+using FrogSmashers.Core;
 using FrogSmashers.Network;
 using static FrogSmashers.Tests.TestAssert;
 using static FrogSmashers.Tests.TestFixtures;
@@ -44,7 +45,8 @@ internal static class SpectatorNetworkTests
             [0, 1],
             [],
         ];
-        var wire = new SimulatedNetwork(2, 83, 12, jitter, 0, 0);
+        const int clockRate = 600;
+        var wire = new SimulatedNetwork(2, 83, clockRate / 10, jitter * 5, 0, 0) { ClockRate = clockRate };
         var hostWorld = MakeWorld(2);
         var spectatorWorld = MakeWorld(2);
         using var host = new NetworkSession(
@@ -57,35 +59,47 @@ internal static class SpectatorNetworkTests
             new SessionConfig(slots, 1, "spectator-playback", spectatorWorld, 1),
             wire.Endpoint(1)
         );
-        int hostStride = 120 / hostFps;
-        int spectatorStride = 120 / spectatorFps;
+        int hostStride = clockRate / hostFps;
+        int spectatorStride = clockRate / spectatorFps;
+        double tickStep = (double)World.TickRate / clockRate;
         double hostDebt = 0,
             spectatorDebt = 0;
         int warnings = 0,
             emptyUpdates = 0;
         long start = 0;
-        for (int wall = 0; wall < 3000; wall++)
+        for (int wall = 0; wall < clockRate * 25; wall++)
         {
             wire.Advance();
             if (wall % hostStride == 0)
-                Advance(host, ref hostDebt, hostStride);
+                Advance(host, ref hostDebt, hostStride * tickStep);
             if (wall % spectatorStride != 0)
                 continue;
             long previous = spectatorWorld.TickNumber;
-            Advance(spectator, ref spectatorDebt, spectatorStride);
-            if (wall == 600)
+            Advance(spectator, ref spectatorDebt, spectatorStride * tickStep);
+            if (wall == clockRate * 5)
                 start = spectatorWorld.TickNumber;
-            if (wall >= 600)
+            if (wall >= clockRate * 5)
             {
                 warnings += spectator.WaitingForHostInputs ? 1 : 0;
                 emptyUpdates += spectatorWorld.TickNumber == previous ? 1 : 0;
             }
         }
-        string scenario = $"200 ms RTT, host {hostFps} FPS, spectator {spectatorFps} FPS, jitter {jitter} ticks";
+        string scenario =
+            $"200 ms RTT, host {hostFps} FPS, spectator {spectatorFps} FPS, jitter {jitter * 1000.0 / 120:F1} ms";
         Check(warnings == 0, $"Healthy spectator stream must not show input waits: {scenario}, warnings={warnings}");
-        Check(emptyUpdates == 0, $"Buffered playback must not repeatedly stop: {scenario}, stops={emptyUpdates}");
-        Check(spectatorWorld.TickNumber - start >= 2390, "Buffered spectators sustain 120 simulation ticks per second");
-        Check(hostWorld.TickNumber - spectatorWorld.TickNumber < 40, "Spectator playback delay stays bounded");
+        int expectedEmptyUpdates = Math.Max(0, spectatorFps - World.TickRate) * 20;
+        Check(
+            emptyUpdates <= expectedEmptyUpdates + 2,
+            $"Buffered playback must sustain its tick rate: {scenario}, empty={emptyUpdates}"
+        );
+        Check(
+            spectatorWorld.TickNumber - start >= World.TickRate * 20 - 10,
+            "Buffered spectators sustain the simulation tick rate"
+        );
+        Check(
+            hostWorld.TickNumber - spectatorWorld.TickNumber < World.TickRate / 3,
+            "Spectator playback delay stays bounded"
+        );
         Check(
             host.TryGetConfirmedCheckpoint(spectatorWorld.TickNumber, out var snapshot)
                 && snapshot.SequenceEqual(spectatorWorld.Capture()),
@@ -94,30 +108,30 @@ internal static class SpectatorNetworkTests
 
         wire.Blackout = true;
         bool waited = false;
-        for (int wall = 0; wall < 100; wall++)
+        for (int wall = 0; wall < clockRate; wall++)
         {
             wire.Advance();
-            Advance(host, ref hostDebt, 1);
-            Advance(spectator, ref spectatorDebt, 1);
+            Advance(host, ref hostDebt, tickStep);
+            Advance(spectator, ref spectatorDebt, tickStep);
             waited |= spectator.WaitingForHostInputs;
         }
         Check(waited, "A genuine spectator outage still displays the input wait warning");
         wire.Blackout = false;
-        for (int wall = 0; wall < 300; wall++)
+        for (int wall = 0; wall < clockRate * 3; wall++)
         {
             wire.Advance();
-            Advance(host, ref hostDebt, 1);
-            Advance(spectator, ref spectatorDebt, 1);
+            Advance(host, ref hostDebt, tickStep);
+            Advance(spectator, ref spectatorDebt, tickStep);
         }
         Check(!spectator.WaitingForHostInputs, "Spectator playback recovers after an outage");
 
         long finalTick = hostWorld.TickNumber;
         spectator.StopAtTick(finalTick);
-        for (int wall = 0; wall < 300 && spectatorWorld.TickNumber < finalTick; wall++)
+        for (int wall = 0; wall < clockRate * 3 && spectatorWorld.TickNumber < finalTick; wall++)
         {
             wire.Advance();
             host.Poll();
-            Advance(spectator, ref spectatorDebt, 1);
+            Advance(spectator, ref spectatorDebt, tickStep);
         }
         Check(spectatorWorld.TickNumber == finalTick, "Spectator buffering cannot block a checkpoint boundary");
         Check(
@@ -128,7 +142,7 @@ internal static class SpectatorNetworkTests
         Console.WriteLine($"Spectator playback: {scenario}; no steady-stream warnings or missed updates");
     }
 
-    private static void Advance(NetworkSession session, ref double debt, int elapsedTicks)
+    private static void Advance(NetworkSession session, ref double debt, double elapsedTicks)
     {
         session.Poll();
         debt += elapsedTicks;

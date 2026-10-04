@@ -51,8 +51,8 @@ internal static class MenuSetupTests
                 == new RollbackPreferences
                 {
                     Delay = 0,
-                    Donation = 30,
-                    MaxExtraDelay = 119,
+                    Donation = RollbackPreferences.PredictionFrames,
+                    MaxExtraDelay = RollbackPreferences.MaximumExtraDelayFrames,
                 },
             "rollback settings load within supported limits"
         );
@@ -62,10 +62,10 @@ internal static class MenuSetupTests
         );
         check(
             RollbackPreferences.Milliseconds(0) == "0.00 MS"
-                && RollbackPreferences.Milliseconds(1) == "8.33 MS"
-                && RollbackPreferences.Milliseconds(2) == "16.7 MS"
-                && RollbackPreferences.Milliseconds(30) == "250 MS"
-                && RollbackPreferences.Milliseconds(119) == "992 MS",
+                && RollbackPreferences.Milliseconds(1) == "10.0 MS"
+                && RollbackPreferences.Milliseconds(2) == "20.0 MS"
+                && RollbackPreferences.Milliseconds(25) == "250 MS"
+                && RollbackPreferences.Milliseconds(99) == "990 MS",
             "rollback settings use three total digits in milliseconds"
         );
         var setup = new MatchSetup(7);

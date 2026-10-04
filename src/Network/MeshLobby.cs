@@ -8,8 +8,9 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
     private readonly IWire wire;
     private readonly long createdAt;
     private readonly string? host;
-    private readonly string contentHash;
-    private readonly bool invited;
+    private readonly string compatibility;
+    private readonly string admissionSecret;
+    private readonly Func<string, string, bool> authorize;
     private readonly Func<string, bool> isFriend;
     private readonly Dictionary<int, LobbyAccess> access = new();
     private readonly Dictionary<string, int> addresses = new();
@@ -103,19 +104,26 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
         string hash,
         string settings,
         IReadOnlyList<LobbySlot>? initialRooms = null,
-        bool invited = false,
-        Func<string, bool>? isFriend = null
+        string admissionSecret = "",
+        Func<string, bool>? isFriend = null,
+        Func<string, string, bool>? authorize = null
     )
     {
         this.wire = wire;
         createdAt = wire.TimeMilliseconds;
         this.host = host;
-        this.invited = invited;
+        this.admissionSecret = admissionSecret;
+        this.authorize = authorize ?? ((_, _) => true);
         this.isFriend = isFriend ?? (_ => false);
-        contentHash = hash;
+        compatibility = hash;
         MatchSettingsJson = settings;
         requested = players.ToArray();
-        if (settings.Length > 4096 || hash.Length > 128 || !Roster.SetPlayers(0, players))
+        if (
+            settings.Length > 4096
+            || hash.Length > NetworkCompatibility.MaximumLength
+            || admissionSecret.Length > 64
+            || !Roster.SetPlayers(0, players)
+        )
             throw new ArgumentException("Invalid lobby configuration");
         if (IsHost)
         {
@@ -414,7 +422,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
             Kind = ControlKind.State,
             Rollbacks = peerRollback.Select(pair => new PeerRollback(pair.Key, pair.Value)).ToArray(),
             Peer = peer,
-            Hash = contentHash,
+            Hash = compatibility,
             Nonce = nonce,
             ClientNonce = clientNonces[peer],
             Slots = Roster.Slots.ToArray(),
@@ -484,6 +492,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
             && item.Settings.IsValid
         )
         && control.Hash != null
+        && control.AdmissionSecret != null
         && control.Nonce != null
         && control.ClientNonce != null
         && control.Settings != null
@@ -496,7 +505,8 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
         && control.Data != null
         && control.Transaction != null
         && control.Spectators.Length <= LobbyRoster.MaxSpectators
-        && control.Hash.Length <= 128
+        && control.Hash.Length <= NetworkCompatibility.MaximumLength
+        && control.AdmissionSecret.Length <= 64
         && control.Nonce.Length <= 32
         && control.ClientNonce.Length <= 32
         && control.Settings.Length <= 4096
@@ -594,7 +604,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
         }
         if (
             control.ClientNonce != clientNonce
-            || control.Hash != contentHash
+            || NetworkCompatibility.Rejection(compatibility, control.Hash) != null
             || !Guid.TryParseExact(control.Nonce, "N", out _)
             || control.Peer is < 1 or >= LobbyRoster.MaxPeers
             || control.Revision < receivedRevision
@@ -669,13 +679,18 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
             Reject(source, rejected.Reason, control.Nonce);
             return;
         }
-        if (control.Hash != contentHash)
+        if (NetworkCompatibility.Rejection(compatibility, control.Hash) is { } rejection)
         {
-            Reject(source, "GAME VERSION MISMATCH", control.Nonce);
+            Reject(source, rejection, control.Nonce);
             return;
         }
         if (!addresses.TryGetValue(source, out int peer))
         {
+            if (!authorize(source, control.AdmissionSecret))
+            {
+                Reject(source, "LOBBY ACCESS DENIED", control.Nonce);
+                return;
+            }
             if (
                 Starting
                 || matchRequested
@@ -691,7 +706,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
             }
             RefreshSelections();
             peer = Enumerable.Range(1, LobbyRoster.MaxPeers - 1).First(id => !peerAddresses.ContainsKey(id));
-            var permission = new LobbyAccess(control.Invited, isFriend(source));
+            var permission = new LobbyAccess(isFriend(source));
             if (
                 control.Spectating
                 || control.Players.Length == 0
@@ -891,6 +906,9 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
 
     public sealed record PeerRollback(int Peer, RollbackPreferences Settings);
 
+    [System.Text.Json.Serialization.JsonUnmappedMemberHandling(
+        System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow
+    )]
     public sealed record Control
     {
         public RollbackPreferences Rollback { get; set; } = new();
@@ -905,7 +923,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
         public PeerAddress[] Peers { get; set; } = [];
         public int[] Mesh { get; set; } = [];
         public bool Spectating { get; set; }
-        public bool Invited { get; set; }
+        public string AdmissionSecret { get; set; } = "";
         public bool CanSimulate { get; set; }
         public GGCS.SessionDisconnectState? Disconnects { get; set; }
         public LobbyAccess Access { get; set; }

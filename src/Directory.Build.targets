@@ -1,0 +1,6 @@
+<Project>
+  <Import
+    Project="Build/Compatibility.targets"
+    Condition="'$(MSBuildProjectName)' == 'FrogSmashers.Core' Or '$(MSBuildProjectName)' == 'FrogSmashers.Network' Or '$(MSBuildProjectName)' == 'GGCS'"
+  />
+</Project>

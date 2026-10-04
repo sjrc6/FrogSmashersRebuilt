@@ -9,7 +9,6 @@ internal static class LobbyRosterTests
     {
         foreach (var type in Enum.GetValues<SlotType>())
         foreach (bool local in new[] { false, true })
-        foreach (bool invited in new[] { false, true })
         foreach (bool friend in new[] { false, true })
         {
             var roster = new LobbyRoster();
@@ -19,11 +18,11 @@ internal static class LobbyRosterTests
             bool expected =
                 type == SlotType.Open
                 || type == SlotType.Local && local
-                || type == SlotType.Private && (local || invited)
+                || type == SlotType.Private
                 || type == SlotType.Friend && (local || friend);
             Check(
-                roster.SetPlayers(peer, [.. roster.Players(peer), new(0)], new(invited, friend)) == expected,
-                $"Admission for {type}, local={local}, invited={invited}, friend={friend}"
+                roster.SetPlayers(peer, [.. roster.Players(peer), new(0)], new(friend)) == expected,
+                $"Slot access for {type}, local={local}, friend={friend}"
             );
         }
         var rooms = new LobbyRoster();
@@ -105,10 +104,9 @@ internal static class LobbyRosterTests
             "Unspectating respects available online slots and is atomic"
         );
         observers.Edit(1, SlotType.Private);
-        Check(!observers.SetSpectating(1, false), "Private slot requires an invitation when unspectating");
         Check(
-            observers.SetSpectating(1, false, new(Invited: true)) && observers.Slots[1].Player?.Peer == 1,
-            "Invited spectator returns to first eligible room"
+            observers.SetSpectating(1, false) && observers.Slots[1].Player?.Peer == 1,
+            "An admitted spectator can use a private slot without claiming an invitation"
         );
         var copy = new LobbyRoster();
         copy.Replace(observers.Slots, observers.Spectators);

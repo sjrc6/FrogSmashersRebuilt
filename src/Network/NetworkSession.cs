@@ -102,7 +102,7 @@ public sealed class NetworkSession : IRollbackSession
             MaxInputDelay = RollbackPreferences.InputCapacityFrames,
             MaxPredictionFrames = config.MaxPrediction,
             HistoryFrames = config.HistoryFrames,
-            ChecksumInterval = 60,
+            ChecksumInterval = World.TickRate / 2,
             MaxPacketBytes = 1185,
             SynchronizationRoundTrips = 1,
         };

@@ -148,7 +148,7 @@ internal static class MatchTests
         Step(scoreboard);
         Check(
             scoreboard.Phase == MatchPhase.RoundScores
-                && scoreboard.PhaseTicks == 720
+                && scoreboard.PhaseTicks == World.TickRate * 6
                 && scoreboard.RoundNumber == 1
                 && scoreboard.Winner == 0,
             "winner celebration enters the six-second standings screen before final victory"
@@ -156,7 +156,7 @@ internal static class MatchTests
         var standingPosition = scoreboard.Players[0].Position;
         var standingAnimation = scoreboard.Players[0].AnimationTime;
         var standings = scoreboard.Capture();
-        Step(scoreboard, new(1, 0, InputButtons.Jump | InputButtons.Attack), 719);
+        Step(scoreboard, new(1, 0, InputButtons.Jump | InputButtons.Attack), World.TickRate * 6 - 1);
         Check(
             scoreboard.Phase == MatchPhase.RoundScores
                 && scoreboard.PhaseTicks == 1
@@ -166,7 +166,7 @@ internal static class MatchTests
         );
         var standingsHash = scoreboard.HashState();
         scoreboard.Restore(standings);
-        Step(scoreboard, count: 719);
+        Step(scoreboard, count: World.TickRate * 6 - 1);
         Check(
             scoreboard.HashState() == standingsHash,
             "standings countdown restores deterministically despite irrelevant player input"

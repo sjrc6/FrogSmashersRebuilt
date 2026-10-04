@@ -14,11 +14,11 @@ internal sealed partial class MeshLobby
         {
             Kind = ControlKind.Hello,
             Rollback = rollback,
-            Hash = contentHash,
+            Hash = compatibility,
             Nonce = clientNonce,
             Players = requested,
             Spectating = requestedSpectating,
-            Invited = invited,
+            AdmissionSecret = Connected ? "" : admissionSecret,
             CanSimulate = simulation != null,
             Version = requestVersion,
             Epoch = requestEpoch,
