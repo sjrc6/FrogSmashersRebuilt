@@ -26,7 +26,7 @@ internal static class GameplayData
         foreach (var map in maps)
         {
             writer.Write(map.Id);
-            writer.Write(map.Name);
+            writer.Write((int)map.Role);
             WriteNumber(writer, map.KillBounds.Left);
             WriteNumber(writer, map.KillBounds.Right);
             WriteNumber(writer, map.KillBounds.Bottom);

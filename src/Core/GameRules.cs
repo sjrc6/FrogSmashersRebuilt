@@ -33,9 +33,17 @@ public sealed class GameRules
     public int RoundFinishTicks { get; }
     public int ScoreScreenTicks { get; }
     public ImmutableArray<int> MapOrder { get; }
+    public GameModifiers Modifiers { get; }
 
     [JsonIgnore]
     public bool UsesTeams => Format != MatchFormat.Ffa;
+
+    [JsonIgnore]
+    public bool BodyBouncingEnabled => Format == MatchFormat.Ffa && Modifiers.BodyBouncing;
+
+    [JsonIgnore]
+    public bool CumulativeScoring =>
+        Scoring == ScoringMode.Points && Modifiers.MatchScoring == MatchScoring.CumulativePoints;
 
     [JsonIgnore]
     public int TargetScore =>
@@ -57,7 +65,8 @@ public sealed class GameRules
         bool showdown = false,
         int roundFinishTicks = World.TickRate * 15 / 2,
         int scoreScreenTicks = World.TickRate * 6,
-        ImmutableArray<int> mapOrder = default
+        ImmutableArray<int> mapOrder = default,
+        GameModifiers? modifiers = null
     )
     {
         if (playerCount is < 0 or > 8 || !Enum.IsDefined(format) || !Enum.IsDefined(scoring))
@@ -86,6 +95,8 @@ public sealed class GameRules
         Showdown = showdown;
         RoundFinishTicks = roundFinishTicks;
         ScoreScreenTicks = scoreScreenTicks;
+        Modifiers = modifiers ?? GameModifiers.Default;
+        Modifiers.Validate();
     }
 
     public string? StartBlockedReason()
@@ -133,5 +144,6 @@ public sealed class GameRules
         writer.Write(MapOrder.Length);
         foreach (int map in MapOrder)
             writer.Write(map);
+        Modifiers.WriteConfiguration(writer);
     }
 }

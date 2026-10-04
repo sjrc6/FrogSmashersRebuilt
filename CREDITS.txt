@@ -2,6 +2,7 @@ Frog Smashers Rebuilt is a modified version of Frog Smashers.
 
 Frog Smashers Rebuilt Credits:
 MonoGame port and other changes: Tater (@sjrc6)
+Modifier gameplay reference: PNone (https://github.com/PNone/frogsmashers)
 
 Original Frog Smashers credits:
 Programming / Design: Ruan Rothmann (@rrza)

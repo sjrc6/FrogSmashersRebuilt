@@ -69,7 +69,8 @@ internal static class MenuSetupTests
                 && RollbackPreferences.Milliseconds(99) == "990 MS",
             "rollback settings use three total digits in milliseconds"
         );
-        var setup = new MatchSetup(7);
+        var maps = GameContent.Load(Path.Combine(contentRoot, "content.json")).Maps;
+        var setup = new MatchSetup(7, maps);
         check(setup.Preferences == new MatchPreferences(), "new sessions start with default match settings");
         setup.Preferences.Format = MatchFormat.Teams;
         setup.Preferences.WinScore = 12;
@@ -116,8 +117,37 @@ internal static class MenuSetupTests
 
         setup.ResetPreferences();
         check(setup.Preferences == new MatchPreferences(), "resetting the lobby clears every match preference");
-        var customStart = new MatchSetup(7, firstMap: 4);
+        var customStart = new MatchSetup(7, maps, firstMap: 4);
         check(customStart.CreateOptions().Rules.MapOrder[0] == 4, "launch map supplies the initial arena");
+        int podium = maps.FindIndex(map => map.Role == MapRole.ExtraArena);
+        check(
+            podium >= 0 && maps[podium].Spawns.Count == 4 && maps[podium].Collision.Any(box => box.OneWay),
+            "Podium includes its authored spawns and one-way platform"
+        );
+        setup.SetModifiers(GameModifiers.Default with { IncludePodium = true });
+        setup.FirstMap = podium;
+        var podiumRules = setup.CreateOptions().Rules;
+        check(
+            podiumRules.MapOrder.Length == 7
+                && podiumRules.MatchRounds == 7
+                && podiumRules.MapOrder[0] == podium
+                && podiumRules.MapOrder.All(index => maps[index].Role != MapRole.Showdown),
+            "Podium joins the regular arena rotation without treating Showdown as an ordinary map"
+        );
+        setup.SetModifiers(GameModifiers.Default);
+        check(
+            setup.FirstMap != podium
+                && setup.CreateOptions().Rules.MapOrder.Length == 6
+                && setup.Preferences.MatchRounds == 6,
+            "Disabling Podium repairs the first arena selection"
+        );
+        check(
+            podiumRules.Modifiers.IncludePodium && podiumRules.MapOrder[0] == podium,
+            "Later modifier changes cannot mutate a frozen match configuration"
+        );
+        setup.Preferences.MatchRounds = 3;
+        setup.SetModifiers(GameModifiers.Default with { IncludePodium = true });
+        check(setup.Preferences.MatchRounds == 3, "Adding an arena preserves a custom round count");
         customStart.FirstMap = 2;
         customStart.Preferences.Format = MatchFormat.Teams;
         customStart.Preferences.WinScore = 12;

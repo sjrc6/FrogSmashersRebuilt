@@ -50,6 +50,7 @@ internal sealed partial class MenuController
                     );
                 }
                 lobbyRows.Add(Link("MATCH SETTINGS", GameScreen.MatchSettings));
+                lobbyRows.Add(Link("MODIFIERS", GameScreen.Modifiers));
                 if (game.Lobby.IsHost)
                     lobbyRows.Add(Link("EDIT SLOTS", GameScreen.SlotEditor));
                 lobbyRows.Add(Link("SETTINGS", GameScreen.Settings));
@@ -72,6 +73,8 @@ internal sealed partial class MenuController
                 return RollbackRows();
             case GameScreen.MatchSettings:
                 return MatchRows();
+            case GameScreen.Modifiers:
+                return ModifierRows();
             case GameScreen.Online:
                 return
                 [

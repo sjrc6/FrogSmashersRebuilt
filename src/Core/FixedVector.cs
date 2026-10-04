@@ -17,4 +17,6 @@ public readonly record struct FixedVector(Fixed X, Fixed Y)
     public static FixedVector operator /(FixedVector a, Fixed b) => new(a.X / b, a.Y / b);
 
     public static Fixed Dot(FixedVector a, FixedVector b) => a.X * b.X + a.Y * b.Y;
+
+    public override string ToString() => $"({X}, {Y})";
 }

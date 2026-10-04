@@ -1,3 +1,4 @@
+using FrogSmashers.Core;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -114,6 +115,34 @@ internal sealed partial class PresentationChecks
                         && assets.Font.Measure(measured.Rows[0].Text.Label).X <= measured.Panel.Width - 64 - 136,
                     $"Binding drawing and hit testing reserve measured glyph space at {size}"
                 );
+                var modifiers = ModifierCatalog
+                    .All.Select(definition => new MenuEntry(
+                        definition.Id,
+                        definition.Label,
+                        Value: definition.Value(GameModifiers.Default),
+                        ValueSample: definition.ValueSample,
+                        Help: definition.Help
+                    ))
+                    .ToArray();
+                Rectangle? modifierPanel = null;
+                for (int selected = 0; selected < modifiers.Length; selected++)
+                {
+                    var layout = MenuLayout.Measure(GameScreen.Modifiers, modifiers, assets.Font, selected: selected);
+                    modifierPanel ??= layout.Panel;
+                    Check(
+                        layout.Panel == modifierPanel && !layout.Rows[selected].Bounds.IsEmpty,
+                        $"Every modifier stays visible within a stable panel at {size}"
+                    );
+                    string help = assets.Font.Wrap(
+                        "ENABLE BODY BOUNCING. " + modifiers[selected].Help,
+                        layout.Panel.Width - 40,
+                        3
+                    );
+                    Check(
+                        assets.Font.Measure(help).Y <= 90 && assets.Font.Measure(help).X <= layout.Panel.Width - 40,
+                        $"Modifier help fits above the footer buttons at {size}"
+                    );
+                }
             }
         }
         finally

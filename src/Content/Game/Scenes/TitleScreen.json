@@ -447,6 +447,7 @@
     "shakeMaxSpeed": 40,
     "shakeSpeedDecay": 1
   },
+  "Role": 3,
   "SceneEffects": [],
   "Spawns": [],
   "Sprites": [

@@ -344,7 +344,7 @@ public sealed class Audio : IDisposable
                 }
                 else
                 {
-                    PlayAt("TongueCollide", id, .5f, position);
+                    PlayAt(e.HitKind == HitKind.Body ? "CharacterCollision" : "TongueCollide", id, .5f, position);
                 }
 
                 continue;

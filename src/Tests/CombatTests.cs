@@ -419,7 +419,7 @@ internal static class CombatTests
 
         foreach (decimal width in new[] { .001m, .5m, 2m, 12m })
         {
-            var world = CreateWorld(map: Wall(6 + width / 2, width));
+            var world = CreateWorld(new(modifiers: new() { PhysicsFixes = false }), map: Wall(6 + width / 2, width));
             Check(
                 Latches(world, new(0, 0, InputButtons.Tongue)),
                 $"tongue attaches to distant solid wall of width {width}"
@@ -428,7 +428,7 @@ internal static class CombatTests
 
         foreach (int speed in new[] { -20, 0, 20 })
         {
-            var world = CreateWorld(map: Wall(6, .02m));
+            var world = CreateWorld(new(modifiers: new() { PhysicsFixes = false }), map: Wall(6, .02m));
             var p = world.Players[0];
             p.Y = 10;
             p.OnGround = false;
@@ -439,12 +439,12 @@ internal static class CombatTests
             );
         }
 
-        var nearby = CreateWorld(map: Wall(2, .5m));
+        var nearby = CreateWorld(new(modifiers: new() { PhysicsFixes = false }), map: Wall(2, .5m));
         Check(
             !Latches(nearby, new(0, 0, InputButtons.Tongue)),
             "original minimum range deliberately permits a thin wall entirely within three units to be passed through"
         );
-        var fast = CreateWorld(map: Wall(6, .02m));
+        var fast = CreateWorld(new(modifiers: new() { PhysicsFixes = false }), map: Wall(6, .02m));
         fast.Players[0].Y = 10;
         fast.Players[0].OnGround = false;
         fast.Players[0].VX = 80;
@@ -452,7 +452,7 @@ internal static class CombatTests
             !Latches(fast, new(0, 0, InputButtons.Tongue)) && fast.Players[0].X <= FromDecimal(4.99m),
             "fast grapple momentum reaches the wall during tongue delay, exposing the same original minimum-range pass-through"
         );
-        var skip = CreateWorld(map: Wall(5.5m, .001m));
+        var skip = CreateWorld(new(modifiers: new() { PhysicsFixes = false }), map: Wall(5.5m, .001m));
         var skipping = skip.Players[0];
         skipping.OnGround = false;
         skipping.Y = 10;
@@ -465,7 +465,7 @@ internal static class CombatTests
             skipping.TongueTip.X > 6 && skipping.TonguePhase == TonguePhase.Extending,
             "extreme knockback can skip a thin wall between endpoint queries, as in the original unswept tongue overlap"
         );
-        var platformSide = CreateWorld(map: Wall(6, .5m, true));
+        var platformSide = CreateWorld(new(modifiers: new() { PhysicsFixes = false }), map: Wall(6, .5m, true));
         Check(
             !Latches(platformSide, new(0, 0, InputButtons.Tongue)),
             "horizontal tongue ignores one-way terrain like the source layer mask"
@@ -487,7 +487,7 @@ internal static class CombatTests
                     },
                 ],
             };
-            var world = CreateWorld(map: map);
+            var world = CreateWorld(new(modifiers: new() { PhysicsFixes = false }), map: map);
             world.Players[0].OnGround = false;
             Check(
                 Latches(world, new(0, (sbyte)direction, InputButtons.Tongue)) == (direction < 0),
@@ -496,6 +496,7 @@ internal static class CombatTests
         }
 
         var diagonal = CreateWorld(
+            new(modifiers: new() { PhysicsFixes = false }),
             map: new()
             {
                 Id = "tongue-diagonal",
@@ -513,7 +514,7 @@ internal static class CombatTests
         );
         diagonal.Players[0].OnGround = false;
         Check(Latches(diagonal, new(1, 1, InputButtons.Tongue)), "diagonal tongue attaches to a thin vertical solid");
-        var checkpoint = CreateWorld(map: Wall(6, .1m));
+        var checkpoint = CreateWorld(new(modifiers: new() { PhysicsFixes = false }), map: Wall(6, .1m));
         Step(checkpoint, new(0, 0, InputButtons.Tongue), 12);
         var bytes = checkpoint.Capture();
         var events = new List<SimulationEvent>();

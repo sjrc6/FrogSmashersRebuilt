@@ -97,7 +97,7 @@ internal static class PhysicsTests
             ],
             Spawns = [new() { X = 0, Y = .5m }],
         };
-        var embed = CreateWorld(map: platform);
+        var embed = CreateWorld(new(modifiers: new() { PhysicsFixes = false }), map: platform);
         embed.Players[0].Y = FromDecimal(.5m);
         Step(embed, new(0, -1, InputButtons.Jump), 2);
         var embeddedY = embed.Players[0].Y;

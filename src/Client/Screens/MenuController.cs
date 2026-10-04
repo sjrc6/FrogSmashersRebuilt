@@ -274,7 +274,7 @@ internal sealed partial class MenuController
             game.Toasts.Show(reason);
         else
             entry.Select();
-        if (Screen == GameScreen.MatchSettings && game.Lobby.IsHost)
+        if (Screen is (GameScreen.MatchSettings or GameScreen.Modifiers) && game.Lobby.IsHost)
             game.PublishMatchSettings();
         menuSoundPending = true;
     }
@@ -285,7 +285,7 @@ internal sealed partial class MenuController
             game.Toasts.Show(reason);
         else
             entry.Change?.Invoke(amount);
-        if (Screen == GameScreen.MatchSettings && game.Lobby.IsHost)
+        if (Screen is (GameScreen.MatchSettings or GameScreen.Modifiers) && game.Lobby.IsHost)
             game.PublishMatchSettings();
         menuSoundPending = true;
     }
@@ -493,7 +493,14 @@ internal sealed partial class MenuController
     {
         menuSoundPending |= Screen is GameScreen.Playing or GameScreen.Connecting || history.Count > 0;
         EditingAddress = WaitingForBinding = false;
-        if (Screen is GameScreen.Settings or GameScreen.Rollback or GameScreen.MatchSettings or GameScreen.Bindings)
+        if (
+            Screen
+            is GameScreen.Settings
+                or GameScreen.Rollback
+                or GameScreen.MatchSettings
+                or GameScreen.Modifiers
+                or GameScreen.Bindings
+        )
             game.SaveSettings();
         if (Screen == GameScreen.Playing)
         {

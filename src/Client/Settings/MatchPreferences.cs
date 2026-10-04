@@ -11,6 +11,7 @@ public sealed record MatchPreferences
     public int MatchRounds { get; set; } = 6;
     public int FirstMap { get; set; }
     public bool ShuffleMaps { get; set; }
+    public GameModifiers Modifiers { get; set; } = GameModifiers.Default;
 
     public void ChangeFormat(int amount)
     {

@@ -4,6 +4,13 @@ namespace FrogSmashers.Core;
 
 public sealed partial class World
 {
+    private int NextFlySpawnTicks()
+    {
+        int min = Rules.Modifiers.FlySpawnMinSeconds * TickRate;
+        int max = Rules.Modifiers.FlySpawnMaxSeconds * TickRate;
+        return min == max ? min : RandomRange(min, max);
+    }
+
     private bool TryClaimFly(PlayerState claimant)
     {
         if (!Fly.Active || Fly.Owner >= 0 && Fly.Owner != claimant.Slot)
@@ -42,6 +49,8 @@ public sealed partial class World
 
     private void UpdateFly()
     {
+        if (!Rules.Modifiers.FlyEnabled)
+            return;
         if (!Fly.Active)
         {
             if (Fly.IngestedBy >= 0 || Match.IsShowdown || Match.Phase != MatchPhase.Playing)
@@ -120,7 +129,7 @@ public sealed partial class World
         {
             Fly.Active = false;
             ReleaseFly();
-            Fly.SpawnTicks = RandomRange(15 * TickRate, 45 * TickRate);
+            Fly.SpawnTicks = NextFlySpawnTicks();
         }
     }
 

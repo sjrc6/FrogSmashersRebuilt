@@ -44,7 +44,7 @@ internal static class MenuArchitectureTests
             "Start and destructive actions have different semantic colors"
         );
 
-        var setup = new MatchSetup(12);
+        var setup = new MatchSetup(12, [new() { Id = "arena" }]);
         var roster = new LobbyRoster();
         roster.SetPlayers(0, [new(0, Spawned: true), new(10, Team: 1, Color: 1, Spawned: true, Cpu: true)]);
         roster.SetPlayers(1, [new(0, 1, Team: 1, Color: 2, Spawned: true)]);
@@ -74,6 +74,29 @@ internal static class MenuArchitectureTests
         check(
             setup.Preferences.Format == MatchFormat.Crews && setup.Preferences.Scoring == ScoringMode.Stocks,
             "Choosing Crews enforces Stocks"
+        );
+        foreach (var definition in ModifierCatalog.All)
+        {
+            var modifiers = GameModifiers.Default;
+            for (int change = 0; change < 300; change++)
+            {
+                modifiers = definition.Change(modifiers, change < 150 ? -1 : 1);
+                modifiers.Validate();
+            }
+            check(
+                definition.Help.Length > 0 && definition.Value(modifiers).Length > 0,
+                "Modifier catalog provides help and bounded changes: " + definition.Id
+            );
+        }
+        var teamRules = new GameRules(format: MatchFormat.Teams);
+        check(
+            ModifierCatalog.All.Single(d => d.Id == "body-bouncing").DisabledReason!(teamRules) == "FFA ONLY",
+            "Body bouncing is visibly unavailable outside FFA"
+        );
+        var stocksRules = new GameRules(scoring: ScoringMode.Stocks);
+        check(
+            ModifierCatalog.All.Single(d => d.Id == "match-scoring").DisabledReason!(stocksRules) == "POINTS ONLY",
+            "Cumulative scoring is visibly unavailable for Stocks"
         );
         Console.WriteLine("Menu identities, semantic actions and host configuration ownership passed");
     }

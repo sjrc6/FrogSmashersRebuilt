@@ -13,7 +13,7 @@ public sealed partial class Renderer
     private void SpawnPuff(MapData map, Vector2 feet, Color color, long tick, float age = 0)
     {
         float ground = feet.Y;
-        float nearest = 1;
+        float nearest = float.PositiveInfinity;
         foreach (var platform in map.Collision)
         {
             float left = (float)(platform.X - platform.Width / 2);

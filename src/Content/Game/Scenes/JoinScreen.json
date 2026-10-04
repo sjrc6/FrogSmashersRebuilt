@@ -2027,6 +2027,7 @@
   "OrthoSize": 18,
   "Parallax": [],
   "ParticleEmitters": [],
+  "Role": 3,
   "SceneEffects": [],
   "ScreenTop": 16.5,
   "Spawns": [

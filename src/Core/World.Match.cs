@@ -7,7 +7,7 @@ public sealed partial class World
     private void StartRound()
     {
         Match.StartRound();
-        Fly = new FlyState { SpawnTicks = RandomRange(15 * TickRate, 45 * TickRate) };
+        Fly = new FlyState { SpawnTicks = NextFlySpawnTicks() };
         for (int i = 0; i < Players.Length; i++)
         {
             var prior = Players[i];
@@ -27,10 +27,7 @@ public sealed partial class World
         {
             for (int i = 0; i < maps.Count; i++)
             {
-                if (
-                    maps[i].Id.Contains("showdown", StringComparison.OrdinalIgnoreCase)
-                    || maps[i].Name.Contains("showdown", StringComparison.OrdinalIgnoreCase)
-                )
+                if (maps[i].Role == MapRole.Showdown)
                 {
                     return i;
                 }
@@ -42,13 +39,7 @@ public sealed partial class World
             return Rules.MapOrder[round % Rules.MapOrder.Length];
         }
 
-        var regular = Enumerable
-            .Range(0, maps.Count)
-            .Where(i =>
-                !maps[i].Id.Contains("showdown", StringComparison.OrdinalIgnoreCase)
-                && !maps[i].Name.Contains("showdown", StringComparison.OrdinalIgnoreCase)
-            )
-            .ToArray();
+        var regular = ArenaRotation.Available(maps, Rules.Modifiers);
         return regular.Length == 0 ? 0 : regular[round % regular.Length];
     }
 
@@ -141,7 +132,7 @@ public sealed partial class World
         {
             Fly.IngestedBy = -1;
             Fly.Active = false;
-            Fly.SpawnTicks = RandomRange(15 * TickRate, 45 * TickRate);
+            Fly.SpawnTicks = NextFlySpawnTicks();
         }
 
         player.HasFly = false;
@@ -150,11 +141,7 @@ public sealed partial class World
             player,
             player.LastHitBy,
             player.HitsTaken,
-            awardedScore: !Rules.Lobby
-                && Match.Phase == MatchPhase.Playing
-                && !Match.IsShowdown
-                && player.LastHitBy >= 0
-                && player.LastHitBy < Players.Length
+            scoreDelta: Match.DeathScore(Rules, player.LastHitBy, player.HitsTaken)
         );
         int winner = Match.RecordDeath(Rules, player.Slot, player.LastHitBy, player.HitsTaken);
         if (winner >= 0)

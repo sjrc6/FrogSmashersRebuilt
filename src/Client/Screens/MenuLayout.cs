@@ -31,6 +31,7 @@ internal static class MenuLayout
         {
             GameScreen.Main => 240,
             GameScreen.Bindings => 480,
+            GameScreen.Modifiers => 560,
             GameScreen.BrowseSteam or GameScreen.BrowseLan => 560,
             _ => 440,
         };
@@ -146,7 +147,13 @@ internal static class MenuLayout
             _ => 60 + LineThickness + RowPadding,
         };
 
-    private static int FooterHeight(GameScreen screen) => screen == GameScreen.ViewPlayers ? 82 : 50;
+    private static int FooterHeight(GameScreen screen) =>
+        screen switch
+        {
+            GameScreen.ViewPlayers => 82,
+            GameScreen.Modifiers => 140,
+            _ => 50,
+        };
 
     public static int HeaderLine(GameScreen screen, Rectangle panel) =>
         panel.Top + RowsOffset(screen) - RowPadding - LineThickness;

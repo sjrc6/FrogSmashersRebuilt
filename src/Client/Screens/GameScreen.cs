@@ -12,6 +12,7 @@ internal enum GameScreen
     Settings,
     Rollback,
     MatchSettings,
+    Modifiers,
     LobbyMenu,
     SlotEditor,
     ViewPlayers,

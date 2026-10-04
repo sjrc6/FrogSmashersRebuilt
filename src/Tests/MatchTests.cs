@@ -20,7 +20,7 @@ internal static class MatchTests
             "knockout awards combo-sized points and wins the round"
         );
         Check(
-            score.Events.Single(e => e.Kind == SimulationEventKind.Death).AwardedScore,
+            score.Events.Single(e => e.Kind == SimulationEventKind.Death).ScoreDelta > 0,
             "round-winning death retains its awarded-score flag after the phase changes"
         );
         var lateDeath = CreateWorld(new(winScore: 1, playerCount: 3));
@@ -32,8 +32,8 @@ internal static class MatchTests
         var deaths = lateDeath.Events.Where(e => e.Kind == SimulationEventKind.Death).ToArray();
         Check(
             deaths.Length == 2
-                && deaths[0].AwardedScore
-                && !deaths[1].AwardedScore
+                && deaths[0].ScoreDelta > 0
+                && deaths[1].ScoreDelta == 0
                 && lateDeath.Match.Players[1].Score == 0,
             "death after victory in the same tick must not produce a score award or overwrite winner text"
         );
@@ -41,7 +41,7 @@ internal static class MatchTests
         uncredited.Players[1].X = 51;
         Step(uncredited);
         Check(
-            !uncredited.Events.Single(e => e.Kind == SimulationEventKind.Death).AwardedScore,
+            uncredited.Events.Single(e => e.Kind == SimulationEventKind.Death).ScoreDelta == 0,
             "uncredited death emits no score award"
         );
         Step(score, count: 2);
@@ -72,7 +72,7 @@ internal static class MatchTests
             "team showdown ends when only one team survives"
         );
         Check(
-            showdown.Events.Where(e => e.Kind == SimulationEventKind.Death).All(e => !e.AwardedScore),
+            showdown.Events.Where(e => e.Kind == SimulationEventKind.Death).All(e => e.ScoreDelta == 0),
             "showdown deaths emit no score awards"
         );
     }
@@ -80,7 +80,15 @@ internal static class MatchTests
     public static void RoundProgression()
     {
         var campaign = new World(
-            new GameContent { Maps = [new() { Id = "first" }, new() { Id = "second" }, new() { Id = "Showdown" }] },
+            new GameContent
+            {
+                Maps =
+                [
+                    new() { Id = "first" },
+                    new() { Id = "second" },
+                    new() { Id = "Showdown", Role = MapRole.Showdown },
+                ],
+            },
             new(winScore: 1, matchRounds: 2, roundFinishTicks: 1, scoreScreenTicks: 0),
             123
         );

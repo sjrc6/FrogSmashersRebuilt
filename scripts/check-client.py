@@ -119,7 +119,7 @@ def verify_connections_and_repeat():
         second = panel.crop((686, 370, 862, 388))
         assert ImageChops.difference(first, second).getbbox() is None, "Lobby hints obscure connection text"
     editor = [key(1, "Enter"), key(3, "Escape"), key(5, "Down"), key(7, "Down"),
-              key(9, "Enter"), dict(From=11, To=30, Keys=["Tab"])]
+              key(9, "Down"), key(11, "Enter"), dict(From=13, To=30, Keys=["Tab"])]
     edited = capture("connections-slot-editor", editor, 25)
     assert edited["Page"] == "SlotEditor" and not edited["ConnectionsVisible"], edited
 
@@ -371,7 +371,7 @@ def verify_lobby_menus():
     pad_backed_out = capture("lobby-pad-backout", controller + [pad(34, 0, "A")], 36)
     assert pad_backed_out["LobbySlots"][0]["Player"] is None, pad_backed_out
 
-    settings = joining + [key(15, "Escape")] + [key(frame, "S") for frame in (17, 19, 21)] + [key(25, "Enter")]
+    settings = joining + [key(15, "Escape")] + [key(frame, "S") for frame in (17, 19, 21, 23)] + [key(25, "Enter")]
     settings += [key(frame, "S") for frame in (27, 29, 31)] + [key(33, "D")]
     personal = capture("personal-settings", settings, 35)
     assert personal["Page"] == "Settings" and abs(personal["Volume"] - .70) < .001, personal
@@ -381,7 +381,7 @@ def verify_lobby_menus():
     assert returned["Page"] == "Seats" and returned["LocalDevices"] == [0, 1], returned
 
     cpu = [key(1, "Enter"), key(3, "U"), key(5, "U"), key(7, "Escape")]
-    cpu += [key(frame, "Down") for frame in (9, 11)]
+    cpu += [key(frame, "Down") for frame in (9, 11, 13)]
     cpu += [key(15, "Enter"), key(17, "Left"), key(19, "Up")]
     edge = capture("slot-edge", cpu, 21)
     assert edge["Page"] == "SlotEditor" and edge["SelectedSeat"] == 0, edge
@@ -404,12 +404,12 @@ def verify_lobby_menus():
     assert fresh["Page"] == "Seats" and fresh["LobbyTick"] < 10 and fresh["LocalDevices"] == [], fresh
     assert all(slot["Open"] and slot["Type"] == 1 and slot["Player"] is None for slot in fresh["LobbySlots"]), fresh
     assert not any(player["Alive"] for player in fresh["LobbyPlayers"]) and fresh["LobbySpawnPuffs"] == 0, fresh
-    cpu += [key(45, "Enter"), key(47, "Escape"), key(49, "Up"), key(51, "Up"), key(53, "Enter")]
+    cpu += [key(45, "Enter"), key(47, "Escape"), key(49, "Up"), key(51, "Up"), key(53, "Up"), key(55, "Enter")]
     started = capture("cpu-start-slot", cpu, 60)
     assert started["Page"] == "Playing" and started["LocalDevices"] == [0, -1] and started["Players"] == 2, started
 
     occupied = [key(1, "Enter"), key(3, "U"), key(5, "U"), key(7, "Escape")]
-    occupied += [key(frame, "Down") for frame in (9, 11)]
+    occupied += [key(frame, "Down") for frame in (9, 11, 13)]
     occupied += [key(15, "Enter"), key(17, "Enter")]
     unchanged = capture("slot-occupied", occupied, 19)
     assert unchanged["Page"] == "SlotEditor" and unchanged["LobbySlots"][0]["Player"]["Id"] == 0, unchanged
@@ -445,12 +445,12 @@ def verify_lobby_menus():
     assert controller_creation["Page"] == "CreateLobby" and controller_creation["HintDevice"] == 2, controller_creation
     controller_joining = capture("controller-join-lobby", controller_online + [pad(9, 0, "B"), pad(11, 0, "DPadDown"), pad(13, 0, "A")], 16)
     assert controller_joining["Page"] == "JoinLobby" and controller_joining["HintDevice"] == 2, controller_joining
-    preview_cycle = [key(1, "Enter"), key(3, "Escape"), key(5, "Down"), key(7, "Down"), key(11, "Enter"),
+    preview_cycle = [key(1, "Enter"), key(3, "Escape"), key(5, "Down"), key(7, "Down"), key(9, "Down"), key(11, "Enter"),
                      dict(From=13, To=20, Keys=["Enter"]), key(15, "Left"), key(17, "Right")]
     preview_returned = capture("slot-preview-past-cpu", preview_cycle, 23)
     assert preview_returned["LobbySlots"][0]["Type"] == 1 and preview_returned["LobbySlots"][0]["Player"] is None, preview_returned
 
-    room_edges = [key(1, "Enter"), key(3, "Escape"), key(5, "Down"), key(7, "Down"), key(11, "Enter")]
+    room_edges = [key(1, "Enter"), key(3, "Escape"), key(5, "Down"), key(7, "Down"), key(9, "Down"), key(11, "Enter")]
     room_edges += [key(13, "Right"), key(15, "Right"), key(17, "Right"), key(19, "Down"), key(21, "Down"), key(23, "Down")]
     bottom = capture("slot-bottom-edge", room_edges, 25)
     assert bottom["SelectedSeat"] == 7, bottom
@@ -477,7 +477,7 @@ def verify_lobby_menus():
     rows += [click(21, *menu_center(shared_pad, "page-Settings"))]
     shared_mouse = capture("lobby-menu-shared-mouse", rows, 23)
     assert shared_mouse["Page"] == "Settings" and shared_mouse["HintDevice"] == 0, shared_mouse
-    rows += [pad(25, 0, "B"), pad(27, 1, "DPadUp"), pad(29, 1, "DPadUp"), pad(31, 1, "DPadUp"), pad(33, 1, "A")]
+    rows += [pad(24, 0, "B"), pad(25, 1, "DPadUp"), pad(27, 1, "DPadUp"), pad(29, 1, "DPadUp"), pad(31, 1, "DPadUp"), pad(33, 1, "A")]
     playing = capture("controller-start", rows, 35)
     assert playing["Page"] == "Playing" and playing["Players"] == 2 and not playing["Paused"], playing
     rows += [pad(37, 1, "Start"), key(41, "Enter")]
@@ -497,7 +497,7 @@ def verify_player_menu():
         path.write_text(json.dumps(rows))
         return run(name, ["--no-intro", "--input-script", str(path), "--frames", str(frames), "--capture", str(out / (name + ".png"))])
     party = [key(1, "Enter"), key(3, "U"), key(5, "U"), key(7, "OemPeriod"), key(9, "OemPeriod")]
-    players = party + [key(11, "Escape")] + [key(frame, "Down") for frame in (13, 15, 17, 19)] + [key(21, "Enter")]
+    players = party + [key(11, "Escape")] + [key(frame, "Down") for frame in (13, 15, 17, 19, 21)] + [key(23, "Enter")]
     highlighted = capture("players-highlight", players, 24)
     assert highlighted["Page"] == "ViewPlayers" and highlighted["PlayerActions"]["Accept"] == "BACK OUT", highlighted
     removed = capture("players-direct-backout", players + [key(25, "Enter")], 28)
@@ -514,8 +514,8 @@ def verify_player_menu():
     mouse += [click(37, *menu_center(none_left, "back", "MenuButtons"))]
     empty = capture("players-click-actions", mouse, 40)
     assert empty["Page"] == "LobbyMenu" and empty["LocalDevices"] == [] and "RESUME" not in empty["MenuItems"], empty
-    cpu = [key(1, "Enter"), key(3, "Escape"), key(5, "Down"), key(7, "Down"), key(9, "Enter"),
-           key(11, "Enter"), key(13, "Escape"), key(15, "Down"), key(17, "Down"), key(19, "Enter")]
+    cpu = [key(1, "Enter"), key(3, "Escape"), key(5, "Down"), key(7, "Down"), key(9, "Down"), key(11, "Enter"),
+           key(13, "Enter"), key(15, "Escape"), key(17, "Down"), key(19, "Down"), key(21, "Enter")]
     highlighted_cpu = capture("players-cpu-highlight", cpu, 22)
     assert highlighted_cpu["PlayerActions"] == dict(Accept=None, Remove="KICK", DisabledReason=None), highlighted_cpu
     kicked = capture("players-cpu-kick", cpu + [key(23, "U")], 26)
@@ -551,7 +551,35 @@ def verify_match_configuration():
     print("PASS: match format and scoring controls enforce Crews constraints and reject unfinished mode starts.")
 
 
-def verify_guest_match_settings():
+def verify_modifiers():
+    def key(frame, name):
+        return dict(From=frame, To=frame + 1, Keys=[name])
+    def capture(name, rows, frames):
+        script = out / (name + "-input.json")
+        script.write_text(json.dumps(rows))
+        return run(name, ["--no-intro", "--input-script", str(script), "--frames", str(frames),
+                          "--capture", str(out / (name + ".png"))])
+    rows = [key(frame, name) for frame, name in [(1, "Enter"), (3, "Escape"),
+            (5, "Down"), (7, "Down"), (9, "Enter")]]
+    defaults = capture("modifiers-default", rows, 12)
+    assert defaults["Page"] == "Modifiers" and "PHYSICS FIXES: ON" in defaults["MenuItems"], defaults
+    assert next(r for r in defaults["MenuRows"] if r["Id"] == "redirect-bounces")["DisabledReason"] == "ENABLE BODY BOUNCING", defaults
+    rows += [key(15, "Right"), key(17, "Down"), key(19, "Right")]
+    enabled = capture("modifiers-enabled", rows, 22)
+    assert "PHYSICS FIXES: OFF" in enabled["MenuItems"] and "BODY BOUNCING: ON" in enabled["MenuItems"], enabled
+    assert enabled["MenuPanel"] == defaults["MenuPanel"], (defaults, enabled)
+    rows += [key(frame, "Down") for frame in range(25, 41, 2)] + [key(43, "Right")]
+    podium = capture("modifiers-podium", rows, 46)
+    assert podium["MatchSettings"]["Modifiers"]["IncludePodium"] and podium["MenuPages"] >= 1, podium
+    x, y = menu_center(podium, "reset-modifiers")
+    rows += [dict(From=49, To=50, MouseX=x, MouseY=y, MouseDown=True)]
+    reset = capture("modifiers-reset", rows, 52)
+    assert reset["MatchSettings"]["Modifiers"] == defaults["MatchSettings"]["Modifiers"], reset
+    assert reset["MenuPanel"] == defaults["MenuPanel"], reset
+    print("PASS: lobby modifiers, dependencies, keyboard changes, stable bounds and mouse reset.")
+
+
+def verify_guest_match_settings(modifiers=False):
     def key(frame, name):
         return dict(From=frame, To=frame + 1, Keys=[name])
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as reserve:
@@ -561,11 +589,17 @@ def verify_guest_match_settings():
                  key(168, "Down"), key(170, "Down"), key(172, "Right")]
     guest_rows = [key(210, "Escape"), key(212, "Enter"), key(214, "Right"),
                   key(216, "Down"), key(218, "Down"), key(220, "Right")]
+    if modifiers:
+        host_rows = [key(160, "Escape"), key(162, "Down"), key(164, "Down"), key(166, "Enter"),
+                     key(168, "Right"), key(170, "Down"), key(172, "Right")]
+        guest_rows = [key(210, "Escape"), key(212, "Down"), key(214, "Enter"), key(216, "Right"),
+                      key(218, "Down"), key(220, "Right")]
+    page = "Modifiers" if modifiers else "MatchSettings"
     processes = []
     try:
         for name, rows, target, frames in [
-            ("settings-host", host_rows, ["--host", "udp"], 340),
-            ("settings-guest", guest_rows, ["--join", "udp:127.0.0.1"], 390),
+            ("settings-host-" + page, host_rows, ["--host", "udp"], 340),
+            ("settings-guest-" + page, guest_rows, ["--join", "udp:127.0.0.1"], 390),
         ]:
             path = out / (name + "-input.json")
             path.write_text(json.dumps(rows))
@@ -574,13 +608,45 @@ def verify_guest_match_settings():
             processes.append(start_held(name, args))
         values = held_results(processes)
         for value in values:
-            assert value["Error"] is None and value["Page"] == "MatchSettings", value
+            assert value["Error"] is None and value["Page"] == page, value
         host, guest = values
-        assert host["MenuItems"] == guest["MenuItems"] and "FORMAT: TEAMS" in guest["MenuItems"], values
-        assert "ROUND TARGET: 1" in guest["MenuItems"], values
+        assert host["MenuItems"] == guest["MenuItems"], values
+        if modifiers:
+            assert "PHYSICS FIXES: OFF" in guest["MenuItems"] and "BODY BOUNCING: ON" in guest["MenuItems"], values
+            assert guest["MatchSettings"]["Modifiers"]["PhysicsFixes"] and not guest["MatchSettings"]["Modifiers"]["BodyBouncing"], guest
+        else:
+            assert "FORMAT: TEAMS" in guest["MenuItems"] and "ROUND TARGET: 1" in guest["MenuItems"], values
         assert all(row["DisabledReason"] == "HOST ONLY" for row in guest["MenuRows"] if row["Id"] != "back"), guest
         assert guest["MatchSettings"]["Format"] == 0 and guest["MatchSettings"]["WinScore"] == 0, guest
         print("PASS: guests see live host settings, cannot edit them, and retain their own local draft.")
+    finally:
+        for _, process in processes:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+
+
+def verify_modifier_network():
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as reserve:
+        reserve.bind(("127.0.0.1", 0))
+        port = reserve.getsockname()[1]
+    actions = [(160, "Escape"), (162, "Down"), (164, "Down"), (166, "Enter"),
+               (168, "Right"), (170, "Down"), (172, "Right"), (174, "Escape"),
+               (176, "Up"), (178, "Up"), (180, "Enter")]
+    script = out / "modifiers-match-host-input.json"
+    script.write_text(json.dumps([dict(From=frame, To=frame + 1, Keys=[key]) for frame, key in actions]))
+    common = ["--local-players", "1", "--port", str(port), "--ticks", "480"]
+    processes = []
+    try:
+        processes.append(start_held("modifiers-match-host", common + ["--host", "udp", "--input-script", str(script)]))
+        processes.append(start_held("modifiers-match-guest", common + ["--join", "udp:127.0.0.1"]))
+        values = held_results(processes)
+        for value in values:
+            assert value["Error"] is None and value["TickNumber"] == 480 and value["ConfirmedFrame"] == 479, value
+            assert not value["ActiveModifiers"]["PhysicsFixes"] and value["ActiveModifiers"]["BodyBouncing"], value
+        assert values[0]["Hash"] == values[1]["Hash"], values
+        assert values[1]["MatchSettings"]["Modifiers"]["PhysicsFixes"], values[1]
+        print("PASS: a host starts with nondefault modifiers; guest uses frozen host rules and both reach the same confirmed hash.")
     finally:
         for _, process in processes:
             if process.poll() is None:
@@ -595,8 +661,8 @@ def verify_player_network_actions():
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as reserve:
             reserve.bind(("127.0.0.1", 0))
             port = reserve.getsockname()[1]
-        host_rows = [key(160, "Escape")] + [key(t, "Down") for t in (162, 164, 166, 168)] + [key(170, "Enter"), key(172, "Down")]
-        guest_rows = [key(158, "Escape"), key(160, "Down"), key(162, "Down"), key(164, "Enter"), key(166, "Down"), key(180, "Enter"), key(220, "Enter")]
+        host_rows = [key(158, "Escape")] + [key(t, "Down") for t in (160, 162, 164, 166, 168)] + [key(170, "Enter"), key(172, "Down")]
+        guest_rows = [key(158, "Escape"), key(160, "Down"), key(162, "Down"), key(164, "Down"), key(166, "Enter"), key(168, "Down"), key(180, "Enter"), key(220, "Enter")]
         if unspectate:
             guest_rows += [key(260, "Enter")]
         processes = []
@@ -631,7 +697,7 @@ def verify_player_network_actions():
 
 
 def verify_arenas():
-    for index in range(7):
+    for index in range(len(json.loads((root / "src/ContentBuild/content.json").read_text())["Maps"])):
         run(
             f"arena-{index}",
             [
@@ -657,7 +723,7 @@ def verify_arenas():
 def verify_online_creation():
     def key(frame, name):
         return dict(From=frame, To=frame + 1, Keys=[name])
-    actions = [(1, "Enter"), (3, "Escape"), (5, "Down"), (7, "Down"), (11, "Enter"),
+    actions = [(1, "Enter"), (3, "Escape"), (5, "Down"), (7, "Down"), (9, "Down"), (11, "Enter"),
                (13, "Enter"), (15, "Escape"), (17, "Down"), (19, "Down"), (21, "Down"), (23, "Enter"),
                (25, "Enter"), (27, "Left"), (29, "Left"), (31, "Left"), (33, "Left"), (35, "Down"),
                (37, "Right"), (39, "Down"), (41, "Enter")]
@@ -682,7 +748,7 @@ def verify_online_creation():
 def verify_lobby_network():
     with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as reserve:
         reserve.bind(('127.0.0.1',0)); port=reserve.getsockname()[1]
-    keys=[(120,'Escape'),(122,'Down'),(124,'Down'),(128,'Enter'),
+    keys=[(120,'Escape'),(122,'Down'),(124,'Down'),(126,'Down'),(128,'Enter'),
           (130,'Down'),(132,'Down'),(134,'Right'),(138,'Right'),(140,'Right'),(142,'Right'),(144,'Right'),
           (148,'Right'),(152,'Right'),(154,'Right'),(156,'Right'),(158,'Right'),(164,'Escape'),(166,'Escape')]
     script=out/'online-capacity-input.json'
@@ -771,7 +837,7 @@ def verify_cpu_network():
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as reserve:
         reserve.bind(("127.0.0.1", 0))
         port = reserve.getsockname()[1]
-    actions = [(90, "Escape"), (92, "Down"), (94, "Down"), (96, "Enter"),
+    actions = [(88, "Escape"), (90, "Down"), (92, "Down"), (94, "Down"), (96, "Enter"),
                (98, "Right"), (100, "Right")]
     actions += [(frame, "Enter") for frame in (102, 104, 106, 108, 110)]
     actions += [(112, "Escape"), (114, "Escape")]
@@ -851,7 +917,7 @@ def verify_network():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--network", action="store_true", help="also launch two real rendered UDP processes")
-    parser.add_argument("--quick", action="store_true", help="skip the seven-arena capture sweep")
+    parser.add_argument("--quick", action="store_true", help="skip the arena capture sweep")
     args = parser.parse_args()
     out.mkdir(parents=True, exist_ok=True)
     Path(env["XDG_DATA_HOME"]).mkdir(parents=True, exist_ok=True)
@@ -871,10 +937,13 @@ def main():
     verify_lobby_menus()
     verify_player_menu()
     verify_match_configuration()
+    verify_modifiers()
     if not args.quick:
         verify_arenas()
     if args.network:
         verify_guest_match_settings()
+        verify_guest_match_settings(modifiers=True)
+        verify_modifier_network()
         verify_player_network_actions()
         verify_online_creation()
         verify_lobby_network()

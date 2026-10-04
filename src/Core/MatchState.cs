@@ -21,6 +21,7 @@ public sealed class PlayerProgress
 {
     public int Score;
     public int RoundWins;
+    public int TotalScore;
     public int Stocks;
     public Participation Participation;
 
@@ -28,6 +29,7 @@ public sealed class PlayerProgress
     {
         writer.Write(Score);
         writer.Write(RoundWins);
+        writer.Write(TotalScore);
         writer.Write(Stocks);
         writer.Write((int)Participation);
     }
@@ -37,6 +39,7 @@ public sealed class PlayerProgress
         {
             Score = reader.ReadInt32(),
             RoundWins = reader.ReadInt32(),
+            TotalScore = reader.ReadInt32(),
             Stocks = reader.ReadInt32(),
             Participation = (Participation)reader.ReadInt32(),
         };
@@ -92,14 +95,29 @@ public sealed class MatchState
                 .ToArray();
             return WinningSide(rules, survivors);
         }
-        if (attacker < 0 || attacker >= Players.Length)
+        int points = DeathScore(rules, attacker, hits);
+        int credited = points < 0 ? slot : attacker;
+        if (credited < 0 || credited >= Players.Length || points == 0)
             return -1;
-        int points = Math.Max(1, hits);
         for (int index = 0; index < Players.Length; index++)
-            if (index == attacker || rules.UsesTeams && rules.Teams[index] == rules.Teams[attacker])
+            if (index == credited || rules.UsesTeams && rules.Teams[index] == rules.Teams[credited])
                 Players[index].Score += points;
-        return Players[attacker].Score >= rules.TargetScore ? attacker : -1;
+        return Players[credited].Score >= rules.TargetScore ? credited : -1;
     }
+
+    public int DeathScore(GameRules rules, int attacker, int hits)
+    {
+        if (rules.Lobby || Phase != MatchPhase.Playing || IsShowdown || rules.Scoring != ScoringMode.Points)
+            return 0;
+        if (attacker < 0 || attacker >= Players.Length)
+            return rules.Modifiers.SuicidePenalty ? -1 : 0;
+        return Math.Max(1, hits);
+    }
+
+    public int RoundContribution(GameRules rules, int slot) =>
+        rules.CumulativeScoring && !IsShowdown ? Players[slot].Score
+        : IsWinner(rules, slot) ? 1
+        : 0;
 
     public void WinRound(GameRules rules, int slot)
     {
@@ -107,8 +125,11 @@ public sealed class MatchState
         Winner = slot;
         PhaseTicks = rules.RoundFinishTicks;
         for (int index = 0; index < Players.Length; index++)
+        {
             if (IsWinner(rules, index))
                 Players[index].RoundWins++;
+            Players[index].TotalScore += RoundContribution(rules, index);
+        }
     }
 
     public bool AdvanceRound(GameRules rules)
@@ -120,10 +141,10 @@ public sealed class MatchState
         }
         if (RoundNumber >= rules.MatchRounds)
         {
-            int highest = Players.Max(player => player.RoundWins);
+            int highest = Players.Max(player => player.TotalScore);
             int[] leaders = Enumerable
                 .Range(0, Players.Length)
-                .Where(index => Players[index].RoundWins == highest)
+                .Where(index => Players[index].TotalScore == highest)
                 .ToArray();
             int winner = WinningSide(rules, leaders);
             if (winner >= 0)
@@ -134,7 +155,7 @@ public sealed class MatchState
             }
             IsShowdown = true;
             foreach (var player in Players)
-                player.Participation = player.RoundWins == highest ? Participation.Active : Participation.Eliminated;
+                player.Participation = player.TotalScore == highest ? Participation.Active : Participation.Eliminated;
         }
         else
             RoundNumber++;
@@ -210,7 +231,7 @@ public sealed class MatchState
         for (int slot = 0; slot < state.Players.Length; slot++)
         {
             var player = PlayerProgress.ReadSnapshot(reader);
-            if (player.Score < 0 || player.RoundWins < 0 || player.Stocks < 0 || !Enum.IsDefined(player.Participation))
+            if (player.RoundWins < 0 || player.Stocks < 0 || !Enum.IsDefined(player.Participation))
                 throw new InvalidDataException("Invalid progression snapshot");
             state.Players[slot] = player;
         }

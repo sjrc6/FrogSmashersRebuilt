@@ -319,6 +319,20 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
 
     private void DrawFooter(Rectangle panel)
     {
+        if (menu.Screen == GameScreen.Modifiers)
+        {
+            var entry = menu.Entries()[menu.Selected];
+            string help = entry.Help ?? "RETURN TO THE LOBBY MENU.";
+            if (entry.DisabledReason != null)
+                help = entry.DisabledReason + ". " + help;
+            game.Renderer.Text(
+                game.Assets.Font.Wrap(help, panel.Width - 40, 3),
+                panel.Center.X,
+                panel.Bottom - 128,
+                new Color(205, 218, 206),
+                center: true
+            );
+        }
         if (menu.Screen == GameScreen.ViewPlayers)
         {
             DrawPlayerActions(panel);
@@ -413,6 +427,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             GameScreen.Settings => "SETTINGS",
             GameScreen.Rollback => "ROLLBACK",
             GameScreen.MatchSettings => "MATCH SETTINGS",
+            GameScreen.Modifiers => "MODIFIERS",
             GameScreen.Bindings => menu.BindingTitle,
             GameScreen.Online => "ONLINE OPTIONS",
             GameScreen.CreateLobby => "CREATE LOBBY",

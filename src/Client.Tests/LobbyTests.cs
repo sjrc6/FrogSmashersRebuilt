@@ -38,7 +38,10 @@ internal static class LobbyTests
         inputs[0] = default;
         for (int tick = 0; tick < World.TickRate * 3; tick++)
             world.Advance(inputs.Select(frame => new MatchInput(frame)).ToArray());
-        check(LobbyLayout.OnStartingPlatform(world, 0), "landing back on the platform restores the prompt");
+        check(
+            LobbyLayout.OnStartingPlatform(world, 0),
+            $"landing back on the platform restores the prompt: {world.Players[0].Position}, grounded={world.Players[0].OnGround}"
+        );
         VerifyDoorways(content, map, check);
         VerifyBots(content, map, check);
         Console.WriteLine("Lobby platform landing and color-selection eligibility passed");

@@ -62,15 +62,15 @@ internal sealed class ScoreDisplay
             case SimulationEventKind.Death:
                 scoreCharacterResets.Add((evt.Id, evt.Tick, evt.Player));
                 hudSorted = true;
-                if (evt.AwardedScore && age < 2)
+                if (evt.ScoreDelta != 0 && age < 2)
                 {
                     scoreMessages.Add(
                         new ScoreMessage
                         {
                             EventId = evt.Id,
                             Tick = evt.Tick,
-                            Player = evt.Other,
-                            Text = "+" + Math.Max(1, (int)evt.Strength.ToFloat()),
+                            Player = evt.ScoreDelta < 0 ? evt.Player : evt.Other,
+                            Text = evt.ScoreDelta.ToString("+0;-0;0"),
                             Life = 2,
                             Age = age,
                         }
@@ -137,8 +137,12 @@ internal sealed class ScoreDisplay
 
         int Score(PlayerState p) =>
             roundWins
-                ? world.Match.Players[p.Slot].RoundWins
-                    - (Winner(world, p) && elapsed < (world.Match.IsShowdown ? .05f : 1f) ? 1 : 0)
+                ? world.Match.Players[p.Slot].TotalScore
+                    - (
+                        elapsed < (world.Match.IsShowdown ? .05f : 1f)
+                            ? world.Match.RoundContribution(world.Rules, p.Slot)
+                            : 0
+                    )
                 : world.Match.Players[p.Slot].Score;
         var players = Players(world).ToArray();
         foreach (var p in players)

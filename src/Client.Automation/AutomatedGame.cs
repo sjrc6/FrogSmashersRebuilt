@@ -220,6 +220,7 @@ internal sealed class AutomatedGame : FrogGame
                 : 0,
             LobbyTick = Menus.ShowingLobby ? Lobby.World?.TickNumber : null,
             MatchSettings = Setup.Preferences,
+            ActiveModifiers = Match.World?.Rules.Modifiers,
             Settings.Volume,
             MenuBackground = Match.IsMenuBackground,
             Paused = Menus.LocalPresentationPaused,

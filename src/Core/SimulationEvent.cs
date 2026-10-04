@@ -4,6 +4,7 @@ public enum HitKind
 {
     Bat,
     Tongue,
+    Body,
 }
 
 public enum SimulationEventKind
@@ -48,7 +49,7 @@ public readonly record struct SimulationEvent(
     Fixed HitstopSeconds = default,
     Fixed HitEffectX = default,
     Fixed HitEffectY = default,
-    bool AwardedScore = false
+    int ScoreDelta = 0
 )
 {
     public long Id => (Tick << 12) | (uint)Sequence;

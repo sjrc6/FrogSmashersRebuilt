@@ -437,7 +437,7 @@ public sealed partial class Renderer : IDisposable
 
     private void ScorePlume(World world, Vector2 p, Color color, SimulationEvent ev, float age)
     {
-        int points = ev.Other >= 0 ? Math.Max(1, (int)ev.Strength.ToFloat()) : 0;
+        int points = ev.ScoreDelta;
         if (ev.Other >= 0)
         {
             color = ColorFor(world, ev.Other);
@@ -696,7 +696,7 @@ public sealed partial class Renderer : IDisposable
             && !world.Match.IsShowdown
             && ScoreDisplay
                 .Players(world)
-                .Count(p => world.Match.Players[p.Slot].RoundWins == world.Match.Players.Max(p => p.RoundWins)) > 1;
+                .Count(p => world.Match.Players[p.Slot].TotalScore == world.Match.Players.Max(p => p.TotalScore)) > 1;
         string title =
             tie && elapsed >= 1 ? "SHOWDOWN ! ! ! " : $"ROUND {world.Match.RoundNumber} OF {world.Rules.MatchRounds}";
         BeginUi();

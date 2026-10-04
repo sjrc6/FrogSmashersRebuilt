@@ -22,6 +22,38 @@ public sealed partial class World
         bool wasWall = player.WallSliding;
         player.OnGround = false;
         player.WallSliding = false;
+        if (Rules.Modifiers.PhysicsFixes)
+            MoveBody(player, input);
+        else
+            MoveWithCornerRays(player, input);
+
+        if (player.OnGround && !wasGround || player.WallSliding && !wasWall)
+        {
+            Emit(SimulationEventKind.Land, player, surfaceSide: player.WallSliding ? player.WallSlideSide : -2);
+            player.JumpCooldownLeft = FromDecimal(.1m);
+        }
+
+        if (player.OnGround)
+        {
+            player.JumpGraceLeft = tuning.JumpGraceTime;
+        }
+        else if (player.WallSliding)
+        {
+            player.JumpGraceLeft = tuning.JumpGraceTime * FromDecimal(.66m);
+        }
+        else
+        {
+            player.JumpGraceLeft -= deltaTime;
+            if (player.VY <= tuning.GravityGraceThreshold)
+            {
+                player.GravityGraceLeft = Fixed.Max(0, player.GravityGraceLeft - deltaTime);
+            }
+        }
+    }
+
+    private void MoveWithCornerRays(PlayerState player, InputFrame input)
+    {
+        var deltaTime = player.LocalDelta;
         Fixed dx = player.VX * deltaTime;
         Fixed dy = player.VY * deltaTime;
         bool hit = false;
@@ -136,28 +168,6 @@ public sealed partial class World
 
         player.X += dx;
         player.Y += dy;
-        if (player.OnGround && !wasGround || player.WallSliding && !wasWall)
-        {
-            Emit(SimulationEventKind.Land, player, surfaceSide: player.WallSliding ? player.WallSlideSide : -2);
-            player.JumpCooldownLeft = FromDecimal(.1m);
-        }
-
-        if (player.OnGround)
-        {
-            player.JumpGraceLeft = tuning.JumpGraceTime;
-        }
-        else if (player.WallSliding)
-        {
-            player.JumpGraceLeft = tuning.JumpGraceTime * FromDecimal(.66m);
-        }
-        else
-        {
-            player.JumpGraceLeft -= deltaTime;
-            if (player.VY <= tuning.GravityGraceThreshold)
-            {
-                player.GravityGraceLeft = Fixed.Max(0, player.GravityGraceLeft - deltaTime);
-            }
-        }
     }
 
     private void Bounce(PlayerState player, int side)

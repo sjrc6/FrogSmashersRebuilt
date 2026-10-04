@@ -499,6 +499,7 @@
   "OrthoSize": 18,
   "Parallax": [],
   "ParticleEmitters": [],
+  "Role": 0,
   "SceneEffects": [],
   "ScreenTop": 15.81,
   "Spawns": [

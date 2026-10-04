@@ -89,7 +89,7 @@ public class FrogGame : Game
         if (OperatingSystem.IsWindows())
             windowIcons = new WindowsWindowIcons(Window.Handle);
         Assets = new Assets(Content, Content.RootDirectory);
-        Setup = new MatchSetup(Options.Seed, ResolveFirstMap());
+        Setup = new MatchSetup(Options.Seed, Assets.Data.Maps, ResolveFirstMap());
         Renderer = new Renderer(GraphicsDevice, Assets) { ShakeEnabled = Settings.ScreenShake };
         Audio = new Audio(Assets, !Options.NoAudio) { Volume = Settings.Volume, TitleVolume = Settings.TitleVolume };
         Cinematics = new CinematicPlayer(GraphicsDevice, Assets, Audio) { ShakeEnabled = Settings.ScreenShake };
@@ -401,7 +401,7 @@ public class FrogGame : Game
 
     internal void WatchCpus()
     {
-        var demo = new MatchSetup(Setup.Seed, Setup.FirstMap);
+        var demo = new MatchSetup(Setup.Seed, Assets.Data.Maps, Setup.FirstMap);
         for (int slot = 0; slot < 4; slot++)
             demo.Lobby.Join(-1, slot % 2);
         Match.StartLocal(demo.CreateOptions(Options.MapOrder), demo.Seats);

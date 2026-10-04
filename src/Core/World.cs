@@ -81,7 +81,7 @@ public sealed partial class World
         FixedVector? position = null,
         int surfaceSide = 0,
         Fixed hitstopSeconds = default,
-        bool awardedScore = false
+        int scoreDelta = 0
     ) =>
         events.Add(
             new(
@@ -102,7 +102,7 @@ public sealed partial class World
                 hitstopSeconds,
                 player?.Center.X ?? Fly.X,
                 player?.Center.Y ?? Fly.Y,
-                awardedScore
+                scoreDelta
             )
         );
 
@@ -220,7 +220,9 @@ public sealed partial class World
             UpdateNormalInput(player, input);
         }
 
+        var priorTongueOrigin = player.TongueOrigin;
         UpdateVelocity(player, input);
+        BounceOffPlayers(player);
         MoveAndCollide(player, input);
         if (player.Mode == CharacterMode.Attacking)
         {
@@ -228,7 +230,7 @@ public sealed partial class World
         }
         else if (player.Mode == CharacterMode.Tongue)
         {
-            UpdateTongue(player, input);
+            UpdateTongue(player, priorTongueOrigin);
         }
 
         if (

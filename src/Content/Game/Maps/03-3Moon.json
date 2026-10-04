@@ -803,6 +803,7 @@
   "OrthoSize": 18,
   "Parallax": [],
   "ParticleEmitters": [],
+  "Role": 0,
   "SceneEffects": [
     {
       "Active": true,

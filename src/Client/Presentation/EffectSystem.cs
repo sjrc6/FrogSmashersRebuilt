@@ -164,7 +164,7 @@ internal sealed class EffectSystem
         if (effect.Kind == VisualEffectKind.ScorePlume)
         {
             effect.Points = spawn.Points;
-            effect.Text = spawn.Points > 0 ? "+" + spawn.Points : DeathQuip(effect.Seed);
+            effect.Text = spawn.Points != 0 ? spawn.Points.ToString("+0;-0;0") : DeathQuip(effect.Seed);
             effect.TextColor = color;
             effect.TextColorFloat = color.ToVector4();
             effect.CameraRelative = spawn.CameraRelative;

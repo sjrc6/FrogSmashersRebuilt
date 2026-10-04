@@ -5,7 +5,7 @@ namespace FrogSmashers.Core;
 public sealed partial class World
 {
     private const int SnapshotMagic = 0x46535253;
-    private const int SnapshotVersion = 4;
+    private const int SnapshotVersion = 5;
     private readonly MemoryStream snapshotBuffer = new(4096);
 
     public byte[] Capture()

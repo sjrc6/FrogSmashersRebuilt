@@ -6,6 +6,7 @@ namespace FrogSmashers.Client;
 internal sealed class MatchSetup
 {
     private readonly int defaultFirstMap;
+    private readonly IReadOnlyList<MapData> maps;
     public MatchPreferences Preferences { get; private set; }
     public LocalLobby Lobby { get; } = new();
     public IReadOnlyList<LocalSeat> Seats => Lobby.Seats;
@@ -16,14 +17,40 @@ internal sealed class MatchSetup
         set => Preferences.FirstMap = value;
     }
 
-    public MatchSetup(uint seed, int firstMap = 0)
+    public MatchSetup(uint seed, IReadOnlyList<MapData> maps, int firstMap = 0)
     {
         Seed = seed;
+        this.maps = maps;
         defaultFirstMap = firstMap;
-        Preferences = new() { FirstMap = defaultFirstMap };
+        Preferences = DefaultPreferences();
     }
 
-    public void ResetPreferences() => Preferences = new() { FirstMap = defaultFirstMap };
+    private MatchPreferences DefaultPreferences() =>
+        new()
+        {
+            FirstMap = defaultFirstMap,
+            Modifiers = GameModifiers.Default with { IncludePodium = maps[defaultFirstMap].Role == MapRole.ExtraArena },
+        };
+
+    public void ResetPreferences() => Preferences = DefaultPreferences();
+
+    public void ChangeFirstMap(int amount)
+    {
+        var available = ArenaRotation.Available(maps, Preferences.Modifiers);
+        int current = Array.IndexOf(available, FirstMap);
+        FirstMap = available[(Math.Max(0, current) + amount + available.Length) % available.Length];
+    }
+
+    public void SetModifiers(GameModifiers modifiers)
+    {
+        modifiers.Validate();
+        int previousArenaCount = ArenaRotation.Available(maps, Preferences.Modifiers).Length;
+        if (Preferences.MatchRounds == previousArenaCount)
+            Preferences.MatchRounds = ArenaRotation.Available(maps, modifiers).Length;
+        Preferences.Modifiers = modifiers;
+        if (maps[FirstMap].Role == MapRole.ExtraArena && !modifiers.IncludePodium)
+            FirstMap = ArenaRotation.Available(maps, modifiers)[0];
+    }
 
     public static LobbyPlayer[] MatchPlayers(LobbyRoster roster) =>
         roster
@@ -35,9 +62,7 @@ internal sealed class MatchSetup
     public MatchOptions CreateOptions(int[]? customMapOrder = null, LobbyRoster? roster = null)
     {
         var players = MatchPlayers(roster ?? Lobby.Roster);
-        var order =
-            customMapOrder?.ToArray()
-            ?? (FirstMap == 6 ? [6] : Enumerable.Range(0, 6).Select(index => (index + FirstMap) % 6).ToArray());
+        var order = customMapOrder?.ToArray() ?? ArenaRotation.StartingAt(maps, Preferences.Modifiers, FirstMap);
         if (customMapOrder == null && Preferences.ShuffleMaps)
             new Random((int)Seed).Shuffle(order.AsSpan(1));
 
@@ -54,7 +79,8 @@ internal sealed class MatchSetup
             winScore: Preferences.WinScore,
             matchRounds: Preferences.MatchRounds,
             startingStocks: Preferences.StartingStocks,
-            mapOrder: [.. order]
+            mapOrder: [.. order],
+            modifiers: Preferences.Modifiers
         );
         return new MatchOptions(rules, Seed, Preferences.ShuffleMaps);
     }

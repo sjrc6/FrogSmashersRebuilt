@@ -1,8 +1,17 @@
 namespace FrogSmashers.Core;
 
+public enum MapRole
+{
+    Arena,
+    ExtraArena,
+    Showdown,
+    Presentation,
+}
+
 public sealed class MapData
 {
     public string Id { get; set; } = "";
+    public MapRole Role { get; set; }
     public string Name { get; set; } = "";
     public float CameraX { get; set; }
     public float CameraY { get; set; }

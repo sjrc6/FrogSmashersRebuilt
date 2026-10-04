@@ -111,8 +111,31 @@ internal sealed partial class PresentationChecks
         Check(clock.Frame == 2 && clock.Counter == .2f, "paused sprite clock cannot consume accumulated time");
         renderer.Reset();
         var world = new World(assets.Data, new GameRules(playerCount: 2));
+        renderer.Consume(
+            [new SimulationEvent(1, 0, SimulationEventKind.Death, 0, -1, 40, 0, 0, ScoreDelta: -1)],
+            world
+        );
+        Check(
+            renderer.Scores.Messages.Single().Text == "-1" && renderer.Scores.Messages.Single().Player == 0,
+            "Suicide penalty displays its negative score on the correct player"
+        );
+        Check(
+            renderer.Effects.Active.Any(effect => effect.Text == "-1"),
+            "Suicide penalty plume uses the actual negative score"
+        );
+        renderer.Reset();
         SimulationEvent Death(long tick, int killed, int scorer, int hits, bool award) =>
-            new(tick, 0, SimulationEventKind.Death, killed, scorer, 40, 0, hits, AwardedScore: award);
+            new(
+                tick,
+                0,
+                SimulationEventKind.Death,
+                killed,
+                scorer,
+                40,
+                0,
+                hits,
+                ScoreDelta: award ? Math.Max(1, hits) : 0
+            );
         renderer.Consume([Death(10, 1, 0, 3, true)], world);
         Check(
             renderer.Scores.Messages.Single().Text == "+3" && renderer.Scores.OverheadMessage(0)?.Text == "+3",

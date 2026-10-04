@@ -119,7 +119,7 @@ public sealed partial class World
         Emit(SimulationEventKind.TongueLaunch, player);
     }
 
-    private void UpdateTongue(PlayerState player, InputFrame input)
+    private void UpdateTongue(PlayerState player, FixedVector priorOrigin)
     {
         var deltaTime = player.LocalDelta;
         if (player.TongueDelayLeft > 0)
@@ -131,6 +131,7 @@ public sealed partial class World
         var direction = new FixedVector(player.TongueX, player.TongueY);
         if (player.TonguePhase == TonguePhase.Extending)
         {
+            var priorTip = priorOrigin + direction * player.TongueDistance;
             player.TongueDistance += tuning.TongueSpeed * deltaTime;
             if (player.TongueX * player.VX < 0)
             {
@@ -142,73 +143,18 @@ public sealed partial class World
                 player.TongueDistance += Fixed.Abs(player.VY) * deltaTime;
             }
 
-            var tip = player.TongueTip;
-            bool fly =
-                Fly.Active
-                && CircleTouchesBox(
-                    tip,
-                    FromDecimal(.5m),
-                    Fly.X - FromDecimal(.75m),
-                    Fly.Y - FromDecimal(.75m),
-                    Fly.X + FromDecimal(.75m),
-                    Fly.Y + FromDecimal(.75m)
-                );
-            if (fly)
+            if (Rules.Modifiers.PhysicsFixes)
             {
-                if (TryClaimFly(player))
-                {
-                    player.TonguePhase = TonguePhase.RetractingHitFly;
-                    Emit(SimulationEventKind.TongueLatch, player, position: tip);
-                }
+                player.TongueDistance = Fixed.Min(player.TongueDistance, tuning.TongueRange);
+                SweepExtendingTongue(player, priorTip);
             }
-            else if (TouchesTerrain(tip, FromDecimal(.5m), player.TongueY < 0))
-            {
-                if (player.TongueDistance > tuning.MinimumTongueDistance)
-                {
-                    player.TonguePhase = TonguePhase.AttachedToTerrain;
-                    Emit(SimulationEventKind.TongueLatch, player, position: tip);
-                }
-            }
-            else if (player.TongueDistance > tuning.MinimumTongueDistance)
-            {
-                bool hitTongue = false;
-                foreach (var other in Players)
-                {
-                    if (
-                        other != player
-                        && other.Alive
-                        && other.Mode == CharacterMode.Tongue
-                        && other.TonguePhase != TonguePhase.Stunned
-                        && other.TonguePhase != TonguePhase.Burping
-                        && (other.TongueTip - tip).LengthSquared <= FromDecimal(2.25m)
-                    )
-                    {
-                        player.TonguePhase = TonguePhase.RetractingHitEnemyTongue;
-                        Emit(SimulationEventKind.TongueHit, player, other.Slot, position: tip);
-                        hitTongue = true;
-                    }
-                }
+            else
+                CheckTongueEndpoint(player);
 
-                if (!hitTongue)
-                {
-                    foreach (var other in Players)
-                    {
-                        if (
-                            other != player
-                            && other.Alive
-                            && (!Rules.UsesTeams || other.Team != player.Team)
-                            && CircleTouchesBox(tip, 1, other.X - 1, other.Y, other.X + 1, other.Y + 2)
-                        )
-                        {
-                            Hit(other, player, -direction, 0, true);
-                            player.TonguePhase = TonguePhase.RetractingHitEnemy;
-                            Emit(SimulationEventKind.TongueHit, player, other.Slot, position: tip);
-                        }
-                    }
-                }
-            }
-
-            if (player.TonguePhase == TonguePhase.Extending && player.TongueDistance > tuning.TongueRange)
+            bool atRangeLimit = Rules.Modifiers.PhysicsFixes
+                ? player.TongueDistance >= tuning.TongueRange
+                : player.TongueDistance > tuning.TongueRange;
+            if (player.TonguePhase == TonguePhase.Extending && atRangeLimit)
             {
                 player.TonguePhase = TonguePhase.Retracting;
             }
@@ -279,6 +225,76 @@ public sealed partial class World
                 else
                 {
                     player.Mode = player.WasBouncingBeforeTongue ? CharacterMode.Bouncing : CharacterMode.Normal;
+                }
+            }
+        }
+    }
+
+    private void CheckTongueEndpoint(PlayerState player)
+    {
+        var direction = new FixedVector(player.TongueX, player.TongueY);
+        var tip = player.TongueTip;
+        bool fly =
+            Fly.Active
+            && CircleTouchesBox(
+                tip,
+                FromDecimal(.5m),
+                Fly.X - FromDecimal(.75m),
+                Fly.Y - FromDecimal(.75m),
+                Fly.X + FromDecimal(.75m),
+                Fly.Y + FromDecimal(.75m)
+            );
+        if (fly)
+        {
+            if (TryClaimFly(player))
+            {
+                player.TonguePhase = TonguePhase.RetractingHitFly;
+                Emit(SimulationEventKind.TongueLatch, player, position: tip);
+            }
+        }
+        else if (TouchesTerrain(tip, FromDecimal(.5m), player.TongueY < 0))
+        {
+            if (player.TongueDistance > tuning.MinimumTongueDistance)
+            {
+                player.TonguePhase = TonguePhase.AttachedToTerrain;
+                Emit(SimulationEventKind.TongueLatch, player, position: tip);
+            }
+        }
+        else if (player.TongueDistance > tuning.MinimumTongueDistance)
+        {
+            bool hitTongue = false;
+            foreach (var other in Players)
+            {
+                if (
+                    other != player
+                    && other.Alive
+                    && other.Mode == CharacterMode.Tongue
+                    && other.TonguePhase != TonguePhase.Stunned
+                    && other.TonguePhase != TonguePhase.Burping
+                    && (other.TongueTip - tip).LengthSquared <= FromDecimal(2.25m)
+                )
+                {
+                    player.TonguePhase = TonguePhase.RetractingHitEnemyTongue;
+                    Emit(SimulationEventKind.TongueHit, player, other.Slot, position: tip);
+                    hitTongue = true;
+                }
+            }
+
+            if (!hitTongue)
+            {
+                foreach (var other in Players)
+                {
+                    if (
+                        other != player
+                        && other.Alive
+                        && (!Rules.UsesTeams || other.Team != player.Team)
+                        && CircleTouchesBox(tip, 1, other.X - 1, other.Y, other.X + 1, other.Y + 2)
+                    )
+                    {
+                        Hit(other, player, -direction, 0, true);
+                        player.TonguePhase = TonguePhase.RetractingHitEnemy;
+                        Emit(SimulationEventKind.TongueHit, player, other.Slot, position: tip);
+                    }
                 }
             }
         }

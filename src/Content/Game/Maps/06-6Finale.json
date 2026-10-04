@@ -927,6 +927,7 @@
     "IntroScreenCharacterParticle 2"
   ],
   "ParticleEmitters": [],
+  "Role": 0,
   "SceneEffects": [
     {
       "Active": true,

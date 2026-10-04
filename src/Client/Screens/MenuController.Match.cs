@@ -6,17 +6,11 @@ internal sealed partial class MenuController
 {
     private IReadOnlyList<MenuEntry> MatchRows()
     {
-        var options = game.Lobby.IsHost
-            ? game.Setup.CreateOptions(game.Options.MapOrder, game.Lobby.Roster)
-            : game.Lobby.HostOptions;
+        var options = DisplayedMatchOptions();
         if (options == null)
             return [new("waiting", "WAITING FOR HOST", DisabledReason: "WAITING FOR HOST"), BackRow()];
         var rules = options.Rules;
-        string? readOnly =
-            !game.Lobby.IsHost ? "HOST ONLY"
-            : game.Online.Lobby?.Starting == true ? "MATCH IN PROGRESS"
-            : game.Lobby.RosterUpdating ? "LOBBY UPDATING"
-            : null;
+        string? readOnly = MatchSettingsReadOnly;
         var entries = new List<MenuEntry>
         {
             new(
@@ -67,7 +61,7 @@ internal sealed partial class MenuController
                 "FIRST ARENA",
                 Value: game.Assets.Data.Maps[rules.MapOrder[0]].Name,
                 ValueSample: LongestArenaName(),
-                Change: amount => Rules.FirstMap = Wrap(Rules.FirstMap + amount, game.Assets.Data.Maps.Count),
+                Change: game.Setup.ChangeFirstMap,
                 DisabledReason: readOnly
             ),
             new(
