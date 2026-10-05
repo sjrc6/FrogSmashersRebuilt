@@ -1,12 +1,5 @@
-/Originals/
 **/bin/
 **/obj/
 /.build/
-/artifacts/
-/designs/
-**/*.user
 **/__pycache__/
 *.py[cod]
-/llm_docs/
-/logs
-todo.txt
