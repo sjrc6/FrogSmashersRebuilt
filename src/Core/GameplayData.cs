@@ -39,7 +39,6 @@ internal static class GameplayData
                 WriteNumber(writer, box.Width);
                 WriteNumber(writer, box.Height);
                 writer.Write(box.OneWay);
-                writer.Write(box.BeachBallCollision);
             }
             writer.Write(map.Spawns.Count);
             foreach (var spawn in map.Spawns)

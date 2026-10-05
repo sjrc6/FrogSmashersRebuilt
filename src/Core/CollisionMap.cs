@@ -14,8 +14,7 @@ internal sealed class CollisionMap
                 Fixed.FromDecimal(box.X + box.Width / 2),
                 Fixed.FromDecimal(box.Y - box.Height / 2),
                 Fixed.FromDecimal(box.Y + box.Height / 2),
-                box.OneWay,
-                box.BeachBallCollision
+                box.OneWay
             ))
             .ToArray();
     }
@@ -214,6 +213,7 @@ internal sealed class CollisionMap
         FixedVector start,
         FixedVector delta,
         Fixed radius,
+        bool includeOneWay,
         out Fixed fraction,
         out FixedVector normal
     )
@@ -223,29 +223,43 @@ internal sealed class CollisionMap
         bool hit = false;
         foreach (var box in boxes)
         {
-            if (!box.BeachBallCollision || box.OneWay && (delta.Y >= 0 || start.Y - radius < box.Top))
-                continue;
-            var bottom = box.OneWay ? box.Top : box.Bottom;
-            if (
-                !CollisionQueries.SweepCircleBox(
-                    start,
-                    start + delta,
-                    radius,
-                    box.Left,
-                    bottom,
-                    box.Right,
-                    box.Top,
-                    out var time
+            Fixed time;
+            FixedVector side;
+            if (box.OneWay)
+            {
+                if (!includeOneWay || delta.Y >= 0 || start.Y - radius < box.Top)
+                    continue;
+                time = (box.Top + radius - start.Y) / delta.Y;
+                var x = start.X + delta.X * time;
+                if (time < 0 || time > 1 || x + radius <= box.Left || x - radius >= box.Right)
+                    continue;
+                side = new(0, 1);
+            }
+            else
+            {
+                if (
+                    !CollisionQueries.SweepCircleBox(
+                        start,
+                        start + delta,
+                        radius,
+                        box.Left,
+                        box.Bottom,
+                        box.Right,
+                        box.Top,
+                        out time
+                    )
                 )
-            )
-                continue;
-            var point = start + delta * time;
-            var closest = new FixedVector(
-                Fixed.Clamp(point.X, box.Left, box.Right),
-                Fixed.Clamp(point.Y, bottom, box.Top)
-            );
-            var side = (point - closest).Normalized;
-            if (side == default || FixedVector.Dot(delta, side) >= 0 || hit && time >= fraction)
+                    continue;
+                var point = start + delta * time;
+                var closest = new FixedVector(
+                    Fixed.Clamp(point.X, box.Left, box.Right),
+                    Fixed.Clamp(point.Y, box.Bottom, box.Top)
+                );
+                side = (point - closest).Normalized;
+                if (side == default || FixedVector.Dot(delta, side) >= 0)
+                    continue;
+            }
+            if (hit && time >= fraction)
                 continue;
             hit = true;
             fraction = time;
@@ -254,12 +268,5 @@ internal sealed class CollisionMap
         return hit;
     }
 
-    private readonly record struct Box(
-        Fixed Left,
-        Fixed Right,
-        Fixed Bottom,
-        Fixed Top,
-        bool OneWay,
-        bool BeachBallCollision
-    );
+    private readonly record struct Box(Fixed Left, Fixed Right, Fixed Bottom, Fixed Top, bool OneWay);
 }

@@ -12,18 +12,19 @@ internal sealed partial class PresentationChecks
         VerifyBeachBallSquish();
         renderer.Reset();
         var map = assets.Data.PresentationScenes["Lobby"];
-        if (
-            map.Collision.Any(box => box.Name == "Room wall" && !box.BeachBallCollision)
-            || map.Collision.Any(box => box.Name.Contains("boundary") && !box.BeachBallCollision)
-            || map.Collision.Any(box =>
-                (box.Name.Contains("platform") || box.Name == "Floor") && box.BeachBallCollision
-            )
-        )
-            throw new InvalidOperationException(
-                "Ball collision must retain walls/boundaries and omit interior platforms"
-            );
         var world = new World(map, new GameRules(lobby: true, playerCount: 8));
         var ball = world.BeachBall;
+        var spawn = ball.Position;
+        var support = map.Collision.Single(box =>
+            box.OneWay && box.Name == "Floor opening platform" && Math.Abs(box.X) < 1 && box.Y < 0
+        );
+        if (ball.X != 0 || ball.Y - BeachBallState.Radius != Fixed.FromDecimal(support.Y + support.Height / 2))
+            throw new InvalidOperationException("Ball must spawn on the bottom platform of the central lobby room");
+        for (int tick = 0; tick < 600; tick++)
+            world.Advance(new MatchInput[8]);
+        if (ball.Position != spawn || ball.Phase != BeachBallPhase.Resting || ball.VX != 0 || ball.VY != 0)
+            throw new InvalidOperationException("Lobby ball must remain stationary until hit");
+        ball.Phase = BeachBallPhase.Flying;
         ball.X = 12;
         ball.Y = 4;
         ball.VX = 80;
@@ -112,7 +113,7 @@ internal sealed partial class PresentationChecks
                         -1,
                         12,
                         4,
-                        0,
+                        60,
                         SurfaceSide: side
                     ),
                 ],
@@ -150,7 +151,7 @@ internal sealed partial class PresentationChecks
                         -1,
                         ball.X,
                         ball.Y,
-                        0,
+                        60,
                         VelocityX: ball.VX,
                         VelocityY: ball.VY,
                         SurfaceSide: side

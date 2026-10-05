@@ -58,5 +58,4 @@ public sealed class BoxData
     public decimal Width { get; set; }
     public decimal Height { get; set; }
     public bool OneWay { get; set; }
-    public bool BeachBallCollision { get; set; } = true;
 }

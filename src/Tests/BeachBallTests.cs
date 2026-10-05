@@ -8,6 +8,7 @@ internal static class BeachBallTests
 {
     public static void Run()
     {
+        Spawn();
         Terrain();
         foreach (bool fixes in new[] { false, true })
             Attacks(fixes);
@@ -31,10 +32,25 @@ internal static class BeachBallTests
             world.Advance(new MatchInput[8]);
     }
 
+    private static void Spawn()
+    {
+        var world = Create();
+        var position = world.BeachBall.Position;
+        Step(world, 600);
+        Check(
+            world.BeachBall.Phase == BeachBallPhase.Resting
+                && world.BeachBall.Position == position
+                && world.BeachBall.VX == 0
+                && world.BeachBall.VY == 0,
+            "The ball spawns at rest and stays stationary until hit"
+        );
+    }
+
     private static void Terrain()
     {
         var world = Create();
         var ball = world.BeachBall;
+        ball.Phase = BeachBallPhase.Flying;
         ball.X = 0;
         ball.Y = 1;
         ball.VY = -50;
@@ -52,6 +68,7 @@ internal static class BeachBallTests
         ball.VY = 50;
         Step(world, 5);
         Check(ball.Y > 9 && ball.VY > 0, "One-way platforms let rising balls pass through");
+        ball.Phase = BeachBallPhase.Settling;
         ball.Y = 10;
         ball.VY = -50;
         Step(world, 3);
@@ -61,6 +78,10 @@ internal static class BeachBallTests
         Check(!ball.Active && ball.ResetTicks == World.TickRate, "Out-of-bounds balls enter a reset delay");
         Step(world, World.TickRate);
         Check(world.BeachBall.Active && world.BeachBall.X != 100, "The lobby replaces an out-of-bounds ball");
+        Check(
+            world.BeachBall.Phase == BeachBallPhase.Resting && world.BeachBall.VX == 0 && world.BeachBall.VY == 0,
+            "An out-of-bounds ball respawns at rest"
+        );
         byte[] before = world.Capture();
         Step(world, 100);
         byte[] expected = world.Capture();
@@ -97,7 +118,7 @@ internal static class BeachBallTests
         world.BeachBall.Y = 2;
         world.BeachBall.Phase = BeachBallPhase.Passive;
         world.BeachBall.HasReachedApex = true;
-        world.BeachBall.SettlingTicks = 5 * World.TickRate;
+        world.BeachBall.SettlingTicks = 3 * World.TickRate;
         Step(world);
         Check(
             world.BeachBall.Phase == BeachBallPhase.Flying
@@ -189,7 +210,9 @@ internal static class BeachBallTests
                 Top = 200,
             },
         };
-        return new World(map, new GameRules(lobby: true, playerCount: 8));
+        var world = new World(map, new GameRules(lobby: true, playerCount: 8));
+        world.BeachBall.Phase = BeachBallPhase.Flying;
+        return world;
     }
 
     private static void Settling()
@@ -244,11 +267,11 @@ internal static class BeachBallTests
             var (phase, impact, retained) in new[]
             {
                 (BeachBallPhase.Flying, 10m, .65m),
-                (BeachBallPhase.Settling, 5m, .65m),
-                (BeachBallPhase.Settling, 4.9m, .95m),
+                (BeachBallPhase.Settling, 30m, .65m),
+                (BeachBallPhase.Settling, 29.9m, .95m),
                 (BeachBallPhase.Settling, 1.5m, .95m),
-                (BeachBallPhase.Passive, 4.9m, .65m),
-                (BeachBallPhase.Passive, 2m, .65m),
+                (BeachBallPhase.Passive, 4.9m, .4m),
+                (BeachBallPhase.Passive, 3m, .4m),
             }
         )
         {
@@ -321,6 +344,7 @@ internal static class BeachBallTests
             }
         );
         var ceiling = new World(ceilingMap, new GameRules(lobby: true, playerCount: 8));
+        ceiling.BeachBall.Phase = BeachBallPhase.Flying;
         ceiling.BeachBall.Y = 9 - BeachBallState.Radius - Fixed.FromDecimal(.001m);
         ceiling.BeachBall.VY = 1;
         Step(ceiling);
@@ -334,17 +358,17 @@ internal static class BeachBallTests
     {
         var world = FloorImpact(BeachBallPhase.Settling, 3);
         var ball = world.BeachBall;
-        ball.SettlingTicks = 5 * World.TickRate - 2;
+        ball.SettlingTicks = 3 * World.TickRate - 2;
         Step(world);
         Check(
             ball.Phase == BeachBallPhase.Settling && ball.HitsTaken == 4 && ball.LastHitBy == 3,
-            "Settling retains combo ownership until five full seconds have elapsed"
+            "Settling retains combo ownership until three full seconds have elapsed"
         );
         var saved = world.Capture();
         Step(world);
         Check(
             ball.Phase == BeachBallPhase.Passive && ball.HitsTaken == 0 && ball.LastHitBy == -1 && ball.VY != 0,
-            "At five seconds with zero horizontal speed the still-bouncing ball becomes passive and clears ownership"
+            "At three seconds with zero horizontal speed the still-bouncing ball becomes passive and clears ownership"
         );
         var expected = world.Capture();
         world.Restore(saved);
@@ -359,11 +383,11 @@ internal static class BeachBallTests
         );
 
         var moving = FloorImpact(BeachBallPhase.Settling, 10, 20);
-        moving.BeachBall.SettlingTicks = 5 * World.TickRate;
+        moving.BeachBall.SettlingTicks = 3 * World.TickRate;
         Step(moving);
         Check(
             moving.BeachBall.Phase == BeachBallPhase.Settling && moving.BeachBall.HitsTaken == 4,
-            "Five seconds alone cannot clear ownership while horizontal movement remains"
+            "Three seconds alone cannot clear ownership while horizontal movement remains"
         );
         moving.BeachBall.VX = Fixed.FromDecimal(1.01m);
         Step(moving);
@@ -372,42 +396,81 @@ internal static class BeachBallTests
             "Settling becomes passive on the tick drag brings horizontal speed below its cutoff"
         );
 
-        var small = FloorImpact(BeachBallPhase.Passive, 1.99m);
+        var small = FloorImpact(BeachBallPhase.Passive, 2.99m);
         Step(small);
         Check(
             small.BeachBall.Phase == BeachBallPhase.Resting && small.BeachBall.VY == 0,
-            "Passive floor impacts below two stop completely"
+            "Passive floor impacts below three stop completely"
         );
         var frozen = FloorImpact(BeachBallPhase.Settling, 3);
-        frozen.BeachBall.SettlingTicks = 499;
+        frozen.BeachBall.SettlingTicks = 299;
         frozen.BeachBall.HitstopTicks = 2;
         Step(frozen, 2);
         Check(
-            frozen.BeachBall.SettlingTicks == 499 && frozen.BeachBall.HitsTaken == 4,
+            frozen.BeachBall.SettlingTicks == 299 && frozen.BeachBall.HitsTaken == 4,
             "Hitstop does not consume settling time or clear ownership"
         );
     }
 
     private static void Platforms()
     {
-        var map = TestFixtures.Map();
-        map.Collision.Add(
-            new()
-            {
-                X = 0,
-                Y = 5,
-                Width = 12,
-                Height = 1,
-                BeachBallCollision = false,
-            }
-        );
-        var world = new World(map, new GameRules(lobby: true, playerCount: 8));
-        world.BeachBall.Y = 8;
-        world.BeachBall.VY = -30;
-        Step(world, 15);
-        Check(world.BeachBall.Y < 4 && world.BeachBall.VY < 0, "Disabled interior platforms do not block the ball");
-        Step(world, 15);
-        Check(world.BeachBall.Y >= BeachBallState.Radius, "The solid outer floor still stops the ball");
+        foreach (bool oneWay in new[] { false, true })
+        foreach (var phase in new[] { BeachBallPhase.Flying, BeachBallPhase.Settling, BeachBallPhase.Passive })
+        {
+            var map = TestFixtures.Map();
+            map.Collision =
+            [
+                new()
+                {
+                    X = 0,
+                    Y = 5,
+                    Width = 12,
+                    Height = 1,
+                    OneWay = oneWay,
+                },
+            ];
+            var world = new World(map, new GameRules(lobby: true, playerCount: 8));
+            var ball = world.BeachBall;
+            ball.Phase = phase;
+            ball.Y = 7;
+            ball.VY = -200;
+            ball.HasReachedApex = true;
+            var saved = world.Capture();
+            Step(world);
+            bool lands = !oneWay || phase != BeachBallPhase.Flying;
+            Check(
+                lands ? ball.VY > 0 && ball.Y >= Fixed.FromDecimal(6.6m) : ball.VY < 0 && ball.Y < 6,
+                $"{phase} {(lands ? "lands on" : "passes down through")} {(oneWay ? "one-way" : "solid")} floors"
+            );
+            if (oneWay && phase == BeachBallPhase.Flying)
+                Check(ball.Phase == phase, "Passing a one-way top after an apex does not begin settling");
+            var expected = world.Capture();
+            world.Restore(saved);
+            Step(world);
+            Check(world.Capture().SequenceEqual(expected), "Platform collision and phase restore exactly");
+
+            ball = world.BeachBall;
+            ball.Phase = phase;
+            ball.HasReachedApex = false;
+            ball.Y = 3;
+            ball.VY = 400;
+            Step(world);
+            Check(
+                oneWay ? ball.VY > 0 && ball.Y > 6 : ball.VY < 0 && ball.Y < Fixed.FromDecimal(3.4m),
+                $"{phase} passes through one-way undersides but bounces off solid ceilings"
+            );
+
+            ball.Phase = phase;
+            ball.X = -8;
+            ball.Y = 5;
+            ball.VX = 400;
+            ball.VY = 20 * World.TickDuration;
+            Step(world);
+            Check(
+                oneWay ? ball.VX > 0 && ball.X > -6 : ball.VX < 0 && ball.X < -7,
+                $"{phase} ignores one-way edges but bounces off solid walls"
+            );
+        }
     }
 
     private static void Replay()

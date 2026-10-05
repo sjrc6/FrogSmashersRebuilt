@@ -11,6 +11,7 @@ public sealed partial class World
         BeachBall = new BeachBallState
         {
             Active = Rules.Lobby,
+            Phase = BeachBallPhase.Resting,
             X = FromDecimal(Map.BeachBallSpawn.X),
             Y = FromDecimal(Map.BeachBallSpawn.Y),
         };
@@ -79,7 +80,14 @@ public sealed partial class World
             var delta = velocity * remaining;
             if (
                 !collisionMaps[Match.CurrentMapIndex]
-                    .SweepBall(position, delta, BeachBallState.Radius, out var fraction, out var normal)
+                    .SweepBall(
+                        position,
+                        delta,
+                        BeachBallState.Radius,
+                        ball.Phase != BeachBallPhase.Flying,
+                        out var fraction,
+                        out var normal
+                    )
             )
             {
                 position += delta;
@@ -112,7 +120,7 @@ public sealed partial class World
                 ball.Phase = BeachBallPhase.Resting;
                 break;
             }
-            Fixed restitution = floor ? FromDecimal(.65m) : 1;
+            Fixed restitution = floor ? FromDecimal(.85m) : 1;
             if (floor && ball.Phase == BeachBallPhase.Settling && impactSpeed < 30)
                 restitution = FromDecimal(.95m);
             if (floor && ball.Phase == BeachBallPhase.Passive)
