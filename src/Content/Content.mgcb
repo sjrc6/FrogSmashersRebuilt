@@ -5,6 +5,17 @@
 /profile:HiDef
 /compress:True
 
+#begin Textures/Sprites/BeachBall/beach-ball.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyEnabled=False
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=False
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Textures/Sprites/BeachBall/beach-ball.png
+
 #begin UI/whitearrow.png
 /importer:TextureImporter
 /processor:TextureProcessor

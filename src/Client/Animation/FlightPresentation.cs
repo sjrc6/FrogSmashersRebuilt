@@ -29,5 +29,5 @@ internal readonly record struct FlightVisual
     public bool Frozen { get; init; }
     public bool Dodged { get; init; }
     public bool Recovered { get; init; }
-    public float SquareSize { get; init; }
+    public float SpriteScale { get; init; }
 }

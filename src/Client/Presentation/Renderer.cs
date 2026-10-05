@@ -152,7 +152,7 @@ public sealed partial class Renderer : IDisposable
     public void Reset()
     {
         effects.Reset();
-        ballFlight = new();
+        ballPose = new();
         impacts.Clear();
         parallax.Clear();
         seen.Clear();
@@ -167,6 +167,7 @@ public sealed partial class Renderer : IDisposable
     public void Rewind(long fromTick)
     {
         effects.Rewind(fromTick);
+        ballPose.Rewind(fromTick);
         impacts.RemoveAll(e => e.Tick >= fromTick);
         scores.Rewind(fromTick);
         seen.RemoveWhere(id => (id >> 12) >= fromTick);
@@ -251,6 +252,12 @@ public sealed partial class Renderer : IDisposable
                     break;
                 case SimulationEventKind.BeachBallBounce:
                 case SimulationEventKind.Bounce:
+                    if (e.Kind == SimulationEventKind.BeachBallBounce)
+                    {
+                        if (e.Strength <= 5)
+                            break;
+                        ballPose.Bounce(assets, world.BeachBall, e, age);
+                    }
                     var side = e.SurfaceSide == 0 ? Contact(world.Map, p) : Surface(e.SurfaceSide);
                     var offset =
                         e.Kind == SimulationEventKind.BeachBallBounce
@@ -284,6 +291,8 @@ public sealed partial class Renderer : IDisposable
                     break;
                 case SimulationEventKind.BeachBallHit:
                 case SimulationEventKind.Hit:
+                    if (e.Kind == SimulationEventKind.BeachBallHit)
+                        ballPose.ClearSquish();
                     if (e.HitKind == HitKind.Tongue)
                     {
                         break;
@@ -384,7 +393,7 @@ public sealed partial class Renderer : IDisposable
         }
 
         effects.Reset();
-        ballFlight = new();
+        ballPose = new();
         impacts.Clear();
         parallax.Clear();
         sceneClocks.Clear();

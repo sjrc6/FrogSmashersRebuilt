@@ -11,7 +11,7 @@ public sealed partial class Renderer
         .ToArray();
     private readonly Vector2[] characterPositions = new Vector2[8];
     private float lastPresentedTime = -1;
-    private FlightPresentation ballFlight = new();
+    private BeachBallPresentation ballPose = new();
     private Vector2 ballPosition;
 
     private enum DrawKind
@@ -293,12 +293,12 @@ public sealed partial class Renderer
                 break;
             case DrawKind.BeachBall:
                 canvas.Begin(1);
-                DrawBallSquare(
+                canvas.DrawSprite(
+                    ballPose.Sprite,
                     (Vector2)command.Item!,
-                    BeachBallState.Radius.ToFloat() * 2,
-                    Vector2.One,
                     Color.White,
-                    MathF.Atan2(world.BeachBall.VY.ToFloat(), world.BeachBall.VX.ToFloat()) - MathF.PI / 2
+                    new Vector2(ballPose.Scale),
+                    ballPose.Rotation
                 );
                 canvas.End();
                 break;
@@ -405,13 +405,15 @@ public sealed partial class Renderer
                 var before = new Vector2(previous.BeachBall.X.ToFloat(), previous.BeachBall.Y.ToFloat());
                 ballPosition = Vector2.Lerp(before, ballPosition, alpha);
             }
+            if (dt > 0 || ballPose.Sprite == null)
+                ballPose.Update(assets, world.BeachBall, dt);
             if (dt > 0)
-                effects.UpdateBeachBall(world, ballPosition, ballFlight, dt);
+                effects.UpdateBeachBall(world, ballPosition, ballPose, dt);
         }
         else
         {
             effects.RemoveCharacter(8);
-            ballFlight = new();
+            ballPose = new();
         }
         DrawGameplayScene(world, previous, alpha, dt, showGameplayUi);
         PostProcess();

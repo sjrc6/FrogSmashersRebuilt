@@ -399,7 +399,8 @@ public sealed class Audio : IDisposable
                 SimulationEventKind.TongueLaunch => "TongueLaunch",
                 SimulationEventKind.TongueLatch => "TongueCollideSurface",
                 SimulationEventKind.Burp => "Burp",
-                SimulationEventKind.Bounce or SimulationEventKind.BeachBallBounce => "FrogBounce",
+                SimulationEventKind.Bounce => "FrogBounce",
+                SimulationEventKind.BeachBallBounce => "BeachBallBounce",
                 SimulationEventKind.Death => e.Other < 0 ? "KnockoutSuicide"
                 : e.Strength <= 1 ? "Knockout1"
                 : e.Strength <= 3 ? "Knockout2"
@@ -408,6 +409,7 @@ public sealed class Audio : IDisposable
             };
             float callVolume = e.Kind switch
             {
+                SimulationEventKind.BeachBallBounce => BeachBallBounceVolume(e.Strength.ToFloat()),
                 SimulationEventKind.Swing => .4f + e.Strength.ToFloat() * .4f,
                 SimulationEventKind.Spawn or SimulationEventKind.Jump or SimulationEventKind.Land => .4f,
                 SimulationEventKind.Footstep => .1f,
@@ -422,6 +424,16 @@ public sealed class Audio : IDisposable
                 PlayAt(group, id, callVolume, position);
             }
         }
+    }
+
+    private static float BeachBallBounceVolume(float impactSpeed)
+    {
+        float speed = Math.Clamp(impactSpeed, 0, 25);
+        float result = 1.0f;
+        if (speed <= 10)
+            result = .05f + .45f * (speed / 10);
+        result = .5f + .5f * ((speed - 10) / 15);
+        return result * 0.65f;
     }
 
     public void Ambient(MapData map)

@@ -1,11 +1,20 @@
 namespace FrogSmashers.Core;
 
+public enum BeachBallPhase
+{
+    Flying,
+    Settling,
+    Passive,
+    Resting,
+}
+
 public sealed class BeachBallState
 {
-    public static readonly Fixed Radius = Fixed.FromDecimal(.8625m);
+    public static readonly Fixed Radius = Fixed.FromDecimal(1.1m);
     public bool Active;
-    public bool Settling;
-    public bool Resting;
+    public BeachBallPhase Phase;
+    public bool HasReachedApex;
+    public int SettlingTicks;
     public int HitsTaken;
     public int LastHitBy = -1;
     public int HitstopTicks;
@@ -21,8 +30,9 @@ public sealed class BeachBallState
     internal void WriteSnapshot(BinaryWriter writer)
     {
         writer.Write(Active);
-        writer.Write(Settling);
-        writer.Write(Resting);
+        writer.Write((byte)Phase);
+        writer.Write(HasReachedApex);
+        writer.Write(SettlingTicks);
         writer.Write(HitsTaken);
         writer.Write(LastHitBy);
         writer.Write(HitstopTicks);
@@ -39,8 +49,9 @@ public sealed class BeachBallState
         new()
         {
             Active = reader.ReadBoolean(),
-            Settling = reader.ReadBoolean(),
-            Resting = reader.ReadBoolean(),
+            Phase = (BeachBallPhase)reader.ReadByte(),
+            HasReachedApex = reader.ReadBoolean(),
+            SettlingTicks = reader.ReadInt32(),
             HitsTaken = reader.ReadInt32(),
             LastHitBy = reader.ReadInt32(),
             HitstopTicks = reader.ReadInt32(),

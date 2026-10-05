@@ -354,6 +354,41 @@
     "SampleRate": 48000,
     "Frames": 7410
   },
+  "BeachBall_Hit_01": {
+    "Channels": 1,
+    "SampleRate": 24000,
+    "Frames": 18300
+  },
+  "BeachBall_Hit_02": {
+    "Channels": 1,
+    "SampleRate": 24000,
+    "Frames": 15173
+  },
+  "BeachBall_Hit_03": {
+    "Channels": 1,
+    "SampleRate": 24000,
+    "Frames": 12995
+  },
+  "BeachBall_Hit_04": {
+    "Channels": 1,
+    "SampleRate": 24000,
+    "Frames": 11250
+  },
+  "BeachBall_Hit_05": {
+    "Channels": 1,
+    "SampleRate": 24000,
+    "Frames": 9719
+  },
+  "BeachBall_Hit_06": {
+    "Channels": 1,
+    "SampleRate": 24000,
+    "Frames": 8466
+  },
+  "BeachBall_Hit_07": {
+    "Channels": 1,
+    "SampleRate": 24000,
+    "Frames": 7331
+  },
   "FS_Outro SFX": {
     "Channels": 2,
     "SampleRate": 48000,

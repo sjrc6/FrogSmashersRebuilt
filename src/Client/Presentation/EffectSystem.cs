@@ -446,6 +446,7 @@ internal sealed class EffectSystem
             Velocity = new(player.VX.ToFloat(), player.VY.ToFloat()),
             SpritePosition = position + new Vector2(assets.Data.CharacterOffsetX, animator.OffsetY),
             Sprite = animator.Sprite,
+            SpriteScale = 1,
             Rotation = animator.Rotation,
             Facing = player.Facing,
             Color = colorFor(world, player.Slot),
@@ -550,7 +551,7 @@ internal sealed class EffectSystem
                         Name = "FaderTrail",
                         Owner = visual.Owner,
                         Sprite = visual.Sprite,
-                        SquareSize = visual.SquareSize,
+                        SpriteScale = visual.SpriteScale,
                         Color = Alpha(tint, .5f),
                         BaseColor = tint,
                         Scale = 1.1f + visual.Hits * .15f,
@@ -625,7 +626,7 @@ internal sealed class EffectSystem
         }
     }
 
-    public void UpdateBeachBall(World world, Vector2 position, FlightPresentation trail, float dt)
+    public void UpdateBeachBall(World world, Vector2 position, BeachBallPresentation pose, float dt)
     {
         var ball = world.BeachBall;
         var visual = new FlightVisual
@@ -636,17 +637,18 @@ internal sealed class EffectSystem
             Center = position,
             Velocity = new(ball.VX.ToFloat(), ball.VY.ToFloat()),
             SpritePosition = position,
+            Sprite = pose.Sprite,
+            SpriteScale = pose.Scale,
             Facing = 1,
-            Rotation = MathF.Atan2(ball.VY.ToFloat(), ball.VX.ToFloat()) - MathF.PI / 2,
+            Rotation = pose.Rotation,
             Color = Color.White,
             AttackerColor = ball.LastHitBy >= 0 ? colorFor(world, ball.LastHitBy) : null,
-            Airborne = !ball.Resting,
+            Airborne = ball.Phase != BeachBallPhase.Resting,
             Silhouette = ball.HitsTaken > 0,
             Frozen = ball.HitstopTicks > 0,
-            Recovered = ball.Settling,
-            SquareSize = BeachBallState.Radius.ToFloat() * 2,
+            Recovered = ball.Phase != BeachBallPhase.Flying,
         };
-        UpdateFlight(visual, trail, dt, ball.HitstopTicks > 0 ? 0 : dt);
+        UpdateFlight(visual, pose.Flight, dt, ball.HitstopTicks > 0 ? 0 : dt);
     }
 
     internal enum VisualEffectKind
@@ -724,7 +726,7 @@ internal sealed class EffectSystem
         public int Facing = 1;
         public int Points;
         public int Owner = -1;
-        public float SquareSize;
+        public float SpriteScale = 1;
         public int ColorIndex;
         public int DeathFrame = -1;
         public uint Seed;

@@ -137,6 +137,12 @@
       "Audio/Sound/Bat_SwingVoice_15.ogg",
       "Audio/Sound/Bat_SwingVoice_16.ogg"
     ],
+    "BeachBallBounce": [
+      "Audio/Sound/BeachBall/BeachBall_Hit_04.wav",
+      "Audio/Sound/BeachBall/BeachBall_Hit_05.wav",
+      "Audio/Sound/BeachBall/BeachBall_Hit_06.wav",
+      "Audio/Sound/BeachBall/BeachBall_Hit_07.wav"
+    ],
     "Burp": [
       "Audio/Sound/Frog_Burp_03.ogg",
       "Audio/Sound/Frog_Burp_01.ogg",
