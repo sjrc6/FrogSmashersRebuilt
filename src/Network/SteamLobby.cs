@@ -182,6 +182,7 @@ public sealed class SteamLobby : GameLobby
         }
 
         lobbyId = new CSteamID(c.m_ulSteamIDLobby);
+        PublishCodeFingerprint();
         SteamMatchmaking.SetLobbyData(lobbyId, "game", GameTag);
         SteamMatchmaking.SetLobbyData(lobbyId, "protocol", NetworkBuild.Protocol);
         SteamMatchmaking.SetLobbyData(lobbyId, "transport", SteamTransportMetadata.Name(Transport));
@@ -322,6 +323,7 @@ public sealed class SteamLobby : GameLobby
 
         if (hosting && coordinator != null)
         {
+            PublishCodeFingerprint();
             int capacity = Roster.Capacity;
             int occupied = Roster.Count;
             int open = Roster.Slots.Count(slot => slot.Open && slot.Type == SlotType.Open && slot.Player == null);
@@ -359,13 +361,9 @@ public sealed class SteamLobby : GameLobby
 
     public bool InviteFriend(ulong steamId)
     {
-        if (!hosting || !Connected || Error != null || disposed)
+        if (!hosting || !Connected || Starting || Error != null || disposed)
             return false;
-        bool added = admission!.Grant(steamId);
-        bool sent = SteamMatchmaking.InviteUserToLobby(lobbyId, new CSteamID(steamId));
-        if (!sent && added)
-            admission.Revoke(steamId);
-        return sent;
+        return admission!.Invite(steamId, () => SteamMatchmaking.InviteUserToLobby(lobbyId, new CSteamID(steamId)));
     }
 
     public void RotateAdmissionSecret()
@@ -373,15 +371,72 @@ public sealed class SteamLobby : GameLobby
         if (!hosting || !Connected || Error != null || disposed)
             throw new InvalidOperationException("Only a connected host can change lobby access");
         admission!.Rotate();
+        PublishCodeFingerprint();
         coordinator!.RevokePendingAdmissions();
     }
 
-    public void InviteFriends()
+    public string? ShareCodeUnavailable =>
+        !Connected || Error != null || disposed ? "LOBBY NOT READY"
+        : Privacy != LobbyPrivacy.PrivateCode || hosting ? null
+        : admissionSecret.Length == 0 ? "ASK HOST FOR A CODE"
+        : !LobbyAdmissionPolicy.CanShare(admissionSecret, SteamMatchmaking.GetLobbyData(lobbyId, "code_fingerprint"))
+            ? "CODE CHANGED - ASK HOST"
+        : null;
+
+    private void PublishCodeFingerprint()
     {
-        if (initialized && lobbyId.m_SteamID != 0 && Privacy != LobbyPrivacy.PrivateCode)
+        if (admission?.Privacy != LobbyPrivacy.PrivateCode)
+            return;
+        string fingerprint = admission.CodeFingerprint;
+        if (SteamMatchmaking.GetLobbyData(lobbyId, "code_fingerprint") != fingerprint)
+            SteamMatchmaking.SetLobbyData(lobbyId, "code_fingerprint", fingerprint);
+    }
+
+    public string? ShareCode =>
+        ShareCodeUnavailable == null
+            ? LobbyAddress.SteamCode(
+                LobbyCode,
+                Privacy == LobbyPrivacy.PrivateCode ? admission?.Secret ?? admissionSecret : ""
+            )
+            : null;
+
+    public SteamAvatar? FriendAvatar(ulong friend, int currentImage = 0)
+    {
+        if (!initialized || disposed)
+            return null;
+        int image = SteamFriends.GetMediumFriendAvatar(new CSteamID(friend));
+        if (
+            image <= 0
+            || image == currentImage
+            || !SteamUtils.GetImageSize(image, out uint width, out uint height)
+            || width is 0 or > 256
+            || height is 0 or > 256
+        )
+            return null;
+        var pixels = new byte[checked((int)(width * height * 4))];
+        return SteamUtils.GetImageRGBA(image, pixels, pixels.Length)
+            ? new SteamAvatar(image, (int)width, (int)height, pixels)
+            : null;
+    }
+
+    public IReadOnlyList<SteamFriend> Friends()
+    {
+        if (!initialized || disposed)
+            return [];
+        var friends = new List<SteamFriend>();
+        const EFriendFlags flags = EFriendFlags.k_EFriendFlagImmediate;
+        int count = SteamFriends.GetFriendCount(flags);
+        for (int index = 0; index < count; index++)
         {
-            SteamFriends.ActivateGameOverlayInviteDialog(lobbyId);
+            var id = SteamFriends.GetFriendByIndex(index, flags);
+            string name = LobbyListing.DisplayName(SteamFriends.GetFriendPersonaName(id), "FRIEND");
+            bool online = SteamFriends.GetFriendPersonaState(id) != EPersonaState.k_EPersonaStateOffline;
+            friends.Add(new(id.m_SteamID, name, online));
         }
+        return friends
+            .OrderByDescending(friend => friend.Online)
+            .ThenBy(friend => friend.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     public override IPeerTransport CreateTransport() =>

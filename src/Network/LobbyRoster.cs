@@ -176,8 +176,37 @@ public sealed class LobbyRoster
             };
         }
         slots = next;
-        if (players.Any(player => !player.Cpu))
+        if (players.Count == 0 || players.Any(player => !player.Cpu))
             spectators = spectators.Where(player => player.Peer != peer).ToArray();
+        return true;
+    }
+
+    public bool ChangeCpu(int room, bool team, int direction)
+    {
+        if (
+            room is < 0 or >= MaxPlayers
+            || slots[room].Player is not { Cpu: true } player
+            || direction is not (-1 or 1)
+        )
+            return false;
+        var others = slots.Where((_, index) => index != room).Select(slot => slot.Player).ToArray();
+        if (team)
+        {
+            int next = AvailableTeam((player.Team + direction + MaxPlayers) % MaxPlayers, others, direction);
+            player = player with { Team = next };
+        }
+        else
+        {
+            int color = player.Color;
+            do
+            {
+                color = (color + direction + MaxPlayers) % MaxPlayers;
+            } while (color != player.Color && others.Any(other => other?.Color == color));
+            if (color == player.Color)
+                return false;
+            player = player with { Color = color };
+        }
+        slots[room] = slots[room] with { Player = player };
         return true;
     }
 

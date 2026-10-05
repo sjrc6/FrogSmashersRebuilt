@@ -7,7 +7,7 @@ internal sealed partial class LobbyController
     public bool CanManage(LobbyPlayer player) =>
         Online?.Starting != true && (IsHost || !player.Cpu && player.Peer == LocalPeer);
 
-    public bool CanRemove(LobbyPlayer player) => CanManage(player) && (IsHost || Roster.Humans(player.Peer).Length > 1);
+    public bool CanRemove(LobbyPlayer player) => CanManage(player);
 
     public string RemoveLabel(LobbyPlayer player) => player.Cpu || player.Peer != LocalPeer ? "KICK" : "BACK OUT";
 

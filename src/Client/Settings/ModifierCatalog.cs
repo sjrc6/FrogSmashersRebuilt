@@ -16,10 +16,7 @@ internal static class ModifierCatalog
 {
     private static string OnOff(bool enabled) => enabled ? "ON" : "OFF";
 
-    private static string? BodyOnly(GameRules rules) =>
-        rules.Format != MatchFormat.Ffa ? "FFA ONLY"
-        : !rules.Modifiers.BodyBouncing ? "ENABLE BODY BOUNCING"
-        : null;
+    private static string? BodyOnly(GameRules rules) => !rules.Modifiers.BodyBouncing ? "ENABLE BODY BOUNCING" : null;
 
     private static string? PointsOnly(GameRules rules) => rules.Scoring != ScoringMode.Points ? "POINTS ONLY" : null;
 
@@ -38,11 +35,10 @@ internal static class ModifierCatalog
             new(
                 "body-bouncing",
                 "BODY BOUNCING",
-                "LAUNCHED FROGS KNOCK INTO OTHER FROGS. FFA ONLY.",
+                "LAUNCHED FROGS KNOCK INTO OPPONENTS.",
                 "OFF",
                 m => OnOff(m.BodyBouncing),
-                (m, _) => m with { BodyBouncing = !m.BodyBouncing },
-                rules => rules.Format != MatchFormat.Ffa ? "FFA ONLY" : null
+                (m, _) => m with { BodyBouncing = !m.BodyBouncing }
             ),
             new(
                 "bounce-recovery",

@@ -34,13 +34,16 @@ public sealed partial class Renderer
     {
         int mode = e.Owner >= 0 ? effects.ModeFor(assets.Data.Effects["FaderTrail"]) : effects.ModeFor(e.Data!);
         canvas.Begin(mode);
-        canvas.DrawSprite(
-            e.Sprite,
-            e.Position + (e.CameraRelative ? cameraController.Position : Vector2.Zero),
-            e.Color,
-            e.CurrentScale,
-            e.Rotation
-        );
+        if (e.SquareSize > 0)
+            DrawBallSquare(e.Position, e.SquareSize, e.CurrentScale, e.Color, e.Rotation);
+        else
+            canvas.DrawSprite(
+                e.Sprite,
+                e.Position + (e.CameraRelative ? cameraController.Position : Vector2.Zero),
+                e.Color,
+                e.CurrentScale,
+                e.Rotation
+            );
         canvas.End();
         if (e.Kind == EffectSystem.VisualEffectKind.ScorePlume)
         {
@@ -54,6 +57,21 @@ public sealed partial class Renderer
             assets.ScoreFont.DrawCenteredVertical(Batch, e.Text, location, e.TextColor, scale, true);
             Batch.End();
         }
+    }
+
+    private void DrawBallSquare(Vector2 position, float size, Vector2 scale, Color color, float rotation)
+    {
+        Batch.Draw(
+            assets.White,
+            Screen(position),
+            new Rectangle(0, 0, 1, 1),
+            color,
+            -rotation,
+            new Vector2(.5f),
+            scale * size * cameraController.PixelsPerUnit,
+            SpriteEffects.None,
+            0
+        );
     }
 
     private void UpdateConfetti(World world, float dt)

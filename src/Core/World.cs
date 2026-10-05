@@ -19,6 +19,7 @@ public sealed partial class World
     public MatchState Match { get; private set; }
     public PlayerState[] Players { get; private set; }
     public FlyState Fly { get; private set; } = new();
+    public BeachBallState BeachBall { get; private set; } = new();
     public MapData Map => maps[Match.CurrentMapIndex];
     public long TickNumber { get; private set; }
     public ulong ConfigurationHash { get; private set; }
@@ -100,8 +101,8 @@ public sealed partial class World
                 velocity.Y,
                 surfaceSide,
                 hitstopSeconds,
-                player?.Center.X ?? Fly.X,
-                player?.Center.Y ?? Fly.Y,
+                player?.Center.X ?? position?.X ?? Fly.X,
+                player?.Center.Y ?? position?.Y ?? Fly.Y,
                 scoreDelta
             )
         );
@@ -123,6 +124,11 @@ public sealed partial class World
             Match.ApplySelection(Rules, slot, inputs[slot].Command);
         if (Match.Phase == MatchPhase.Selecting)
         {
+            if (Match.CompleteCrewSelection(Rules))
+            {
+                Match.CurrentMapIndex = ChooseMap(Match.RoundNumber - 1);
+                ResetArena();
+            }
             TickNumber++;
             return;
         }
@@ -153,12 +159,16 @@ public sealed partial class World
         for (int slot = 0; slot < Players.Length; slot++)
         {
             TickPlayer(Players[slot], inputs[slot].Gameplay);
+            if (Match.Phase == MatchPhase.Selecting)
+                break;
         }
 
-        if (!Rules.Lobby)
+        if (!Rules.Lobby && Match.Phase != MatchPhase.Selecting)
         {
             UpdateFly();
         }
+        if (Rules.Lobby)
+            UpdateBeachBall();
         if (Match.Phase == MatchPhase.RoundFinished && --Match.PhaseTicks <= 0)
         {
             if (Rules.ScoreScreenTicks > 0)
@@ -177,6 +187,11 @@ public sealed partial class World
 
     private void TickPlayer(PlayerState player, InputFrame input)
     {
+        if (Match.Players[player.Slot].Participation != Participation.Active)
+        {
+            player.PreviousInput = input;
+            return;
+        }
         if (Match.Phase == MatchPhase.RoundFinished && !IsWinner(player))
         {
             input = default;

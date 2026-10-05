@@ -40,18 +40,14 @@ internal sealed class GameCamera
 
     public void Update(World world, float dt, float elapsed)
     {
-        if (world.Rules.Lobby)
-        {
-            Reset(world.Map);
-            return;
-        }
+        var origin = world.Rules.Lobby ? new Vector2(world.Map.CameraX, world.Map.CameraY) : Vector2.Zero;
         float finishAge =
             world.Match.Phase == MatchPhase.RoundFinished
                 ? (world.Rules.RoundFinishTicks - world.Match.PhaseTicks) / (float)World.TickRate
                 : 0;
-        if (world.Match.Phase == MatchPhase.Playing || finishAge < 1.5f)
+        if (world.Rules.Lobby || world.Match.Phase == MatchPhase.Playing || finishAge < 1.5f)
         {
-            var p = Position + velocity * dt;
+            var p = Position - origin + velocity * dt;
             if (p.X > 1 && velocity.X > 0)
             {
                 velocity.X *= -.9f;
@@ -87,13 +83,15 @@ internal sealed class GameCamera
                 velocity.Y -= p.Y * spring * dt;
             }
 
-            var wobble = new Vector2(
-                MathF.Sin(elapsed * parameters.GetValueOrDefault("cameraWobbleSpeedX"))
-                    * parameters.GetValueOrDefault("cameraWobbleAmountX"),
-                MathF.Sin(elapsed * parameters.GetValueOrDefault("cameraWobbleSpeedY"))
-                    * parameters.GetValueOrDefault("cameraWobbleAmountY")
-            );
-            Position = Vector2.Lerp(p, ShakeEnabled ? wobble : Vector2.Zero, Math.Clamp(dt * 3, 0, 1));
+            var wobble = world.Rules.Lobby
+                ? Vector2.Zero
+                : new Vector2(
+                    MathF.Sin(elapsed * parameters.GetValueOrDefault("cameraWobbleSpeedX"))
+                        * parameters.GetValueOrDefault("cameraWobbleAmountX"),
+                    MathF.Sin(elapsed * parameters.GetValueOrDefault("cameraWobbleSpeedY"))
+                        * parameters.GetValueOrDefault("cameraWobbleAmountY")
+                );
+            Position = origin + Vector2.Lerp(p, ShakeEnabled ? wobble : Vector2.Zero, Math.Clamp(dt * 3, 0, 1));
         }
         else if (world.Match.Phase == MatchPhase.RoundFinished && world.Match.Winner >= 0)
         {

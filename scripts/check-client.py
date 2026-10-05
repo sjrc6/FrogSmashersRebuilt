@@ -123,7 +123,7 @@ def verify_connections_and_repeat():
     edited = capture("connections-slot-editor", editor, 25)
     assert edited["Page"] == "SlotEditor" and not edited["ConnectionsVisible"], edited
 
-    settings = [key(1, "Down"), key(3, "Down"), key(5, "Enter")]
+    settings = [key(0, "Down"), key(2, "Down"), key(4, "Down"), key(6, "Enter")]
     volume = settings + [key(7, "Down"), key(9, "Down"), key(11, "Down")]
     for name, action in [("key", dict(Keys=["Left"])), ("pad", dict(Pads={0: ["DPadLeft"]}))]:
         changed = capture("repeat-volume-" + name,
@@ -266,7 +266,7 @@ def verify_menu_background():
     assert not record.exists() and not record.with_name(record.name + ".json").exists()
 
     watch = out / "menu-watch-cpu-input.json"
-    keys = [(frame, "Down") for frame in (1, 3, 5)] + [(7, "Enter"), (9, "Down"), (11, "Enter"), (120, "Escape"), (122, "Down"), (124, "Down"), (126, "Down"), (128, "Enter")]
+    keys = [(frame, "Down") for frame in (1, 3, 5, 7)] + [(9, "Enter"), (11, "Down"), (13, "Enter"), (120, "Escape"), (122, "Down"), (124, "Down"), (128, "Enter")]
     watch.write_text(json.dumps([dict(From=frame, To=frame + 1, Keys=[key]) for frame, key in keys]))
     options = ["--no-intro", "--map", "4", "--input-script", str(watch)]
     value = run("menu-watch-cpu", options + ["--frames", "100"], sound=True)
@@ -313,7 +313,7 @@ def verify_local_replay():
 
 
 def verify_replay_exit(record):
-    keys = [(1, "Escape"), (3, "Down"), (5, "Down"), (7, "Enter"),
+    keys = [(1, "Escape"), (3, "Down"), (7, "Enter"),
             (9, "U"), (11, "U"), (13, "OemPeriod"), (15, "OemPeriod"),
             (17, "Escape"), (21, "Enter")]
     rows = [(frame, frame + 1, [key]) for frame, key in keys]
@@ -341,7 +341,7 @@ def verify_lobby_menus():
         path.write_text(json.dumps(rows))
         return run(name, ["--no-intro", "--input-script", str(path), "--frames", str(frames), "--capture", str(out / (name + ".png"))])
 
-    joining = [click(1, 640, 357), key(3, "U"), key(5, "Y"), key(9, "U"), key(11, "OemPeriod"), key(13, "OemPeriod")]
+    joining = [key(1, "Enter"), key(3, "U"), key(5, "Y"), key(9, "U"), key(11, "OemPeriod"), key(13, "OemPeriod")]
     choosing = capture("lobby-color", joining, 8)
     assert choosing["Page"] == "Seats" and choosing["LocalDevices"] == [], choosing
     assert 0 <= choosing["LobbySlots"][0]["Player"]["Color"] < 8 and not choosing["LobbyPlayers"][0]["Alive"], choosing
@@ -525,9 +525,58 @@ def verify_player_menu():
     assert pause["Page"] == "Playing" and pause["Paused"] and "RESUME" not in pause["MenuItems"], pause
     resumed = capture("pause-click-back", paused + [click(21, *menu_center(pause, "back", "MenuButtons"))], 24)
     assert resumed["Page"] == "Playing" and not resumed["Paused"], resumed
-    readonly = capture("players-match-readonly", paused + [key(21, "Down"), key(23, "Enter"), key(25, "Enter")], 28)
-    assert readonly["Page"] == "ViewPlayers" and readonly["PlayerActions"]["DisabledReason"] == "LOBBY ONLY" and readonly["LocalDevices"] == [0, 1], readonly
-    print("PASS: direct player actions, clickable footer, CPU kick, read-only match list and pause without Resume.")
+    assert "VIEW PLAYERS" not in pause["MenuItems"], pause
+    readonly = capture("local-match-return", paused + [key(21, "Down"), key(23, "Enter")], 28)
+    assert readonly["Page"] == "Seats" and readonly["LocalDevices"] == [0, 1], readonly
+    print("PASS: direct player actions, clickable footer, CPU kick, offline pause options and return to lobby.")
+
+
+def verify_lobby_pause_and_cpu_appearance():
+    def key(frame, name):
+        return dict(From=frame, To=frame + 1, Keys=[name])
+    rows = [key(1, "Enter"), key(30, "Escape"), key(200, "Escape")]
+    script = out / "local-lobby-pause-input.json"
+    script.write_text(json.dumps(rows))
+    values = []
+    for name, frames in (("lobby-pause-start", 31), ("lobby-pause-held", 180), ("lobby-pause-resumed", 260)):
+        values.append(run(name, ["--no-intro", "--input-script", str(script), "--frames", str(frames),
+                                 "--capture", str(out / (name + ".png"))]))
+    assert values[0]["LobbyTick"] == values[1]["LobbyTick"] < values[2]["LobbyTick"], values
+    assert values[0]["LobbyBall"] == values[1]["LobbyBall"], values
+    verify_paused_pixels("lobby-pause-start.png", "lobby-pause-held.png")
+    rows = [key(1, "Enter"), key(3, "Escape"), key(5, "Down"), key(7, "Down"), key(9, "Down"),
+            key(11, "Enter"), key(13, "Enter"), key(15, "C")]
+    script.write_text(json.dumps(rows))
+    cpu = run("cpu-appearance-local", ["--no-intro", "--input-script", str(script), "--frames", "22",
+                                      "--capture", str(out / "cpu-appearance-local.png")])
+    assert cpu["Page"] == "SlotEditor" and cpu["LobbySlots"][0]["Player"]["Color"] == 1, cpu
+    rows = [key(frame, name) for frame, name in [(1, "Enter"), (3, "Escape"), (5, "Down"),
+            (7, "Enter"), (9, "Right"), (11, "Escape"), (13, "Down"), (15, "Down"),
+            (17, "Enter"), (19, "Enter"), (21, "T"), (23, "C")]]
+    script.write_text(json.dumps(rows))
+    team = run("cpu-team-local", ["--no-intro", "--input-script", str(script), "--frames", "26",
+                                "--capture", str(out / "cpu-team-local.png")])
+    assert team["Page"] == "SlotEditor" and team["LobbySlots"][0]["Player"]["Team"] == 1, team
+    assert team["LobbySlots"][0]["Player"]["Color"] == 1, team
+    print("PASS: local lobby pauses physics/presentation; CPU color and team edits work while paused.")
+
+
+def verify_menu_navigation_and_disabled_rows():
+    script = out / "navigation-disabled-input.json"
+    for fps, action in ((60, dict(Keys=["Down"])), (240, dict(Pads={"0": ["DPadDown"]}))):
+        script.write_text(json.dumps([dict(From=0, To=fps, **action)]))
+        value = run("navigation-repeat-" + str(fps), ["--no-intro", "--input-script", str(script),
+                    "--render-fps", str(fps), "--frames", str(26 * fps // 60)])
+        assert value["Page"] == "Main" and value["Selected"] == 4, value
+    actions = [(1, "Down"), (3, "Enter"), (5, "Enter"), (7, "Down"),
+               (9, "Right"), (11, "Down"), (13, "Enter")]
+    script.write_text(json.dumps([dict(From=frame, To=frame+1, Keys=[key]) for frame, key in actions]))
+    public = run("advanced-public", ["--no-intro", "--input-script", str(script), "--frames", "8"])
+    lan = run("advanced-lan-disabled", ["--no-intro", "--input-script", str(script), "--frames", "15"])
+    assert public["MenuPanel"] == lan["MenuPanel"] and lan["Page"] == "CreateLobby", (public, lan)
+    advanced = next(row for row in lan["MenuRows"] if row["Id"] == "page-CreateLobbyAdvanced")
+    assert advanced["DisabledReason"] == "STEAM LOBBIES ONLY", lan
+    print("PASS: fast keyboard/controller navigation and stable, disabled LAN Advanced row.")
 
 
 def verify_match_configuration():
@@ -545,10 +594,18 @@ def verify_match_configuration():
     assert "SCORING: STOCKS" in value["MenuItems"], value
     assert next(row for row in value["MenuRows"] if row["Id"] == "scoring")["DisabledReason"] == "CREWS REQUIRES STOCKS", value
     script.write_text(json.dumps(rows + [key(27, "Escape"), key(29, "Up"), key(31, "Enter")]))
-    blocked = run("unfinished-mode-start", ["--no-intro", "--input-script", str(script), "--frames", "34"])
-    assert blocked["Page"] == "LobbyMenu" and blocked["TickNumber"] is None, blocked
-    assert next(row for row in blocked["MenuRows"] if row["Id"] == "start-match")["DisabledReason"] == "STOCKS NOT AVAILABLE", blocked
-    print("PASS: match format and scoring controls enforce Crews constraints and reject unfinished mode starts.")
+    selecting = run("crew-selection", ["--no-intro", "--input-script", str(script), "--frames", "40",
+                                        "--capture", str(out / "crew-selection.png")])
+    assert selecting["Page"] == "Playing" and selecting["Phase"] == "Selecting", selecting
+    assert selecting["ActiveFormat"] == "Crews" and selecting["ActiveScoring"] == "Stocks", selecting
+    # Both keyboard profiles retain independent controls during selection.
+    script.write_text(json.dumps(rows + [key(27, "Escape"), key(29, "Up"), key(31, "Enter"),
+                                          key(45, "T"), key(49, "M")]))
+    playing = run("crew-playing", ["--no-intro", "--input-script", str(script), "--frames", "150",
+                                    "--capture", str(out / "crew-playing.png")])
+    assert playing["Phase"] == "Playing" and all(p["Participation"] == "Active" for p in playing["Progress"]), playing
+    assert all(p["Stocks"] == 5 for p in playing["Progress"]), playing
+    print("PASS: Crews settings, black selection screen, independent keyboard choices and live fighters.")
 
 
 def verify_modifiers():
@@ -654,6 +711,67 @@ def verify_modifier_network():
                 process.wait()
 
 
+def verify_empty_party_network():
+    def key(frame, name):
+        return dict(From=frame, To=frame + 1, Keys=[name])
+    for joining in (False, True):
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as reserve:
+            reserve.bind(("127.0.0.1", 0))
+            port = reserve.getsockname()[1]
+        label = "explicit-devices" if joining else "empty-parties"
+        rows = [] if not joining else [
+            dict(From=180, To=181, Pads={"1": ["X"]}),
+            dict(From=260, To=261, Pads={"1": ["X"]}),
+            key(320, "OemPeriod"), key(400, "OemPeriod"),
+        ]
+        script = out / (label + "-input.json")
+        script.write_text(json.dumps(rows))
+        common = ["--port", str(port), "--frames", "600", "--wait-for-lobby"]
+        processes = [start_held(label + "-host", common + ["--host", "udp"]),
+                     start_held(label + "-guest", common + ["--join", "udp:127.0.0.1", "--input-script", str(script)])]
+        values = held_results(processes)
+        for value in values:
+            assert value["Error"] is None and value["Page"] == "Seats" and value["LobbyTick"] > 0, value
+            players = [slot["Player"] for slot in value["LobbySlots"] if slot["Player"] is not None]
+            assert len(players) == (2 if joining else 0), value
+            if joining:
+                assert {player["Id"] for player in players} == {1, 3} and all(player["Peer"] == 1 for player in players), value
+                assert all(player["Spawned"] for player in players), value
+    print("PASS: empty host and guest see a live lobby; controller 2 joins explicitly and keyboard 2 joins later.")
+
+
+def verify_modes_network():
+    def key(frame, name):
+        return dict(From=frame, To=frame + 1, Keys=[name])
+    for crews in (False, True):
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as reserve:
+            reserve.bind(("127.0.0.1", 0))
+            port = reserve.getsockname()[1]
+        mode = "crews" if crews else "stocks"
+        host_rows = [key(160, "Escape"), key(162, "Down"), key(164, "Enter")]
+        host_rows += [key(166, "Right" if crews else "Down"), key(168, "Right"),
+                      key(170, "Escape"), key(172, "Up"), key(600 if crews else 180, "Enter")]
+        guest_rows = []
+        if crews:
+            guest_rows = [key(220, "U"), key(240, "Y"), key(260, "U")]
+            host_rows += [key(frame, "T") for frame in (800, 1000, 1200)]
+            guest_rows += [key(frame, "T") for frame in (800, 1000, 1200)]
+        processes = []
+        common = ["--local-players", "1", "--port", str(port), "--ticks", "480"]
+        for name, target, rows in [(mode + "-host", ["--host", "udp"], host_rows),
+                                   (mode + "-guest", ["--join", "udp:127.0.0.1"], guest_rows)]:
+            script = out / (name + "-input.json")
+            script.write_text(json.dumps(rows))
+            processes.append(start_held(name, common + target + ["--input-script", str(script)]))
+        values = held_results(processes)
+        for value in values:
+            assert value["Error"] is None and value["TickNumber"] == 480 and value["ConfirmedFrame"] == 479, value
+            assert value["ActiveScoring"] == "Stocks" and value["ActiveFormat"] == ("Crews" if crews else "Ffa"), value
+            assert value["Phase"] == "Playing" and all(player["Participation"] == "Active" for player in value["Progress"]), value
+        assert values[0]["Hash"] == values[1]["Hash"], values
+    print("PASS: rendered Stocks and Crews, remote team/selection inputs, and equal confirmed match hashes.")
+
+
 def verify_player_network_actions():
     def key(frame, name):
         return dict(From=frame, To=frame + 1, Keys=[name])
@@ -681,7 +799,7 @@ def verify_player_network_actions():
                 assert value["Error"] is None and value["Page"] == "ViewPlayers", value
             host, guest = values
             expected = "SPECTATE" if unspectate else "UNSPECTATE"
-            assert guest["PlayerActions"] == dict(Accept=expected, Remove=None, DisabledReason=None), guest
+            assert guest["PlayerActions"] == dict(Accept=expected, Remove="BACK OUT" if unspectate else None, DisabledReason=None), guest
             assert guest["Selected"] == 1, guest
             if unspectate:
                 assert guest["LobbySpectators"] == [] and guest["LobbySlots"][1]["Player"]["Id"] == 1 and not guest["LobbySlots"][1]["Player"]["Spawned"], guest
@@ -724,9 +842,9 @@ def verify_online_creation():
     def key(frame, name):
         return dict(From=frame, To=frame + 1, Keys=[name])
     actions = [(1, "Enter"), (3, "Escape"), (5, "Down"), (7, "Down"), (9, "Down"), (11, "Enter"),
-               (13, "Enter"), (15, "Escape"), (17, "Down"), (19, "Down"), (21, "Down"), (23, "Enter"),
-               (25, "Enter"), (27, "Left"), (29, "Left"), (31, "Left"), (33, "Left"), (35, "Down"),
-               (37, "Right"), (39, "Down"), (41, "Enter")]
+               (13, "Enter"), (15, "Escape"), (17, "Down"), (19, "Down"), (21, "Down"), (23, "Down"), (25, "Down"), (27, "Enter"),
+               (29, "Enter"), (31, "Left"), (33, "Left"), (35, "Left"), (37, "Left"), (39, "Down"),
+               (41, "Right"), (43, "Down"), (45, "Down"), (47, "Enter")]
     rows = [key(frame, name) for frame, name in actions]
     script = out / "open-local-cpu-input.json"
     script.write_text(json.dumps(rows))
@@ -787,10 +905,10 @@ def verify_lobby_color_respawn():
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as reserve:
             reserve.bind(("127.0.0.1", 0))
             port = reserve.getsockname()[1]
-        host = subprocess.Popen(command(name + "-host", ["--host", "udp", "--port", str(port)]),
+        host = subprocess.Popen(command(name + "-host", ["--host", "udp", "--local-players", "1", "--port", str(port)]),
                                 cwd=root, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         try:
-            value = run(name, ["--join", "udp:127.0.0.1", "--port", str(port),
+            value = run(name, ["--join", "udp:127.0.0.1", "--local-players", "1", "--port", str(port),
                                "--input-script", str(script), "--frames", str(frames)])
             assert value["Page"] == "Seats" and value["LobbyProgress"] is None, value
             guests = [(room, slot["Player"]) for room, slot in enumerate(value["LobbySlots"])
@@ -812,10 +930,10 @@ def verify_spectator_direct_join():
     script.write_text(json.dumps([dict(From=180, To=181, Keys=["OemPeriod"])]))
     for pending in (True, False):
         name = "spectator-join-pending" if pending else "spectator-join-complete"
-        host = subprocess.Popen(command(name + "-host", ["--host", "udp", "--port", str(port)]),
+        host = subprocess.Popen(command(name + "-host", ["--host", "udp", "--local-players", "1", "--port", str(port)]),
                                 cwd=root, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         try:
-            value = run(name, ["--join", "udp:127.0.0.1", "--port", str(port), "--spectate",
+            value = run(name, ["--join", "udp:127.0.0.1", "--local-players", "1", "--port", str(port), "--spectate",
                                "--input-script", str(script), "--frames", "181" if pending else "350",
                                "--capture", str(out / (name + ".png"))] + ([] if pending else ["--wait-for-lobby"]))
             assert value["Page"] == "Seats", value
@@ -936,6 +1054,8 @@ def main():
     verify_replay_exit(record)
     verify_lobby_menus()
     verify_player_menu()
+    verify_lobby_pause_and_cpu_appearance()
+    verify_menu_navigation_and_disabled_rows()
     verify_match_configuration()
     verify_modifiers()
     if not args.quick:
@@ -944,6 +1064,8 @@ def main():
         verify_guest_match_settings()
         verify_guest_match_settings(modifiers=True)
         verify_modifier_network()
+        verify_modes_network()
+        verify_empty_party_network()
         verify_player_network_actions()
         verify_online_creation()
         verify_lobby_network()

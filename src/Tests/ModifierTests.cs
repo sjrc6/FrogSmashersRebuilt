@@ -163,7 +163,7 @@ internal static class ModifierTests
             "Cumulative totals count each team's round score once for both winners and losers"
         );
         match.AdvanceRound(rules);
-        match.StartRound();
+        match.StartRound(rules);
         match.RecordDeath(rules, 2, 0, 1);
         match.RecordDeath(rules, 0, 2, 10);
         match.WinRound(rules, 2);
@@ -189,7 +189,7 @@ internal static class ModifierTests
         Check(world.Match.Players[0].Score == -1, "Negative scores survive snapshots");
         var stocks = new GameRules(scoring: ScoringMode.Stocks, modifiers: modifiers);
         Check(
-            !stocks.CumulativeScoring && new MatchState(stocks).DeathScore(stocks, -1, 0) == 0,
+            !stocks.CumulativeScoring && new MatchState(stocks).DeathScore(stocks, -1, 0) == -1,
             "Points-only modifiers have no effect on Stocks"
         );
         var tieRules = new GameRules(matchRounds: 1, modifiers: modifiers);
@@ -226,9 +226,10 @@ internal static class ModifierTests
             return world;
         }
         var enabled = new GameModifiers { BodyBouncing = true };
+        foreach (bool teams in new[] { false, true })
         foreach (bool redirect in new[] { false, true })
         {
-            var world = Contact(enabled with { RedirectBounces = redirect });
+            var world = Contact(enabled with { RedirectBounces = redirect }, teams: teams);
             Step(world);
             Check(
                 world.Players[1].HitsTaken == 1
@@ -242,17 +243,10 @@ internal static class ModifierTests
                 "Redirect option controls the launched frog's outgoing trajectory"
             );
         }
-        foreach (
-            var world in new[]
-            {
-                Contact(GameModifiers.Default),
-                Contact(enabled, apex: true),
-                Contact(enabled, teams: true),
-            }
-        )
+        foreach (var world in new[] { Contact(GameModifiers.Default), Contact(enabled, apex: true) })
         {
             Step(world);
-            Check(world.Players[1].HitsTaken == 0, "Body collisions obey opt-in, apex and FFA restrictions");
+            Check(world.Players[1].HitsTaken == 0, "Body collisions obey opt-in and apex restrictions");
         }
         var afterApex = Contact(enabled with { BounceBeforeRecoveryOnly = false }, apex: true);
         Step(afterApex);

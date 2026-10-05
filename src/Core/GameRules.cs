@@ -39,7 +39,7 @@ public sealed class GameRules
     public bool UsesTeams => Format != MatchFormat.Ffa;
 
     [JsonIgnore]
-    public bool BodyBouncingEnabled => Format == MatchFormat.Ffa && Modifiers.BodyBouncing;
+    public bool BodyBouncingEnabled => !Lobby && Modifiers.BodyBouncing;
 
     [JsonIgnore]
     public bool CumulativeScoring =>
@@ -108,8 +108,8 @@ public sealed class GameRules
             return "CHOOSE TWO TEAMS";
         if (Format == MatchFormat.Crews && teamCount != 2)
             return "CREWS REQUIRES TWO TEAMS";
-        if (Scoring == ScoringMode.Stocks)
-            return "STOCKS NOT AVAILABLE";
+        if (Format == MatchFormat.Crews && CpuPlayers.Take(PlayerCount).Any(cpu => cpu))
+            return "CREWS REQUIRES HUMAN PLAYERS";
         return null;
     }
 

@@ -145,8 +145,8 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
         }
         else
         {
-            if (players.Length == 0 || players.Any(player => player.Cpu))
-                throw new ArgumentException("Guests must bring at least one human player");
+            if (players.Any(player => player.Cpu))
+                throw new ArgumentException("Guests cannot bring CPU players");
             Roster.SetPlayers(0, []);
             peerAddresses[0] = host!;
             wire.SetPeers([host!]);
@@ -274,11 +274,6 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
         if (Roster.Slots.Any(slot => slot.Player is { Spawned: false }))
         {
             Notice = "SPAWN ALL PLAYERS";
-            return false;
-        }
-        if (Roster.Players(0).Length == 0 && Roster.Spectator(0) == null)
-        {
-            Notice = "JOIN OR SPECTATE FIRST";
             return false;
         }
         string settings = createSettings(Roster);
@@ -727,9 +722,8 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
             var permission = new LobbyAccess(isFriend(source));
             if (
                 control.Spectating
-                || control.Players.Length == 0
                 || control.Players.Any(p => p.Cpu)
-                || !Roster.SetPlayers(peer, control.Players, permission)
+                || !ApplyParty(Roster, peer, control.Players, false, permission)
             )
             {
                 Reject(source, "NOT ENOUGH OPEN SLOTS", control.Nonce);

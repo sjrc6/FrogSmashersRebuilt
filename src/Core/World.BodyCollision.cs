@@ -95,6 +95,7 @@ public sealed partial class World
         {
             if (
                 victim == bouncer
+                || Rules.UsesTeams && victim.Team == bouncer.Team
                 || !victim.Alive
                 || victim.Mode == CharacterMode.Bouncing
                 || victim.Slot == bouncer.LastHitBy
@@ -118,7 +119,7 @@ public sealed partial class World
             SetVelocity(victim, velocity);
             ApplyHitstop(victim, bouncer.HitsTaken, 0);
             ApplyHitstop(bouncer, bouncer.HitsTaken, 0);
-            ApplyNearbyHitstop(victim, bouncer.HitsTaken);
+            ApplyNearbyHitstop(victim.Position, bouncer.HitsTaken);
             Emit(
                 SimulationEventKind.Hit,
                 victim,

@@ -40,11 +40,8 @@ internal sealed partial class MeshLobby
             return false;
         if (!IsHost)
             return SetPlayers(Roster.Players(peer).Where(player => player.Id != id).ToArray());
-        if (peer > 0 && Roster.Humans(peer).Length == 1)
-        {
-            Kick(peer, false);
-            return true;
-        }
+        if (peer > 0 && Roster.Humans(peer).Length == 1 && ObserverCount(Roster) >= LobbyRoster.MaxSpectators)
+            return false;
         Roster.RemovePlayer(peer, id);
         if (peer > 0)
             epochs[peer]++;
@@ -58,6 +55,8 @@ internal sealed partial class MeshLobby
             return false;
         var validation = CopyRoster();
         if (!validation.SetSpectating(peer, spectating, IsHost ? AccessFor(peer) : localAccess))
+            return false;
+        if (ObserverCount(validation) > LobbyRoster.MaxSpectators)
             return false;
         if (IsHost)
         {
@@ -82,15 +81,21 @@ internal sealed partial class MeshLobby
         return copy;
     }
 
-    private static bool ApplyParty(
-        LobbyRoster roster,
-        int peer,
-        LobbyPlayer[] players,
-        bool spectating,
-        LobbyAccess access
-    )
+    private bool ApplyParty(LobbyRoster roster, int peer, LobbyPlayer[] players, bool spectating, LobbyAccess access)
     {
-        if (players.Length == 0 || players.Any(player => player.Cpu))
+        if (players.Any(player => player.Cpu))
+            return false;
+        if (
+            (spectating || players.Length == 0)
+            && roster.Humans(peer).Length > 0
+            && ObserverCount(roster) >= LobbyRoster.MaxSpectators
+        )
+            return false;
+        if (
+            !peerAddresses.ContainsKey(peer)
+            && players.Length == 0
+            && ObserverCount(roster) >= LobbyRoster.MaxSpectators
+        )
             return false;
         if (spectating)
         {
@@ -102,6 +107,11 @@ internal sealed partial class MeshLobby
         }
         return roster.SetPlayers(peer, players, access);
     }
+
+    private int ObserverCount(LobbyRoster roster) =>
+        peerAddresses.Keys.Count(peer =>
+            peer != 0 && roster.Humans(peer).Length == 0 || roster.Spectator(peer) != null
+        );
 
     private LobbyAccess AccessFor(int peer)
     {

@@ -5,6 +5,15 @@ internal static class LocalTestLauncherTests
 {
     public static void Run(Action<bool, string> check)
     {
+        check(
+            LaunchOptions.Parse(["--host", "udp"]).LocalPlayers == 0
+                && LaunchOptions.Parse(["--join", "steam:123"]).LocalPlayers == 0,
+            "Direct host and invite launches do not guess a player's controller"
+        );
+        check(
+            LaunchOptions.Parse(["--join", "udp:localhost", "--local-players", "0"]).LocalPlayers == 0,
+            "Explicit empty parties are accepted"
+        );
         var host = LaunchOptions.Parse(["--localtest", "4", "--tile", "--port", "25199", "--map", "a map"]);
         check(
             host.Host == "udp" && host.Join == null && host.LocalTestCount == 4 && host.Tile,

@@ -13,7 +13,7 @@ public readonly record struct LobbyCpuCommand(int Revision, byte Rooms, byte Ena
 
     public int Team(int room) => (int)(Teams >> (room * 3)) & 7;
 
-    internal static LobbyCpuCommand FromRoster(int revision, byte rooms, LobbyRoster roster)
+    public static LobbyCpuCommand FromRoster(int revision, byte rooms, LobbyRoster roster)
     {
         byte enabled = 0;
         uint colors = 0,

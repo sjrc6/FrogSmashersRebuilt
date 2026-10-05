@@ -1,6 +1,6 @@
 namespace FrogSmashers.Client;
 
-internal sealed class MenuAdjustRepeat
+internal sealed class MenuRepeat(double initialDelay = .35, double interval = .075)
 {
     private int direction;
     private double remaining;
@@ -15,7 +15,7 @@ internal sealed class MenuAdjustRepeat
         if (pressed != 0)
         {
             direction = held;
-            remaining = .35;
+            remaining = initialDelay;
             return pressed;
         }
         if (held != direction)
@@ -26,7 +26,7 @@ internal sealed class MenuAdjustRepeat
         remaining -= elapsedSeconds;
         if (remaining > 0)
             return 0;
-        remaining = Math.Max(remaining + .075, 0);
+        remaining = Math.Max(remaining + interval, 0);
         return direction;
     }
 

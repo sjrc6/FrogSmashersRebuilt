@@ -437,130 +437,31 @@ internal sealed class EffectSystem
     {
         float localDt = dt * (player.HitstopTicks > 0 ? player.HitstopScale.ToFloat() : 1);
         float delay = CharacterParameter("trailDelay", .01f);
-        float speed = player.Velocity.Length.ToFloat();
-        var center = position + Vector2.UnitY;
-        var velocity = new Vector2(player.VX.ToFloat(), player.VY.ToFloat());
-        bool air = player.Mode == CharacterMode.Bouncing && !player.OnGround;
-        bool silhouette =
-            player.HitsTaken > 0
-            && (
-                player.Mode == CharacterMode.Bouncing
-                || player.Mode == CharacterMode.Tongue && player.WasBouncingBeforeTongue
-            );
-        if (
-            air
-            && !(player.HitstopTicks > 0 && player.HitstopScale == 0)
-            && !player.HasBounceDodged
-            && !player.CanBounceDodge
-            && player.HitsTaken > 2
-        )
+        var visual = new FlightVisual
         {
-            animator.ParticleCounter += localDt;
-            if (animator.ParticleCounter > delay)
-            {
-                animator.ParticleCounter -= delay;
-                var effect = Add(
-                    "HitParticle",
-                    center + InsideCircle(),
-                    Color.White,
-                    world.TickNumber,
-                    new EffectSpawn
-                    {
-                        Velocity = velocity * .1f * RandomRange(.75f, 1.25f),
-                        Life = .5f * RandomRange(.9f, 1.1f),
-                    }
-                );
-                if (effect != null)
-                {
-                    effect.StartSize = .15f;
-                    effect.EndSize = 0;
-                    effect.Colors = [Color.White, Color.Black, colorFor(world, player.Slot)];
-                }
-            }
-        }
-
-        if (silhouette && player.LastHitBy >= 0)
-        {
-            animator.TrailFaderCounter -= dt;
-            if (animator.TrailFaderCounter <= 0)
-            {
-                animator.TrailNumber++;
-                animator.TrailFaderCounter += delay * 2;
-                var tint = Color.Lerp(
-                    colorFor(world, player.LastHitBy),
-                    Color.White,
-                    EffectAnimation.PingPong(animator.TrailNumber * .2f, 1)
-                );
-                effects.Add(
-                    new()
-                    {
-                        Tick = world.TickNumber,
-                        Name = "FaderTrail",
-                        Owner = player.Slot,
-                        Sprite = animator.Sprite,
-                        Color = Alpha(tint, .5f),
-                        BaseColor = tint,
-                        Scale = 1.1f + player.HitsTaken * .15f,
-                        Position = position + new Vector2(assets.Data.CharacterOffsetX, animator.OffsetY),
-                        Rotation = animator.Rotation,
-                        Facing = player.Facing,
-                        CurrentScale = new(player.Facing, 1),
-                        Z = 1,
-                    }
-                );
-            }
-        }
-
-        if (air && player.HitsTaken > 0 && !player.HasBounceDodged)
-        {
-            if (
-                Vector2.Distance(animator.LastSmoke, center) > CharacterParameter("smokeRingDistance", 7.5f)
-                && speed > 20
-                && player.HitsTaken > 2
-            )
-            {
-                animator.LastSmoke = center;
-                var spawn = new EffectSpawn { Rotation = animator.Rotation };
-                Add("SmokeRing", center, Color.White, world.TickNumber, spawn);
-                Add("SmokeRingBack", center, Color.White, world.TickNumber, spawn);
-            }
-
-            animator.TrailCounter -= localDt;
-            if (animator.TrailCounter < 0)
-            {
-                animator.TrailCounter += delay;
-                if (player.LastHitBy >= 0)
-                {
-                    for (int i = 0; i < player.HitsTaken; i++)
-                    {
-                        bool dark = RandomRange(0, 1) < .5f;
-                        var tint = Color.Lerp(
-                            colorFor(world, player.Slot),
-                            dark ? Color.Black : Color.White,
-                            RandomRange(0, dark ? .3f : .8f)
-                        );
-                        if (speed > 20)
-                        {
-                            var effect = Add(
-                                "LineParticle",
-                                center + InsideCircle() * .5f,
-                                tint,
-                                world.TickNumber,
-                                new EffectSpawn
-                                {
-                                    Rotation = animator.Rotation,
-                                    Stretch = new(1, .3f + speed * CharacterParameter("lineVelocityScale", .005f)),
-                                }
-                            );
-                            if (effect != null)
-                            {
-                                effect.FrameDelay *= (.25f + .5f * speed / 20) * RandomRange(.9f, 1.2f);
-                            }
-                        }
-                    }
-                }
-            }
-        }
+            Owner = player.Slot,
+            Tick = world.TickNumber,
+            Hits = player.HitsTaken,
+            Center = position + Vector2.UnitY,
+            Velocity = new(player.VX.ToFloat(), player.VY.ToFloat()),
+            SpritePosition = position + new Vector2(assets.Data.CharacterOffsetX, animator.OffsetY),
+            Sprite = animator.Sprite,
+            Rotation = animator.Rotation,
+            Facing = player.Facing,
+            Color = colorFor(world, player.Slot),
+            AttackerColor = player.LastHitBy >= 0 ? colorFor(world, player.LastHitBy) : null,
+            Airborne = player.Mode == CharacterMode.Bouncing && !player.OnGround,
+            Silhouette =
+                player.HitsTaken > 0
+                && (
+                    player.Mode == CharacterMode.Bouncing
+                    || player.Mode == CharacterMode.Tongue && player.WasBouncingBeforeTongue
+                ),
+            Frozen = player.HitstopTicks > 0 && player.HitstopScale == 0,
+            Dodged = player.HasBounceDodged,
+            Recovered = player.CanBounceDodge,
+        };
+        UpdateFlight(visual, animator.Flight, dt, localDt);
 
         if (
             player.Mode == CharacterMode.Bouncing
@@ -581,14 +482,14 @@ internal sealed class EffectSystem
             )
         )
         {
-            animator.TrailFaderCounter -= dt;
-            if (animator.TrailFaderCounter <= 0)
+            animator.Flight.TrailFaderCounter -= dt;
+            if (animator.Flight.TrailFaderCounter <= 0)
             {
-                animator.TrailNumber++;
-                animator.TrailFaderCounter += delay * 7;
+                animator.Flight.TrailNumber++;
+                animator.Flight.TrailFaderCounter += delay * 7;
                 animator.Color =
-                    animator.TrailNumber % 3 == 0 ? Color.White
-                    : animator.TrailNumber % 3 == 1 ? Color.Black
+                    animator.Flight.TrailNumber % 3 == 0 ? Color.White
+                    : animator.Flight.TrailNumber % 3 == 1 ? Color.Black
                     : colorFor(world, player.Slot);
             }
         }
@@ -596,15 +497,156 @@ internal sealed class EffectSystem
         {
             animator.Color = colorFor(world, player.Slot);
         }
+    }
 
-        foreach (var effect in effects.Where(effect => effect.Owner == player.Slot))
+    private void UpdateFlight(FlightVisual visual, FlightPresentation trail, float dt, float localDt)
+    {
+        float delay = CharacterParameter("trailDelay", .01f);
+        float speed = visual.Velocity.Length();
+        var center = visual.Center;
+        var velocity = visual.Velocity;
+        if (visual.Airborne && !visual.Frozen && !visual.Dodged && !visual.Recovered && visual.Hits > 2)
         {
-            effect.Position = position + new Vector2(assets.Data.CharacterOffsetX, animator.OffsetY);
-            effect.Sprite = animator.Sprite;
-            effect.Rotation = animator.Rotation;
-            effect.Facing = player.Facing;
-            effect.CurrentScale.X = MathF.Abs(effect.CurrentScale.X) * player.Facing;
+            trail.ParticleCounter += localDt;
+            if (trail.ParticleCounter > delay)
+            {
+                trail.ParticleCounter -= delay;
+                var effect = Add(
+                    "HitParticle",
+                    center + InsideCircle(),
+                    Color.White,
+                    visual.Tick,
+                    new EffectSpawn
+                    {
+                        Velocity = velocity * .1f * RandomRange(.75f, 1.25f),
+                        Life = .5f * RandomRange(.9f, 1.1f),
+                    }
+                );
+                if (effect != null)
+                {
+                    effect.StartSize = .15f;
+                    effect.EndSize = 0;
+                    effect.Colors = [Color.White, Color.Black, visual.Color];
+                }
+            }
         }
+
+        if (visual.Silhouette && visual.AttackerColor != null)
+        {
+            trail.TrailFaderCounter -= dt;
+            if (trail.TrailFaderCounter <= 0)
+            {
+                trail.TrailNumber++;
+                trail.TrailFaderCounter += delay * 2;
+                var tint = Color.Lerp(
+                    visual.AttackerColor!.Value,
+                    Color.White,
+                    EffectAnimation.PingPong(trail.TrailNumber * .2f, 1)
+                );
+                effects.Add(
+                    new()
+                    {
+                        Tick = visual.Tick,
+                        Name = "FaderTrail",
+                        Owner = visual.Owner,
+                        Sprite = visual.Sprite,
+                        SquareSize = visual.SquareSize,
+                        Color = Alpha(tint, .5f),
+                        BaseColor = tint,
+                        Scale = 1.1f + visual.Hits * .15f,
+                        Position = visual.SpritePosition,
+                        Rotation = visual.Rotation,
+                        Facing = visual.Facing,
+                        CurrentScale = new(visual.Facing, 1),
+                        Z = 1,
+                    }
+                );
+            }
+        }
+
+        if (visual.Airborne && visual.Hits > 0 && !visual.Dodged)
+        {
+            if (
+                Vector2.Distance(trail.LastSmoke, center) > CharacterParameter("smokeRingDistance", 7.5f)
+                && speed > 20
+                && visual.Hits > 2
+            )
+            {
+                trail.LastSmoke = center;
+                var spawn = new EffectSpawn { Rotation = visual.Rotation };
+                Add("SmokeRing", center, Color.White, visual.Tick, spawn);
+                Add("SmokeRingBack", center, Color.White, visual.Tick, spawn);
+            }
+
+            trail.TrailCounter -= localDt;
+            if (trail.TrailCounter < 0)
+            {
+                trail.TrailCounter += delay;
+                if (visual.AttackerColor != null)
+                {
+                    for (int i = 0; i < visual.Hits; i++)
+                    {
+                        bool dark = RandomRange(0, 1) < .5f;
+                        var tint = Color.Lerp(
+                            visual.Color,
+                            dark ? Color.Black : Color.White,
+                            RandomRange(0, dark ? .3f : .8f)
+                        );
+                        if (speed > 20)
+                        {
+                            var effect = Add(
+                                "LineParticle",
+                                center + InsideCircle() * .5f,
+                                tint,
+                                visual.Tick,
+                                new EffectSpawn
+                                {
+                                    Rotation = visual.Rotation,
+                                    Stretch = new(1, .3f + speed * CharacterParameter("lineVelocityScale", .005f)),
+                                }
+                            );
+                            if (effect != null)
+                            {
+                                effect.FrameDelay *= (.25f + .5f * speed / 20) * RandomRange(.9f, 1.2f);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        foreach (var effect in effects.Where(effect => effect.Owner == visual.Owner))
+        {
+            effect.Position = visual.SpritePosition;
+            effect.Sprite = visual.Sprite;
+            effect.Rotation = visual.Rotation;
+            effect.Facing = visual.Facing;
+            effect.CurrentScale.X = MathF.Abs(effect.CurrentScale.X) * visual.Facing;
+        }
+    }
+
+    public void UpdateBeachBall(World world, Vector2 position, FlightPresentation trail, float dt)
+    {
+        var ball = world.BeachBall;
+        var visual = new FlightVisual
+        {
+            Owner = 8,
+            Tick = world.TickNumber,
+            Hits = ball.HitsTaken,
+            Center = position,
+            Velocity = new(ball.VX.ToFloat(), ball.VY.ToFloat()),
+            SpritePosition = position,
+            Facing = 1,
+            Rotation = MathF.Atan2(ball.VY.ToFloat(), ball.VX.ToFloat()) - MathF.PI / 2,
+            Color = Color.White,
+            AttackerColor = ball.LastHitBy >= 0 ? colorFor(world, ball.LastHitBy) : null,
+            Airborne = !ball.Resting,
+            Silhouette = ball.HitsTaken > 0,
+            Frozen = ball.HitstopTicks > 0,
+            Recovered = ball.Settling,
+            SquareSize = BeachBallState.Radius.ToFloat() * 2,
+        };
+        UpdateFlight(visual, trail, dt, ball.HitstopTicks > 0 ? 0 : dt);
     }
 
     internal enum VisualEffectKind
@@ -682,6 +724,7 @@ internal sealed class EffectSystem
         public int Facing = 1;
         public int Points;
         public int Owner = -1;
+        public float SquareSize;
         public int ColorIndex;
         public int DeathFrame = -1;
         public uint Seed;

@@ -95,6 +95,8 @@ internal static class Program
             var timer = Stopwatch.StartNew();
             CompatibilityTests.Run();
             MatchArchitectureTests.Run();
+            StocksAndCrewsTests.Run();
+            BeachBallTests.Run();
             ModifierTests.Run();
             PhysicsFixTests.Run();
             SnapshotCoverageTests.Run();

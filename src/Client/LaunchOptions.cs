@@ -10,7 +10,7 @@ public sealed class LaunchOptions
     public int Players { get; private set; } = 4;
     public int Port { get; private set; } = 24804;
     public int Slots { get; private set; } = 8;
-    public int LocalPlayers { get; private set; } = 1;
+    public int LocalPlayers { get; private set; }
     public int LocalTestCount { get; private set; }
     public bool Tile { get; private set; }
     internal int LocalTestIndex { get; private set; }
@@ -28,6 +28,7 @@ public sealed class LaunchOptions
     {
         var options = new LaunchOptions { Arguments = arguments.ToArray() };
         bool localTest = false;
+        bool localPlayersSpecified = false;
         bool testInstance = false;
         for (int index = 0; index < arguments.Count; index++)
         {
@@ -80,6 +81,7 @@ public sealed class LaunchOptions
                     break;
                 case "--local-players":
                     options.LocalPlayers = int.Parse(Value());
+                    localPlayersSpecified = true;
                     break;
                 case "--localtest":
                     localTest = true;
@@ -118,7 +120,7 @@ public sealed class LaunchOptions
 
         if (
             options.Players is < 2 or > 8
-            || options.LocalPlayers is < 1 or > 8
+            || options.LocalPlayers is < 0 or > 8
             || options.Slots is < 2 or > 8
             || options.Port is < 1024 or > 65535
         )
@@ -132,6 +134,8 @@ public sealed class LaunchOptions
             );
         if (localTest)
         {
+            if (!localPlayersSpecified)
+                options.LocalPlayers = 1;
             if (
                 options.LocalTestCount is < 1 or > 8
                 || options.LocalTestIndex < 0
@@ -161,7 +165,7 @@ public sealed class LaunchOptions
           --host udp|steam --slots 8  Open a lobby with up to eight player slots
           --join udp:127.0.0.1        Join UDP host (--port 24804)
           --join steam:LOBBY_ID       Join a Steam lobby by invite ID
-          --local-players 1..8        Local players for a network match
+          --local-players 0..8        Explicit local party (default: press to join)
           --localtest 1..8            Launch N total instances in a local UDP lobby
           --tile                     Tile local-test windows across the screen
           --lan                      Bind UDP host to LAN (default localhost)

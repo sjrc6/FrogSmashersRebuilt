@@ -77,7 +77,18 @@ public sealed partial class Renderer
             lobbyBackground.SetData(pixels);
         }
         canvas.Begin(0);
-        Batch.Draw(lobbyBackground, new Rectangle(0, 0, Width, Height), Color.White);
+        var origin = Screen(new(map.CameraX, map.CameraY)) - new Vector2(Width / 2f, Height / 2f);
+        Batch.Draw(
+            lobbyBackground,
+            origin,
+            null,
+            Color.White,
+            0,
+            Vector2.Zero,
+            new Vector2(Width / (float)LobbyLayout.Width, Height / (float)LobbyLayout.Height),
+            SpriteEffects.None,
+            0
+        );
         canvas.End();
     }
 

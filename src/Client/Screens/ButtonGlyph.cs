@@ -44,6 +44,10 @@ internal readonly record struct ButtonGlyph(string Path)
 
     public static ButtonGlyph ApplyAll(int device) => device >= 2 ? Pad(Buttons.Y) : Key(Keys.Tab);
 
+    public static ButtonGlyph CpuColor(int device) => device >= 2 ? Pad(Buttons.LeftShoulder) : Key(Keys.C);
+
+    public static ButtonGlyph CpuTeam(int device) => device >= 2 ? Pad(Buttons.RightShoulder) : Key(Keys.T);
+
     public static ButtonGlyph Menu(int device) => device >= 2 ? Pad("startButton") : Key(Keys.Escape);
 
     public static ButtonGlyph Key(Keys key) =>

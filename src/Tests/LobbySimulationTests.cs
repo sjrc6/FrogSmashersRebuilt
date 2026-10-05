@@ -11,7 +11,7 @@ internal static class LobbySimulationTests
         CompactInputsAddressTheirOwnRooms();
         CommandsAndColorRandomnessRestoreExactly();
         RosterChangesPreserveIncumbentFrogs();
-        CpuRetaliationSurvivesRollback();
+        CpuBallPlaySurvivesRollback();
         EmptyLobbyAndSnapshotsRemainIndependent();
         ColorSelectionRequiresTheStartingPlatform();
         SpectatingRetainsTheLastConfirmedSelection();
@@ -241,7 +241,7 @@ internal static class LobbySimulationTests
         Check(simulation.World.Match.Players[6].Score == 6, "Moved frogs retain valid standalone snapshots");
     }
 
-    private static void CpuRetaliationSurvivesRollback()
+    private static void CpuBallPlaySurvivesRollback()
     {
         var roster = new LobbyRoster();
         roster.SetPlayers(0, [new(0, Spawned: true)]);
@@ -260,7 +260,7 @@ internal static class LobbySimulationTests
         {
             simulation.Tick([default, new(tick < 3 ? new(0, 0, InputButtons.Attack) : default), default]);
             hit = simulation.Events.Any(item =>
-                item.Kind == SimulationEventKind.Hit && item.Player == 1 && item.Other == 0
+                item.Kind == SimulationEventKind.LobbyContact && item.Player == 1 && item.Other == 0
             );
         }
         Check(hit, "Lobby CPU rollback fixture delivers a real attack");
@@ -268,25 +268,32 @@ internal static class LobbySimulationTests
         simulation.World.Players[0].Y = simulation.World.Players[1].Y;
         simulation.World.Players[2].X = simulation.World.Players[1].X + 1;
         simulation.World.Players[2].Y = simulation.World.Players[1].Y;
+        simulation.World.BeachBall.Active = true;
+        simulation.World.BeachBall.X = simulation.World.Players[1].X + 10;
+        simulation.World.BeachBall.Y = simulation.World.Players[1].Y + 1;
+        Check(
+            simulation.World.Players[1].HitsTaken == 0 && simulation.World.Players[1].LastHitBy == -1,
+            "Activating a lobby CPU causes no damage or knockback"
+        );
         byte[] checkpoint = simulation.Capture();
         simulation.Tick([default, default, default]);
         Check(
-            simulation.World.Players[1].PreviousInput.X == -1,
-            "Provoked CPU follows its attacker instead of a closer innocent player"
+            simulation.World.Players[1].PreviousInput.X == 1,
+            "Activated CPU follows the ball rather than either human"
         );
         byte[] expected = simulation.Capture();
         simulation.Restore(checkpoint);
         simulation.Tick([default, default, default]);
         Check(
             simulation.Capture().AsSpan().SequenceEqual(expected),
-            "CPU retaliation survives restored PlayerState instances"
+            "CPU ball play survives restored PlayerState instances"
         );
         simulation.World.SetLobbySlot(0, false, 0);
         simulation.World.SetLobbySlot(0, true, 0);
         simulation.Tick([default, default, default]);
         Check(
-            simulation.World.Players[1].PreviousInput == default,
-            "Replacing the attacker clears retaliation through stable spawn generations"
+            simulation.World.Players[1].PreviousInput != default,
+            "Replacing a human does not interrupt CPU ball play"
         );
     }
 

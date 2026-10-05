@@ -4,9 +4,13 @@ internal sealed partial class MeshLobby
 {
     private const int SlotEditSettleMilliseconds = 200;
     private readonly SlotType?[] pendingSlotTypes = new SlotType?[LobbyRoster.MaxPlayers];
+    private readonly LobbyPlayer?[] pendingCpuPlayers = new LobbyPlayer?[LobbyRoster.MaxPlayers];
     private CpuEdit? cpuEdit;
     private long lastSlotEdit;
-    private bool HasPendingSlotEdits => cpuEdit != null || pendingSlotTypes.Any(type => type != null);
+    private bool HasPendingSlotEdits =>
+        cpuEdit != null
+        || pendingSlotTypes.Any(type => type != null)
+        || pendingCpuPlayers.Any(player => player != null);
 
     private sealed record CpuEdit(LobbyCpuCommand Command, SlotType?[] Types);
 
@@ -14,7 +18,8 @@ internal sealed partial class MeshLobby
 
     public SlotType GetSlotType(int room) => pendingSlotTypes[room] ?? cpuEdit?.Types[room] ?? Roster.Slots[room].Type;
 
-    public bool IsSlotEditPending(int room) => pendingSlotTypes[room] != null || cpuEdit?.Types[room] != null;
+    public bool IsSlotEditPending(int room) =>
+        pendingSlotTypes[room] != null || pendingCpuPlayers[room] != null || cpuEdit?.Types[room] != null;
 
     public bool EditSlot(int room, SlotType type)
     {
@@ -44,6 +49,43 @@ internal sealed partial class MeshLobby
             pendingSlotTypes[room] = type;
             lastSlotEdit = Now;
         }
+        return true;
+    }
+
+    public bool ChangeCpu(int room, bool team, int direction)
+    {
+        if (
+            !IsHost
+            || !Connected
+            || Starting
+            || matchRequested
+            || room is < 0 or >= LobbyRoster.MaxPlayers
+            || GetSlotType(room) != SlotType.Cpu
+            || Roster.Slots[room].Player is not { Cpu: true }
+        )
+            return false;
+        RefreshSelections();
+        var requestedRoster = CopyRoster();
+        var slots = requestedRoster.Slots.ToArray();
+        for (int index = 0; index < slots.Length; index++)
+        {
+            var player = pendingCpuPlayers[index];
+            if (player == null && cpuEdit is { } sent && (sent.Command.Enabled & (1 << index)) != 0)
+                player = new LobbyPlayer(
+                    10 + index,
+                    Color: sent.Command.Color(index),
+                    Team: sent.Command.Team(index),
+                    Cpu: true,
+                    Spawned: true
+                );
+            if (player != null)
+                slots[index] = new LobbySlot(SlotType.Cpu, player);
+        }
+        requestedRoster.Replace(slots, requestedRoster.Spectators);
+        if (!requestedRoster.ChangeCpu(room, team, direction))
+            return false;
+        pendingCpuPlayers[room] = requestedRoster.Slots[room].Player;
+        lastSlotEdit = Now;
         return true;
     }
 
@@ -84,12 +126,24 @@ internal sealed partial class MeshLobby
         byte changedRooms = 0;
         for (int room = 0; room < LobbyRoster.MaxPlayers; room++)
         {
-            if (pendingSlotTypes[room] is not { } type)
-                continue;
+            var desired = pendingCpuPlayers[room];
+            pendingCpuPlayers[room] = null;
+            var type = pendingSlotTypes[room] ?? Roster.Slots[room].Type;
+            bool typeChanged = pendingSlotTypes[room] != null && type != Roster.Slots[room].Type;
             pendingSlotTypes[room] = null;
-            var current = Roster.Slots[room].Type;
-            if (current == type || !requestedRoster.Edit(room, type))
+            if (!typeChanged && desired == null)
                 continue;
+            var current = Roster.Slots[room].Type;
+            if (typeChanged && !requestedRoster.Edit(room, type))
+                continue;
+            if (desired != null && requestedRoster.Slots[room].Player is { Cpu: true })
+            {
+                var party = requestedRoster
+                    .Players(0)
+                    .Select(player => player.Id == desired.Id ? desired : player)
+                    .ToArray();
+                requestedRoster.SetPlayers(0, party);
+            }
             if (current == SlotType.Cpu || type == SlotType.Cpu)
             {
                 changedRooms |= (byte)(1 << room);

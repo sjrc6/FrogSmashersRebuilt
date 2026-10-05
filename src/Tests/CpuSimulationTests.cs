@@ -13,6 +13,7 @@ internal static class CpuSimulationTests
         CpuMatchesRecomputeDuringRollback(false, false);
         CpuMatchesRecomputeDuringRollback(true, false);
         CpuMatchesRecomputeDuringRollback(true, true);
+        CpuMatchesRecomputeDuringRollback(false, false, ScoringMode.Stocks);
     }
 
     private static void LobbyCommandsRestoreExactly()
@@ -93,10 +94,15 @@ internal static class CpuSimulationTests
         Check(simulation.Membership.Rooms[0] is { Cpu: false }, "A CPU command replaced a human frog");
     }
 
-    private static void CpuMatchesRecomputeDuringRollback(bool hostSpectates, bool allCpus)
+    private static void CpuMatchesRecomputeDuringRollback(
+        bool hostSpectates,
+        bool allCpus,
+        ScoringMode scoring = ScoringMode.Points
+    )
     {
         bool[] cpus = [true, allCpus, true, allCpus, false, false, false, false];
-        World Create() => new(Map(), new GameRules(playerCount: 4, cpuPlayers: [.. cpus], winScore: 999), 42);
+        World Create() =>
+            new(Map(), new GameRules(playerCount: 4, cpuPlayers: [.. cpus], winScore: 999, scoring: scoring), 42);
         int[] bodies = allCpus ? [-1] : [-1, 1, 3];
         int[][] owners =
             allCpus

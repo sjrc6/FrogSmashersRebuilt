@@ -174,10 +174,7 @@ internal sealed partial class LobbyController(FrogGame game)
 
     public void BackOut(int device)
     {
-        if (Online is { IsHost: false } && Online.PendingLocalPlayers.Count(player => !player.Cpu) == 1)
-            Spectate(LocalPeer, true);
-        else
-            Remove(LocalPeer, device);
+        Remove(LocalPeer, device);
     }
 
     public bool CanChooseAgain(int room) =>
@@ -200,11 +197,45 @@ internal sealed partial class LobbyController(FrogGame game)
 
     public bool Edit(int room, SlotType type)
     {
+        if (type == SlotType.Cpu && game.Setup.Preferences.Format == MatchFormat.Crews)
+        {
+            game.Toasts.Show("CREWS REQUIRES HUMAN PLAYERS");
+            return false;
+        }
         return Online != null ? Online.EditSlot(room, type) : EditLocal(roster => roster.Edit(room, type));
+    }
+
+    public void ChangeCpu(int room, bool team, int direction = 1)
+    {
+        bool changed;
+        if (Online != null)
+            changed = Online.ChangeCpu(room, team, direction);
+        else
+        {
+            var roster = new LobbyRoster(SlotType.Local);
+            roster.Replace(Roster.Slots, Roster.Spectators);
+            changed = roster.ChangeCpu(room, team, direction);
+            if (changed)
+            {
+                Simulation!.ApplyCpuCommand(
+                    LobbyCpuCommand.FromRoster(Simulation.CpuRevision + 1, (byte)(1 << room), roster)
+                );
+                roster.ApplyMembership(Simulation.Membership);
+                game.Setup.Lobby.Roster.Replace(roster.Slots, roster.Spectators);
+                UpdatePresentation();
+            }
+        }
+        if (!changed)
+            game.Toasts.Show(team ? "CANNOT CHANGE CPU TEAM" : "NO OTHER COLORS AVAILABLE");
     }
 
     public void ApplySlotType(SlotType type)
     {
+        if (type == SlotType.Cpu && game.Setup.Preferences.Format == MatchFormat.Crews)
+        {
+            game.Toasts.Show("CREWS REQUIRES HUMAN PLAYERS");
+            return;
+        }
         if (Online != null)
             Online.ApplySlotType(type);
         else
@@ -249,6 +280,11 @@ internal sealed partial class LobbyController(FrogGame game)
         if (Online != null && Network == null)
         {
             accumulator = 0;
+            UpdatePresentation();
+            return;
+        }
+        if (game.Menus.LocalLobbyPaused)
+        {
             UpdatePresentation();
             return;
         }

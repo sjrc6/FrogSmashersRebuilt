@@ -54,7 +54,7 @@ internal sealed partial class MenuController
                 ValueSample: "20",
                 RepeatAdjust: true,
                 Change: amount => Rules.MatchRounds = Math.Clamp(Rules.MatchRounds + amount, 1, 20),
-                DisabledReason: readOnly
+                DisabledReason: readOnly ?? (rules.Format == MatchFormat.Crews ? "CREWS USES ONE LIFE POOL" : null)
             ),
             new(
                 "first-arena",

@@ -13,7 +13,7 @@ public static class BotController
     private static readonly int TongueStart = World.TicksFromSeconds(1.34m);
     private static readonly int TongueEnd = World.TicksFromSeconds(1.36m);
 
-    public static InputFrame GetInput(World world, int slot, int? targetSlot = null)
+    public static InputFrame GetInput(World world, int slot)
     {
         var player = world.Players[slot];
         if (!player.Alive)
@@ -25,12 +25,7 @@ public static class BotController
         Fixed nearestDistanceSquared = 1_000_000;
         foreach (var other in world.Players)
         {
-            if (
-                other == player
-                || !other.Alive
-                || world.Rules.UsesTeams && other.Team == player.Team
-                || targetSlot.HasValue && other.Slot != targetSlot.Value
-            )
+            if (other == player || !other.Alive || world.Rules.UsesTeams && other.Team == player.Team)
             {
                 continue;
             }
@@ -48,6 +43,19 @@ public static class BotController
             return default;
         }
 
+        return Pursue(world, slot, target.Position);
+    }
+
+    public static InputFrame BeachBallInput(World world, int slot) =>
+        world.BeachBall.Active && world.Players[slot].Alive
+            ? Pursue(world, slot, world.BeachBall.Position - new FixedVector(0, 1))
+            : default;
+
+    private static InputFrame Pursue(World world, int slot, FixedVector target)
+    {
+        var player = world.Players[slot];
+        var targetCenter = target + new FixedVector(0, 1);
+        var nearestDistanceSquared = (target - player.Position).LengthSquared;
         var dx = target.X - player.X;
         var dy = target.Y - player.Y;
         sbyte x =
@@ -106,7 +114,7 @@ public static class BotController
             buttons |= InputButtons.Jump;
         }
 
-        bool canFight = !descending && HasClearAttack(world.Map, player.Center, target.Center);
+        bool canFight = !descending && HasClearAttack(world.Map, player.Center, targetCenter);
         if (canFight && nearestDistanceSquared < 64 && phase < AttackHold)
         {
             buttons |= InputButtons.Attack;
@@ -150,7 +158,7 @@ public static class BotController
     private static bool TryGetDescent(
         MapData map,
         PlayerState player,
-        PlayerState target,
+        FixedVector target,
         out Fixed waypoint,
         out bool dropThrough
     )
@@ -174,7 +182,7 @@ public static class BotController
                 top <= highestTop
                 || target.Y + 2 > top
                 || player.Y + 2 < bottom
-                || !SegmentBox(player.Center, target.Center, left - 1, bottom - 1, right + 1, top)
+                || !SegmentBox(player.Center, target + new FixedVector(0, 1), left - 1, bottom - 1, right + 1, top)
             )
             {
                 continue;

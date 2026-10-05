@@ -158,6 +158,19 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             return;
         }
         float left = panel.Left + 32;
+        if (entry.Avatar is { } avatar)
+        {
+            var bounds = new Rectangle((int)left, row.Center.Y - 20, 40, 40);
+            var texture = menu.FriendAvatar(avatar);
+            game.Renderer.Batch.Draw(
+                texture ?? game.Assets.White,
+                bounds,
+                texture == null ? new Color(80, 95, 85) : Color.White
+            );
+            if (texture == null)
+                game.Renderer.CenteredText("?", bounds.Center.X, bounds.Center.Y, Color.White, center: true);
+            left += 48;
+        }
         float right = panel.Right - 32;
         float width = right - left;
         if (entry.Key != null || entry.Button != null)
@@ -245,7 +258,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             Color.White,
             0,
             Vector2.Zero,
-            new Vector2(right - left, scale.Y),
+            new Vector2(right - left, scale.Y * 2),
             SpriteEffects.None,
             0
         );
@@ -383,20 +396,29 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
         var room = MenuLayout.RoomInterior(menu.SelectedSeat);
         var slot = game.Lobby.Roster.Slots[menu.SelectedSeat];
         game.Renderer.CenteredText(
-            MenuController.SlotLabel(menu.SelectedSlotType),
+            MenuController.SlotLabel(menu.SelectedSlotType)
+                + (game.Lobby.SlotEditPending(menu.SelectedSeat) ? " - APPLYING" : ""),
             room.Center.X,
             room.Top + 28,
             Color.White,
             center: true
         );
-        if (game.Lobby.SlotEditPending(menu.SelectedSeat))
-            game.Renderer.CenteredText(
-                "APPLYING",
+        if (slot.Player is { Cpu: true } cpu)
+        {
+            CenteredHint(
+                ButtonGlyph.CpuColor(menu.HintDevice),
+                $"COLOR {cpu.Color + 1}",
                 room.Center.X,
-                room.Top + 56,
-                new Color(180, 190, 180),
-                center: true
+                MenuLayout.SlotAction(menu.SelectedSeat, -2).Center.Y
             );
+            CenteredHint(
+                ButtonGlyph.CpuTeam(menu.HintDevice),
+                $"TEAM {cpu.Team + 1}",
+                room.Center.X,
+                MenuLayout.SlotAction(menu.SelectedSeat, -1).Center.Y,
+                game.Lobby.UsesTeams ? Color.White : new Color(135, 145, 136)
+            );
+        }
         if (slot.Player is not { Cpu: false })
             CenteredHint(
                 ButtonGlyph.Accept(menu.HintDevice),
@@ -433,6 +455,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             GameScreen.CreateLobby => "CREATE LOBBY",
             GameScreen.CreateLobbyAdvanced => "ADVANCED",
             GameScreen.JoinLobby => "JOIN LOBBY",
+            GameScreen.InviteFriends => "INVITE FRIENDS",
             GameScreen.ViewPlayers => "PLAYERS",
             GameScreen.BrowseSteam => "STEAM LOBBIES",
             GameScreen.BrowseLan => "LAN LOBBIES",

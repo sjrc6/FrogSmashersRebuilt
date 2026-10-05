@@ -22,6 +22,7 @@ public sealed class MapData
     public List<BoxData> Collision { get; set; } = new();
     public List<PointData> Spawns { get; set; } = new();
     public PointData FlySpawn { get; set; } = new();
+    public PointData BeachBallSpawn { get; set; } = new() { Y = 4 };
     public List<SceneSpriteData> Sprites { get; set; } = new();
     public List<SceneEffectData> SceneEffects { get; set; } = new();
     public List<SceneAudioData> Audio { get; set; } = new();
@@ -57,4 +58,5 @@ public sealed class BoxData
     public decimal Width { get; set; }
     public decimal Height { get; set; }
     public bool OneWay { get; set; }
+    public bool BeachBallCollision { get; set; } = true;
 }

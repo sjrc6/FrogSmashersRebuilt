@@ -13,6 +13,7 @@ internal sealed partial class MenuController
                 [
                     new("local", "LOCAL", () => ShowSeats()),
                     new("online", "ONLINE", OpenOnline),
+                    new("join-clipboard-lobby", "JOIN FROM CLIPBOARD", JoinClipboardLobby, Role: MenuRole.Positive),
                     Link("SETTINGS", GameScreen.Settings),
                     Link("EXTRAS", GameScreen.Extras),
                     new("quit", "QUIT", game.Exit, Role: MenuRole.Destructive),
@@ -55,10 +56,30 @@ internal sealed partial class MenuController
                     lobbyRows.Add(Link("EDIT SLOTS", GameScreen.SlotEditor));
                 lobbyRows.Add(Link("SETTINGS", GameScreen.Settings));
                 lobbyRows.Add(Link("VIEW PLAYERS", GameScreen.ViewPlayers));
-                if (game.Online.Lobby is SteamLobby steamLobby)
+                if (game.Online.Lobby == null || game.Online.Lobby is SteamLobby)
+                {
+                    var steamLobby = game.Online.Lobby as SteamLobby;
                     lobbyRows.Add(
-                        new("invite-friends", "INVITE FRIENDS", steamLobby.InviteFriends, Role: MenuRole.Positive)
+                        new(
+                            "invite-friends",
+                            "INVITE FRIENDS",
+                            InviteFriends,
+                            Role: MenuRole.Positive,
+                            DisabledReason: steamLobby is { IsHost: false } ? "HOST ONLY - SHARE A CODE" : null
+                        )
                     );
+                    lobbyRows.Add(
+                        new(
+                            "copy-lobby-code",
+                            "COPY LOBBY CODE",
+                            CopyLobbyCode,
+                            Role: MenuRole.Positive,
+                            DisabledReason: steamLobby?.ShareCodeUnavailable
+                        )
+                    );
+                    if (steamLobby is { IsHost: true, Privacy: LobbyPrivacy.PrivateCode })
+                        lobbyRows.Add(new("change-code", "CHANGE CODE", ChangeLobbyCode, Role: MenuRole.Destructive));
+                }
                 if (game.Online.Lobby == null)
                     lobbyRows.Add(new("online-options", "ONLINE OPTIONS", OpenOnline));
                 lobbyRows.Add(new("quit-lobby", "QUIT LOBBY", game.MainMenu, Role: MenuRole.Destructive));
@@ -94,8 +115,12 @@ internal sealed partial class MenuController
                     ),
                     new("type", "TYPE", Value: Creation.TypeLabel, Change: Creation.CycleType),
                 };
-                if (!Creation.Lan)
-                    creation.Add(Link("ADVANCED", GameScreen.CreateLobbyAdvanced));
+                creation.Add(
+                    Link("ADVANCED", GameScreen.CreateLobbyAdvanced) with
+                    {
+                        DisabledReason = Creation.Lan ? "STEAM LOBBIES ONLY" : null,
+                    }
+                );
                 creation.Add(new("create-lobby", "CREATE LOBBY", CreateOnlineLobby));
                 creation.Add(BackRow());
                 return creation;
@@ -128,6 +153,8 @@ internal sealed partial class MenuController
                 ];
             case GameScreen.BrowseSteam or GameScreen.BrowseLan:
                 return browserEntries;
+            case GameScreen.InviteFriends:
+                return FriendRows();
             case GameScreen.JoinUdp:
                 return
                 [
@@ -141,11 +168,9 @@ internal sealed partial class MenuController
             case GameScreen.Playing:
                 if (!game.Match.Paused)
                     return [];
-                var pauseRows = new List<MenuEntry>
-                {
-                    Link("SETTINGS", GameScreen.Settings),
-                    Link("VIEW PLAYERS", GameScreen.ViewPlayers),
-                };
+                var pauseRows = new List<MenuEntry> { Link("SETTINGS", GameScreen.Settings) };
+                if (game.Online.Lobby != null)
+                    pauseRows.Add(Link("VIEW PLAYERS", GameScreen.ViewPlayers));
                 if (game.Online.Lobby == null || game.Online.Lobby.IsHost)
                     pauseRows.Add(new("return-to-lobby", "RETURN TO LOBBY", game.ReturnToLobby));
                 pauseRows.Add(new("quit-game", "QUIT GAME", game.MainMenu, Role: MenuRole.Destructive));

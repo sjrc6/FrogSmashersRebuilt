@@ -8,14 +8,16 @@ using Microsoft.Xna.Framework.Input;
 
 namespace FrogSmashers.Client;
 
-internal sealed partial class MenuController
+internal sealed partial class MenuController : IDisposable
 {
     private static readonly int[] FrameRates = [60, 90, 100, 120, 144, 165, 240, 360, 500];
     private readonly FrogGame game;
     private readonly Stack<(GameScreen Screen, int Selected, string? Identity)> history = new();
     private GameScreen context = GameScreen.Main;
     private bool menuSoundPending;
-    private readonly MenuAdjustRepeat adjustRepeat = new();
+    private readonly MenuRepeat adjustRepeat = new();
+    private readonly MenuRepeat navigationRepeat = new(.3, .05);
+    private GameScreen navigationScreen;
     private (GameScreen Screen, string? Identity) repeatTarget;
     private readonly MenuSelection selection = new();
     public LobbyCreation Creation { get; } = new();
@@ -37,7 +39,9 @@ internal sealed partial class MenuController
     public bool ShowingCinematic => Screen is GameScreen.Intro or GameScreen.Title or GameScreen.Outro;
     public bool ShowingMenuBackground => !ShowingCinematic && context == GameScreen.Main;
     public bool ShowingMatch => !ShowingCinematic && context == GameScreen.Playing;
-    public bool LocalPresentationPaused => ShowingMatch && game.Match.Network == null && game.Match.Paused;
+    public bool LocalLobbyPaused => ShowingLobby && game.Online.Lobby == null && Screen != GameScreen.Seats;
+    public bool LocalPresentationPaused =>
+        LocalLobbyPaused || ShowingMatch && game.Match.Network == null && game.Match.Paused;
     private MatchPreferences Rules => game.Setup.Preferences;
 
     private static string OnOff(bool value) => value ? "ON" : "OFF";
@@ -86,11 +90,14 @@ internal sealed partial class MenuController
     public void Update(double elapsedSeconds)
     {
         AnimationTime += elapsedSeconds;
+        if (Screen == GameScreen.InviteFriends)
+            UpdateFriendAvatars(elapsedSeconds);
         if (Screen is GameScreen.BrowseSteam or GameScreen.BrowseLan)
             UpdateBrowser();
         if (Screen == GameScreen.Bindings)
             RefreshBindingDevice();
         var input = MenuInput.Read(game.Controls);
+        input = RepeatNavigation(input, elapsedSeconds);
         input = RepeatAdjustment(input, elapsedSeconds);
         if (
             game.Controls.KeysNow.GetPressedKeys().Any(game.Controls.Press)
@@ -205,6 +212,29 @@ internal sealed partial class MenuController
             menuSoundPending = false;
             game.Audio.PlayMenuAction();
         }
+    }
+
+    private MenuInput RepeatNavigation(MenuInput input, double elapsedSeconds)
+    {
+        if (navigationScreen != Screen || game.Controls.MouseMoved)
+            navigationRepeat.Reset();
+        navigationScreen = Screen;
+        if (
+            Screen
+                is GameScreen.Intro
+                    or GameScreen.Title
+                    or GameScreen.Seats
+                    or GameScreen.Connecting
+                    or GameScreen.Outro
+            || Screen == GameScreen.Playing && !game.Match.Paused
+            || WaitingForBinding
+            || EditingAddress
+        )
+        {
+            navigationRepeat.Reset();
+            return input;
+        }
+        return input with { Vertical = navigationRepeat.Read(input.VerticalHeld, input.Vertical, elapsedSeconds) };
     }
 
     private MenuInput RepeatAdjustment(MenuInput input, double elapsedSeconds)
@@ -429,6 +459,7 @@ internal sealed partial class MenuController
         {
             ShowSeats();
             game.Toasts.Show("LOBBY READY");
+            CompleteLobbyShare();
         }
     }
 

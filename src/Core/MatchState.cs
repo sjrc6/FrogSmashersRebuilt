@@ -58,7 +58,7 @@ public sealed class MatchState
 
     public MatchState(GameRules rules)
     {
-        IsShowdown = rules.Showdown;
+        IsShowdown = rules.Showdown && rules.Format != MatchFormat.Crews;
         Players = Enumerable
             .Range(0, rules.PlayerCount)
             .Select(_ => new PlayerProgress
@@ -72,20 +72,46 @@ public sealed class MatchState
     public bool IsWinner(GameRules rules, int slot) =>
         Winner >= 0 && (rules.UsesTeams ? rules.Teams[slot] == rules.Teams[Winner] : slot == Winner);
 
-    public void StartRound()
+    public void StartRound(GameRules rules)
     {
         Phase = MatchPhase.Playing;
         Winner = -1;
         PhaseTicks = 0;
         foreach (var player in Players)
+        {
             player.Score = 0;
+            if (!rules.Lobby && !IsShowdown)
+            {
+                player.Stocks = rules.StartingStocks;
+                player.Participation = rules.Format == MatchFormat.Crews ? Participation.Waiting : Participation.Active;
+            }
+            else if (IsShowdown && rules.Scoring == ScoringMode.Stocks)
+                player.Stocks = 1;
+        }
         Array.Fill(TeamSelections, -1);
+        if (rules.Format == MatchFormat.Crews)
+        {
+            IsShowdown = false;
+            Phase = MatchPhase.Selecting;
+        }
     }
 
     public int RecordDeath(GameRules rules, int slot, int attacker, int hits)
     {
-        if (rules.Lobby || Phase != MatchPhase.Playing)
+        if (rules.Lobby || Phase != MatchPhase.Playing || Players[slot].Participation != Participation.Active)
             return -1;
+        if (rules.Scoring == ScoringMode.Stocks)
+        {
+            var victim = Players[slot];
+            victim.Stocks = Math.Max(0, victim.Stocks - Math.Max(1, hits));
+            if (victim.Stocks > 0)
+                return -1;
+            victim.Participation = Participation.Eliminated;
+            int winner = WinningSide(rules, RemainingPlayers());
+            if (winner < 0 && rules.Format == MatchFormat.Crews)
+                BeginCrewSelection(rules);
+            return winner;
+        }
         if (IsShowdown)
         {
             Players[slot].Participation = Participation.Eliminated;
@@ -107,7 +133,11 @@ public sealed class MatchState
 
     public int DeathScore(GameRules rules, int attacker, int hits)
     {
-        if (rules.Lobby || Phase != MatchPhase.Playing || IsShowdown || rules.Scoring != ScoringMode.Points)
+        if (rules.Lobby || Phase != MatchPhase.Playing)
+            return 0;
+        if (rules.Scoring == ScoringMode.Stocks)
+            return -Math.Max(1, hits);
+        if (IsShowdown)
             return 0;
         if (attacker < 0 || attacker >= Players.Length)
             return rules.Modifiers.SuicidePenalty ? -1 : 0;
@@ -134,7 +164,7 @@ public sealed class MatchState
 
     public bool AdvanceRound(GameRules rules)
     {
-        if (IsShowdown)
+        if (IsShowdown || rules.Format == MatchFormat.Crews)
         {
             Phase = MatchPhase.MatchFinished;
             return false;
@@ -179,7 +209,11 @@ public sealed class MatchState
 
     public void ApplySelection(GameRules rules, int source, MatchCommand command)
     {
-        if (command.Kind != MatchCommandKind.SelectFighter || Phase != MatchPhase.Selecting || !rules.UsesTeams)
+        if (
+            command.Kind != MatchCommandKind.SelectFighter
+            || Phase != MatchPhase.Selecting
+            || rules.Format != MatchFormat.Crews
+        )
             return;
         int target = command.Player;
         if (
@@ -191,7 +225,41 @@ public sealed class MatchState
             || Players[target].Participation is Participation.Eliminated or Participation.Inactive
         )
             return;
+        int current = TeamSelections[rules.Teams[source]];
+        if (current >= 0 && Players[current].Participation == Participation.Active)
+            return;
         TeamSelections[rules.Teams[source]] = target;
+    }
+
+    private int[] RemainingPlayers() =>
+        Enumerable
+            .Range(0, Players.Length)
+            .Where(slot => Players[slot].Participation is Participation.Active or Participation.Waiting)
+            .ToArray();
+
+    private void BeginCrewSelection(GameRules rules)
+    {
+        RoundNumber++;
+        Phase = MatchPhase.Selecting;
+        Array.Fill(TeamSelections, -1);
+        foreach (int slot in RemainingPlayers())
+            if (Players[slot].Participation == Participation.Active)
+                TeamSelections[rules.Teams[slot]] = slot;
+    }
+
+    public bool CompleteCrewSelection(GameRules rules)
+    {
+        if (rules.Format != MatchFormat.Crews || Phase != MatchPhase.Selecting)
+            return false;
+        int[] remaining = RemainingPlayers();
+        if (remaining.Select(slot => rules.Teams[slot]).Distinct().Any(team => TeamSelections[team] < 0))
+            return false;
+        foreach (int slot in remaining)
+            Players[slot].Participation =
+                TeamSelections[rules.Teams[slot]] == slot ? Participation.Active : Participation.Waiting;
+        IsShowdown = remaining.Length == 2;
+        Phase = MatchPhase.Playing;
+        return true;
     }
 
     internal void WriteSnapshot(BinaryWriter writer)

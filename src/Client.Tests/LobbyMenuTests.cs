@@ -91,6 +91,16 @@ internal static class LobbyMenuTests
         check(creation.SlotType == SlotType.Open, "Public creation selects open admission");
         creation.CycleType(1);
         check(creation.Lan && creation.SlotType == SlotType.Open, "LAN creation opens ordinary remote slots");
+        creation.CycleType(1);
+        check(
+            !creation.Lan && creation.Privacy == LobbyPrivacy.PrivateCode && creation.SlotType == SlotType.Private,
+            "Private Code selects a secret policy independently of private room access"
+        );
+        creation.SelectPrivate();
+        check(
+            creation.Privacy == LobbyPrivacy.Private && creation.TypeLabel == "PRIVATE",
+            "Sharing from local play creates ordinary Private lobbies"
+        );
         Console.WriteLine("Lobby creation and shared slot actions passed");
     }
 }

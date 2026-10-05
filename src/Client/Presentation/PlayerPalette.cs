@@ -25,16 +25,14 @@ internal static class PlayerPalette
         var player = world.Players[slot];
         if (!world.Rules.UsesTeams)
             return Colors[player.ColorIndex];
-        int count = 0,
-            shade = 0;
+        int shade = 0;
         foreach (var other in world.Players)
             if (other.Team == player.Team)
             {
-                count++;
                 if (other.ColorIndex < player.ColorIndex)
                     shade++;
             }
-        return TeamShade(player.Team, shade, count);
+        return TeamShade(player.Team, shade);
     }
 
     public static Color Lobby(IReadOnlyList<LobbyPlayer?> rooms, int room, bool teams)
@@ -43,18 +41,22 @@ internal static class PlayerPalette
             return Colors[room];
         if (!teams)
             return Colors[player.Color];
-        int count = 0,
-            shade = 0;
+        int shade = 0;
         foreach (var other in rooms)
             if (other?.Team == player.Team)
             {
-                count++;
                 if (other.Color < player.Color)
                     shade++;
             }
-        return TeamShade(player.Team, shade, count);
+        return TeamShade(player.Team, shade);
     }
 
-    private static Color TeamShade(int team, int shade, int count) =>
-        Color.Lerp(Team(team), Color.White, count <= 1 ? 0 : .7f * shade / (count - 1));
+    private static Color TeamShade(int team, int shade) =>
+        shade switch
+        {
+            1 => Color.Lerp(Team(team), Color.Black, .28f),
+            2 => Color.Lerp(Team(team), Color.White, .25f),
+            3 => Color.Lerp(Team(team), Color.Black, .5f),
+            _ => Team(team),
+        };
 }

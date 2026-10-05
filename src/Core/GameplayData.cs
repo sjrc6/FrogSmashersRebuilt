@@ -39,6 +39,7 @@ internal static class GameplayData
                 WriteNumber(writer, box.Width);
                 WriteNumber(writer, box.Height);
                 writer.Write(box.OneWay);
+                writer.Write(box.BeachBallCollision);
             }
             writer.Write(map.Spawns.Count);
             foreach (var spawn in map.Spawns)
@@ -48,6 +49,8 @@ internal static class GameplayData
             }
             WriteNumber(writer, map.FlySpawn.X);
             WriteNumber(writer, map.FlySpawn.Y);
+            WriteNumber(writer, map.BeachBallSpawn.X);
+            WriteNumber(writer, map.BeachBallSpawn.Y);
         }
     }
 

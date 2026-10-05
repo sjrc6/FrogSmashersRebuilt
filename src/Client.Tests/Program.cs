@@ -48,7 +48,7 @@ internal static class Program
             MenuArchitectureTests.Run(Check);
             SettingsSaveTests.Run(Check);
             Ipv6FirewallTests.Run(Check);
-            MenuAdjustRepeatTests.Run(Check);
+            MenuRepeatTests.Run(Check);
             LocalTestLauncherTests.Run(Check);
             LobbyMenuTests.Run(Check);
             LobbyPresentationTests.Run(Check);

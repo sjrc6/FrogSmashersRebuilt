@@ -29,12 +29,8 @@ internal sealed class CharacterPresentation
     public float OffsetY;
     public bool Transitioning;
     public Color Color;
-    public float ParticleCounter;
-    public float TrailCounter;
-    public float TrailFaderCounter;
-    public int TrailNumber;
+    public readonly FlightPresentation Flight = new();
     public float LastSkidX;
-    public Vector2 LastSmoke;
     public readonly SpriteAnimation TipClock = new();
     public bool TongueVisible;
     public Vector2 TongueOffset;

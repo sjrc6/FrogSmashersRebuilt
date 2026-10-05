@@ -21,7 +21,7 @@ internal sealed partial class MenuController
         browserNotice = null;
         try
         {
-            int party = Math.Max(1, game.Lobby.LocalPlayers.Count(player => !player.Cpu));
+            int party = game.Lobby.LocalPlayers.Count(player => !player.Cpu);
             game.Online.Browse(Screen == GameScreen.BrowseSteam, party);
         }
         catch (Exception exception) when (exception is InvalidOperationException or SocketException or IOException)
@@ -101,8 +101,8 @@ internal sealed partial class MenuController
         string? text = ReadClipboard();
         if (text == null)
             return;
-        if (LobbyAddress.TrySteam(text, out ulong id))
-            game.BeginLobby("steam:" + id, false);
+        if (LobbyAddress.TrySteam(text, out _, out _))
+            game.BeginLobby(text, false);
         else
             game.Toasts.Show("NO LOBBY CODE IN CLIPBOARD");
     }

@@ -274,14 +274,15 @@ public class FrogGame : Game
 
     internal void BeginLobby(string target, bool host)
     {
-        if (
-            !host
-            && target.StartsWith("steam:", StringComparison.Ordinal)
-            && (!ulong.TryParse(target[6..], out ulong id) || id == 0)
-        )
+        string secret = "";
+        if (!host && !target.StartsWith("udp:", StringComparison.Ordinal))
         {
-            Toasts.Show("ENTER A VALID LOBBY ID");
-            return;
+            if (!LobbyAddress.TrySteam(target, out ulong id, out secret))
+            {
+                Toasts.Show("ENTER A VALID LOBBY CODE");
+                return;
+            }
+            target = "steam:" + id;
         }
         if (
             !host
@@ -306,9 +307,9 @@ public class FrogGame : Game
                 Setup.Lobby.Roster,
                 Setup.CreateOptions(Options.MapOrder),
                 Menus.AllowLan,
-                Menus.HintDevice,
                 Menus.Creation.Privacy,
-                Settings.SteamTransport
+                Settings.SteamTransport,
+                secret
             );
             Lobby.Open();
             Menus.ShowConnecting();
@@ -504,7 +505,11 @@ public class FrogGame : Game
         else if (Match.World != null && (Menus.ShowingMatch || Menus.ShowingMenuBackground))
         {
             var world = Match.World;
-            if (world.Match.Phase == MatchPhase.RoundScores)
+            if (world.Match.Phase == MatchPhase.Selecting)
+            {
+                Renderer.DrawCrewSelection(world, Match.FighterChoices);
+            }
+            else if (world.Match.Phase == MatchPhase.RoundScores)
             {
                 Renderer.DrawRoundScores(
                     world,
@@ -596,6 +601,7 @@ public class FrogGame : Game
             Online?.Dispose();
             Cinematics?.Dispose();
             Audio?.Dispose();
+            Menus?.Dispose();
             Renderer?.Dispose();
             Assets?.Dispose();
             windowIcons?.Dispose();

@@ -116,6 +116,8 @@ public sealed class LobbySimulation : IRollbackSimulation
             }
             World.SetLobbySlot(room, player.Spawned, player.Color);
         }
+        int ballAttacker = World.BeachBall.LastHitBy;
+        World.BeachBall.LastHitBy = ballAttacker < 0 ? -1 : Array.IndexOf(oldRooms, ballAttacker);
         bots.RemapRooms(oldRooms);
         pendingPreviews = 0;
         for (int room = 0; room < next.Length; room++)
@@ -376,7 +378,7 @@ public sealed class LobbySimulation : IRollbackSimulation
 
     internal static int ReadRosterRevision(byte[] snapshot) => BitConverter.ToInt32(snapshot, 4);
 
-    private void ApplyCpuCommand(LobbyCpuCommand command)
+    public void ApplyCpuCommand(LobbyCpuCommand command)
     {
         if (command.Revision <= CpuRevision)
             return;
@@ -392,6 +394,8 @@ public sealed class LobbySimulation : IRollbackSimulation
                 foreach (var body in World.Players)
                     if (body.LastHitBy == room)
                         body.LastHitBy = -1;
+                if (World.BeachBall.LastHitBy == room)
+                    World.BeachBall.LastHitBy = -1;
                 bots.ResetRoom(room);
                 pendingPreviews &= ~(1u << room);
             }
@@ -410,6 +414,8 @@ public sealed class LobbySimulation : IRollbackSimulation
             if (created)
             {
                 World.SetLobbySlot(room, false, color);
+                if (World.BeachBall.LastHitBy == room)
+                    World.BeachBall.LastHitBy = -1;
                 bots.ResetRoom(room);
                 pendingPreviews &= ~(1u << room);
             }

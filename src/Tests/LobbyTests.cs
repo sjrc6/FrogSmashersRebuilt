@@ -48,6 +48,9 @@ internal static partial class LobbyTests
         SteadyLobbyUsesCompactControls();
         CompactControlValidation();
         PrivateLobbyAdmission();
+        EmptyParties();
+        ObserverCapacity();
+        CpuAppearanceEdits();
     }
 
     private static void SpectatorTransitionAtLatency()
@@ -869,7 +872,7 @@ internal static partial class LobbyTests
                     && !node.Lobby.LocalRequestPending
                     && (
                         node.Lobby.LocalPeer == 0
-                        || Nodes[0].Lobby.Roster.Spectator(node.Lobby.LocalPeer) == null
+                        || Nodes[0].Lobby.Roster.Humans(node.Lobby.LocalPeer).Length > 0
                         || node.Lobby.LobbySession is LobbyNetworkSession { Spectating: true }
                     )
                     && node.Simulation.Membership.Rooms.Select(player =>

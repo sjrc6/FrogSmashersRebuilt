@@ -152,6 +152,7 @@ public sealed partial class Renderer : IDisposable
     public void Reset()
     {
         effects.Reset();
+        ballFlight = new();
         impacts.Clear();
         parallax.Clear();
         seen.Clear();
@@ -248,11 +249,16 @@ public sealed partial class Renderer : IDisposable
                         new EffectSpawn { Age = age, Facing = facing }
                     );
                     break;
+                case SimulationEventKind.BeachBallBounce:
                 case SimulationEventKind.Bounce:
                     var side = e.SurfaceSide == 0 ? Contact(world.Map, p) : Surface(e.SurfaceSide);
+                    var offset =
+                        e.Kind == SimulationEventKind.BeachBallBounce
+                            ? (side.Offset - Vector2.UnitY) * BeachBallState.Radius.ToFloat()
+                            : side.Offset;
                     effects.Add(
                         side.Offset.X != 0 ? "WallPuff" : "BouncePuff",
-                        p + side.Offset,
+                        p + offset,
                         Color.White,
                         e.Tick,
                         new EffectSpawn { Age = age, Rotation = side.Rotation }
@@ -276,6 +282,7 @@ public sealed partial class Renderer : IDisposable
                     }
 
                     break;
+                case SimulationEventKind.BeachBallHit:
                 case SimulationEventKind.Hit:
                     if (e.HitKind == HitKind.Tongue)
                     {
@@ -329,7 +336,7 @@ public sealed partial class Renderer : IDisposable
                         new()
                         {
                             Tick = e.Tick,
-                            Position = p + Vector2.UnitY,
+                            Position = e.Kind == SimulationEventKind.BeachBallHit ? p : p + Vector2.UnitY,
                             Direction = new Vector2(-direction.X, -direction.Y),
                             Life = .1f + life * .1f,
                             Age = age,
@@ -377,6 +384,7 @@ public sealed partial class Renderer : IDisposable
         }
 
         effects.Reset();
+        ballFlight = new();
         impacts.Clear();
         parallax.Clear();
         sceneClocks.Clear();
@@ -698,7 +706,9 @@ public sealed partial class Renderer : IDisposable
                 .Players(world)
                 .Count(p => world.Match.Players[p.Slot].TotalScore == world.Match.Players.Max(p => p.TotalScore)) > 1;
         string title =
-            tie && elapsed >= 1 ? "SHOWDOWN ! ! ! " : $"ROUND {world.Match.RoundNumber} OF {world.Rules.MatchRounds}";
+            world.Rules.Format == MatchFormat.Crews ? "CREW BATTLE COMPLETE"
+            : tie && elapsed >= 1 ? "SHOWDOWN ! ! ! "
+            : $"ROUND {world.Match.RoundNumber} OF {world.Rules.MatchRounds}";
         BeginUi();
         var header = Screen(new Vector2(0, 11.59f));
         assets.Font.Draw(

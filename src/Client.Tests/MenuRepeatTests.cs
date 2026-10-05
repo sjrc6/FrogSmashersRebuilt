@@ -2,11 +2,11 @@ using FrogSmashers.Client;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
-internal static class MenuAdjustRepeatTests
+internal static class MenuRepeatTests
 {
     public static void Run(Action<bool, string> check)
     {
-        var repeat = new MenuAdjustRepeat();
+        var repeat = new MenuRepeat();
         check(repeat.Read(1, 1, 0) == 1, "Adjustment responds on the press");
         check(repeat.Read(1, 0, .34) == 0, "Hold has an initial grace period");
         check(repeat.Read(1, 0, .02) == 1, "Holding repeats after the grace period");
@@ -28,6 +28,14 @@ internal static class MenuAdjustRepeatTests
             check(steps is >= 22 and <= 24, $"Numeric repeat is independent of {fps} Hz rendering");
         }
 
+        foreach (int fps in new[] { 30, 60, 144, 240 })
+        {
+            var navigation = new MenuRepeat(.3, .05);
+            int steps = navigation.Read(1, 1, 0);
+            for (int frame = 0; frame < fps * 2; frame++)
+                steps += navigation.Read(1, 0, 1d / fps);
+            check(steps is >= 34 and <= 36, $"Fast navigation repeats consistently at {fps} Hz");
+        }
         var keys = new KeyboardState(Keys.Left);
         var pad = default(GamePadState);
         var controls = new Controls(new())
@@ -41,6 +49,13 @@ internal static class MenuAdjustRepeatTests
         check(
             MenuInput.Read(controls).HorizontalHeld == -1 && MenuInput.Read(controls).Horizontal == 0,
             "Held arrows are available separately from press edges"
+        );
+        keys = new(Keys.Up);
+        controls.Poll();
+        controls.Poll();
+        check(
+            MenuInput.Read(controls).VerticalHeld == -1 && MenuInput.Read(controls).Vertical == 0,
+            "Vertical navigation separates held direction from fresh presses"
         );
         keys = new(Keys.A, Keys.D);
         controls.Poll();

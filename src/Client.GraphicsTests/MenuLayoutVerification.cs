@@ -95,6 +95,21 @@ internal sealed partial class PresentationChecks
                     }
                     Check(reached.Count == entries.Length, $"Every dynamic row is reachable at {size}");
                 }
+                var friends = Enumerable
+                    .Range(0, 30)
+                    .Select(index => new MenuEntry(
+                        "friend-" + index,
+                        "A LONG FRIEND NAME WITH A PROFILE PICTURE",
+                        Avatar: (ulong)index,
+                        Value: "INVITED"
+                    ))
+                    .ToArray();
+                var friendLayout = MenuLayout.Measure(GameScreen.InviteFriends, friends, assets.Font, selected: 20);
+                Check(
+                    friendLayout.Paginated
+                        && friendLayout.Rows.Where(row => !row.Bounds.IsEmpty).All(row => row.Bounds.Height >= 54),
+                    $"Friend portraits reserve their height even before avatar data arrives at {size}"
+                );
                 var small = new MenuEntry("number", "VARIABLE TARGET", Value: "1", ValueSample: "999");
                 var large = small with { Value = "999" };
                 var first = MenuLayout.Measure(GameScreen.Settings, [small], assets.Font);

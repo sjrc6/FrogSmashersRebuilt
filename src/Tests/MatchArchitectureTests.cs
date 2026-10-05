@@ -58,9 +58,8 @@ internal static class MatchArchitectureTests
             "Crews requires exactly two teams at start"
         );
         Check(
-            new GameRules(format: MatchFormat.Crews, scoring: ScoringMode.Stocks).StartBlockedReason()
-                == "STOCKS NOT AVAILABLE",
-            "Unimplemented modes cannot start with Points behavior"
+            new GameRules(format: MatchFormat.Crews, scoring: ScoringMode.Stocks).StartBlockedReason() == null,
+            "Human crews with two teams can start"
         );
         var ffa = new World(TestFixtures.Map(), new GameRules(playerCount: 4, teams: rules.Teams, mapOrder: [0]), 42);
         Check(
@@ -102,18 +101,22 @@ internal static class MatchArchitectureTests
             world.Match.Players[0].Score == 7 && world.Match.Players[1].Participation == Participation.Waiting,
             "Snapshots restore progression independently of bodies"
         );
-        world.Match.StartRound();
+        world.Match.StartRound(world.Rules);
         Check(
             world.Match.Players[0].Score == 0
                 && world.Match.Players[0].RoundWins == 3
-                && world.Match.Players[0].Stocks == 2,
+                && world.Match.Players[0].Stocks == world.Rules.StartingStocks,
             "Starting an arena resets round points while preserving match progression"
         );
     }
 
     private static World SelectionWorld()
     {
-        var world = new World(TestFixtures.Map(), new GameRules(playerCount: 4, format: MatchFormat.Teams), 123);
+        var world = new World(
+            TestFixtures.Map(),
+            new GameRules(playerCount: 4, format: MatchFormat.Crews, scoring: ScoringMode.Stocks),
+            123
+        );
         world.Match.Phase = MatchPhase.Selecting;
         world.Match.Players[2].Participation = Participation.Waiting;
         world.Match.Players[3].Participation = Participation.Waiting;
@@ -123,7 +126,9 @@ internal static class MatchArchitectureTests
     private static MatchInput Input(long tick, int slot) =>
         new(
             new InputFrame(1, 0, InputButtons.Jump),
-            tick == 20 && slot < 2 ? new MatchCommand(MatchCommandKind.SelectFighter, (byte)(slot + 2)) : default
+            (tick == 20 && slot == 0 || tick == 60 && slot == 1)
+                ? new MatchCommand(MatchCommandKind.SelectFighter, (byte)(slot + 2))
+                : default
         );
 
     private static void CommandsAndReplay()

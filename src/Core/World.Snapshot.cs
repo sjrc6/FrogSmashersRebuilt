@@ -5,7 +5,7 @@ namespace FrogSmashers.Core;
 public sealed partial class World
 {
     private const int SnapshotMagic = 0x46535253;
-    private const int SnapshotVersion = 5;
+    private const int SnapshotVersion = 7;
     private readonly MemoryStream snapshotBuffer = new(4096);
 
     public byte[] Capture()
@@ -25,6 +25,7 @@ public sealed partial class World
         }
 
         Fly.WriteSnapshot(writer);
+        BeachBall.WriteSnapshot(writer);
         return snapshotBuffer.ToArray();
     }
 
@@ -78,6 +79,7 @@ public sealed partial class World
         }
 
         var fly = FlyState.ReadSnapshot(reader);
+        var ball = BeachBallState.ReadSnapshot(reader);
         if (
             stream.Position != stream.Length
             || fly.Owner < -1
@@ -94,6 +96,7 @@ public sealed partial class World
         Match = match;
         Players = players;
         Fly = fly;
+        BeachBall = ball;
         events.Clear();
     }
 

@@ -12,13 +12,14 @@ internal sealed class LobbyCreation
         {
             0 => LobbyPrivacy.Private,
             1 => LobbyPrivacy.Friends,
+            4 => LobbyPrivacy.PrivateCode,
             _ => LobbyPrivacy.Public,
         };
-    public string TypeLabel => new[] { "PRIVATE", "FRIENDS", "PUBLIC", "LAN / UDP" }[type];
+    public string TypeLabel => new[] { "PRIVATE", "FRIENDS", "PUBLIC", "LAN / UDP", "PRIVATE CODE" }[type];
     public SlotType SlotType =>
         type switch
         {
-            0 => SlotType.Private,
+            0 or 4 => SlotType.Private,
             1 => SlotType.Friend,
             _ => SlotType.Open,
         };
@@ -27,7 +28,9 @@ internal sealed class LobbyCreation
 
     public void Reset(LobbyRoster roster) => capacity = Math.Max(1, roster.Capacity);
 
-    public void CycleType(int direction) => type = (type + direction + 4) % 4;
+    public void CycleType(int direction) => type = (type + direction + 5) % 5;
+
+    public void SelectPrivate() => type = 0;
 
     public void ChangeCapacity(int direction, LobbyRoster roster) =>
         capacity = Math.Clamp(Capacity(roster) + direction, Math.Max(1, roster.Count), 8);

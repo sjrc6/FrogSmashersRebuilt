@@ -27,6 +27,7 @@ public interface IGameLobby : IDisposable
     string MatchSettingsJson { get; }
     bool SetPlayers(LobbyPlayer[] players);
     bool EditSlot(int room, SlotType type);
+    bool ChangeCpu(int room, bool team, int direction);
     SlotType GetSlotType(int room);
     bool IsSlotEditPending(int room);
     bool ApplySlotType(SlotType type);

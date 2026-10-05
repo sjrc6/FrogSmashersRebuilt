@@ -11,6 +11,8 @@ public sealed partial class Renderer
         .ToArray();
     private readonly Vector2[] characterPositions = new Vector2[8];
     private float lastPresentedTime = -1;
+    private FlightPresentation ballFlight = new();
+    private Vector2 ballPosition;
 
     private enum DrawKind
     {
@@ -26,6 +28,7 @@ public sealed partial class Renderer
         OverheadScore,
         OffscreenMarker,
         Fly,
+        BeachBall,
         ScoreText,
         ScoreIcons,
     }
@@ -188,7 +191,11 @@ public sealed partial class Renderer
             AddCommand(fly.SortingLayer, fly.Order, fly.Material, fly.Z, DrawKind.Fly, fly);
         }
 
-        if (showGameplayUi && !world.Match.IsShowdown)
+        if (world.Rules.Lobby && world.BeachBall.Active)
+        {
+            AddCommand(0, 0, "SelectiveColorReplace", 0, DrawKind.BeachBall, ballPosition);
+        }
+        if (showGameplayUi && (!world.Match.IsShowdown || world.Rules.Scoring == ScoringMode.Stocks))
         {
             AddCommand(0, 0, "", 2.78f, DrawKind.ScoreText);
             AddCommand(0, 0, "SelectiveColorReplace", 2.78f, DrawKind.ScoreIcons);
@@ -283,6 +290,17 @@ public sealed partial class Renderer
                 break;
             case DrawKind.Fly:
                 DrawFly(world, (EffectData)command.Item!);
+                break;
+            case DrawKind.BeachBall:
+                canvas.Begin(1);
+                DrawBallSquare(
+                    (Vector2)command.Item!,
+                    BeachBallState.Radius.ToFloat() * 2,
+                    Vector2.One,
+                    Color.White,
+                    MathF.Atan2(world.BeachBall.VY.ToFloat(), world.BeachBall.VX.ToFloat()) - MathF.PI / 2
+                );
+                canvas.End();
                 break;
             case DrawKind.ScoreText:
                 scores.Draw(world, false, 0, time, frameSeconds, false, true);
@@ -379,6 +397,22 @@ public sealed partial class Renderer
             }
         }
 
+        if (world.Rules.Lobby && world.BeachBall.Active)
+        {
+            ballPosition = new(world.BeachBall.X.ToFloat(), world.BeachBall.Y.ToFloat());
+            if (previous?.BeachBall.Active == true && previous.Map.Id == world.Map.Id)
+            {
+                var before = new Vector2(previous.BeachBall.X.ToFloat(), previous.BeachBall.Y.ToFloat());
+                ballPosition = Vector2.Lerp(before, ballPosition, alpha);
+            }
+            if (dt > 0)
+                effects.UpdateBeachBall(world, ballPosition, ballFlight, dt);
+        }
+        else
+        {
+            effects.RemoveCharacter(8);
+            ballFlight = new();
+        }
         DrawGameplayScene(world, previous, alpha, dt, showGameplayUi);
         PostProcess();
     }

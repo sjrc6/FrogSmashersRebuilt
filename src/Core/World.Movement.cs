@@ -116,16 +116,7 @@ public sealed partial class World
         )
         {
             player.TimeSinceHit += deltaTime;
-            var gravity = tuning.BounceGravityMin;
-            if (player.TimeSinceHit > tuning.BounceGravityRestoreDelay)
-            {
-                player.BounceGravityRestore += deltaTime;
-                gravity = Fixed.Lerp(
-                    gravity,
-                    tuning.BounceGravityMax,
-                    player.BounceGravityRestore / tuning.BounceGravityRestoreTime
-                );
-            }
+            var gravity = BounceGravity(player.TimeSinceHit, ref player.BounceGravityRestore, deltaTime);
 
             if (player.VY >= 0 && player.VY - gravity * deltaTime < 0)
             {
@@ -207,6 +198,14 @@ public sealed partial class World
         }
 
         player.JumpCooldownLeft -= deltaTime;
+    }
+
+    private Fixed BounceGravity(Fixed timeSinceHit, ref Fixed restore, Fixed deltaTime)
+    {
+        if (timeSinceHit <= tuning.BounceGravityRestoreDelay)
+            return tuning.BounceGravityMin;
+        restore += deltaTime;
+        return Fixed.Lerp(tuning.BounceGravityMin, tuning.BounceGravityMax, restore / tuning.BounceGravityRestoreTime);
     }
 
     private static void SetVelocity(PlayerState player, FixedVector velocity)

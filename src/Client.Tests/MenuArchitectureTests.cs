@@ -90,8 +90,8 @@ internal static class MenuArchitectureTests
         }
         var teamRules = new GameRules(format: MatchFormat.Teams);
         check(
-            ModifierCatalog.All.Single(d => d.Id == "body-bouncing").DisabledReason!(teamRules) == "FFA ONLY",
-            "Body bouncing is visibly unavailable outside FFA"
+            ModifierCatalog.All.Single(d => d.Id == "body-bouncing").DisabledReason?.Invoke(teamRules) == null,
+            "Body bouncing is available in teams"
         );
         var stocksRules = new GameRules(scoring: ScoringMode.Stocks);
         check(

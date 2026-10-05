@@ -14,6 +14,12 @@ internal static partial class LobbyTests
         var policy = new LobbyAdmissionPolicy(LobbyPrivacy.PrivateCode);
         string original = policy.Secret;
         Check(
+            LobbyAdmissionPolicy.CanShare(original, policy.CodeFingerprint)
+                && !LobbyAdmissionPolicy.CanShare("", policy.CodeFingerprint)
+                && !LobbyAdmissionPolicy.CanShare(new string('0', 64), policy.CodeFingerprint),
+            "Only a known valid secret enables guest sharing; invitation grants do not disclose it"
+        );
+        Check(
             original.Length == 64 && original != new LobbyAdmissionPolicy(LobbyPrivacy.PrivateCode).Secret,
             "Code lobbies generate independent 256-bit secrets"
         );
@@ -32,6 +38,32 @@ internal static partial class LobbyTests
         Check(policy.Allows(3, "") && !policy.Allows(2, ""), "A grant authorizes only its specific Steam identity");
         policy.Revoke(3);
         Check(!policy.Allows(3, ""), "A failed targeted invitation can revoke its new grant");
+        Check(!policy.Invite(3, () => false) && !policy.Allows(3, ""), "A failed Steam send rolls back a new grant");
+        Check(policy.Invite(3, () => policy.Allows(3, "")), "The grant exists before Steam sends the invitation");
+        Check(
+            !policy.Invite(3, () => false) && policy.Allows(3, ""),
+            "A failed resend preserves an earlier successful grant"
+        );
+        policy.Revoke(3);
+        string code = LobbyAddress.SteamCode(123, original);
+        Check(
+            LobbyAddress.TrySteam(code, out ulong codeId, out string secret) && codeId == 123 && secret == original,
+            "Private codes decode into separate lobby and admission credentials"
+        );
+        Check(
+            LobbyAddress.SteamCode(123) == "123",
+            "Normal private sharing copies a game code without a Steam launch link"
+        );
+        foreach (
+            string invalid in new[]
+            {
+                "frog:0:" + original,
+                "frog:123:bad",
+                code + ":extra",
+                "frog:123:" + new string('Z', 64),
+            }
+        )
+            Check(!LobbyAddress.TrySteam(invalid, out _, out _), "Malformed secret envelopes are rejected");
 
         using var rig = new Rig();
         var host = rig.Add("1", [new(0, Spawned: true)], admission: policy);
@@ -104,6 +136,10 @@ internal static partial class LobbyTests
         rig.WaitFor(() => pending.Lobby.Connected, "Pending admission did not reach the host");
         pending.AllowError = true;
         policy.Rotate();
+        Check(
+            !LobbyAdmissionPolicy.CanShare(original, policy.CodeFingerprint),
+            "Rotation disables stale guest sharing without distributing the replacement secret"
+        );
         host.Lobby.RevokePendingAdmissions();
         rig.Steps(30);
         Check(

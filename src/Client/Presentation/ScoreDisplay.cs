@@ -143,8 +143,10 @@ internal sealed class ScoreDisplay
                             ? world.Match.RoundContribution(world.Rules, p.Slot)
                             : 0
                     )
-                : world.Match.Players[p.Slot].Score;
-        var players = Players(world).ToArray();
+            : world.Rules.Scoring == ScoringMode.Stocks ? world.Match.Players[p.Slot].Stocks
+            : world.Match.Players[p.Slot].Score;
+        bool individualStocks = !roundWins && world.Rules.Scoring == ScoringMode.Stocks;
+        var players = individualStocks ? world.Players.ToArray() : Players(world).ToArray();
         foreach (var p in players)
         {
             if (hudScores[p.Slot] != Score(p))
@@ -215,6 +217,13 @@ internal sealed class ScoreDisplay
         {
             string text = Score(p).ToString();
             var color = PlayerPalette.For(world, p.Slot);
+            if (individualStocks)
+            {
+                var participation = world.Match.Players[p.Slot].Participation;
+                text = $"P{p.Slot + 1} " + (participation == Participation.Eliminated ? "OUT" : text);
+                if (participation is Participation.Waiting or Participation.Eliminated)
+                    color *= .5f;
+            }
             if (roundWins)
             {
                 float start = world.Match.IsShowdown ? .05f : 1;
@@ -231,7 +240,9 @@ internal sealed class ScoreDisplay
             else
             {
                 var message = scoreMessages.LastOrDefault(m =>
-                    world.Rules.UsesTeams ? world.Players[m.Player].Team == p.Team : m.Player == p.Slot
+                    world.Rules.UsesTeams && !individualStocks
+                        ? world.Players[m.Player].Team == p.Team
+                        : m.Player == p.Slot
                 );
                 if (message != null)
                 {

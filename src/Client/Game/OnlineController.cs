@@ -55,9 +55,9 @@ internal sealed class OnlineController : IDisposable
         LobbyRoster localRoster,
         MatchOptions match,
         bool allowLan,
-        int joinDevice,
         LobbyPrivacy privacy = LobbyPrivacy.Private,
-        SteamTransport steamTransport = SteamTransport.Sockets
+        SteamTransport steamTransport = SteamTransport.Sockets,
+        string admissionSecret = ""
     )
     {
         StopBrowsing();
@@ -69,8 +69,6 @@ internal sealed class OnlineController : IDisposable
         }
         CloseLobby();
         var players = localRoster.Players(0).Where(player => host || !player.Cpu).ToArray();
-        if (!host && players.Length == 0)
-            players = [new LobbyPlayer(joinDevice)];
         string settings = JsonSerializer.Serialize(match);
         if (host)
             Lobby = target switch
@@ -96,7 +94,7 @@ internal sealed class OnlineController : IDisposable
                 _ => throw new ArgumentException("Host transport must be udp or steam"),
             };
         else if (target.StartsWith("steam:", StringComparison.Ordinal))
-            Lobby = SteamLobby.Join(ulong.Parse(target[6..]), players, fingerprint);
+            Lobby = SteamLobby.Join(ulong.Parse(target[6..]), players, fingerprint, admissionSecret: admissionSecret);
         else if (target.StartsWith("udp:", StringComparison.Ordinal))
             Lobby = UdpLobby.Join(target[4..], options.Port, players, fingerprint);
         else

@@ -11,7 +11,10 @@ internal readonly record struct MenuInput(
     bool AcceptReleased = false,
     bool Remove = false,
     bool ApplyAll = false,
-    int HorizontalHeld = 0
+    int HorizontalHeld = 0,
+    int VerticalHeld = 0,
+    bool CpuColor = false,
+    bool CpuTeam = false
 )
 {
     public static MenuInput Read(Controls controls, int? source = null)
@@ -29,6 +32,12 @@ internal readonly record struct MenuInput(
         bool rightHeld =
             (source == null || source < 2)
             && (controls.KeysNow.IsKeyDown(Keys.D) || controls.KeysNow.IsKeyDown(Keys.Right));
+        bool upHeld =
+            (source == null || source < 2)
+            && (controls.KeysNow.IsKeyDown(Keys.W) || controls.KeysNow.IsKeyDown(Keys.Up));
+        bool downHeld =
+            (source == null || source < 2)
+            && (controls.KeysNow.IsKeyDown(Keys.S) || controls.KeysNow.IsKeyDown(Keys.Down));
         foreach (int device in source.HasValue ? [source.Value] : new[] { 0 }.Concat(Enumerable.Range(2, 8)))
         {
             vertical += controls.Vertical(device, menu: true);
@@ -36,6 +45,8 @@ internal readonly record struct MenuInput(
             if (device >= 2)
             {
                 var pad = controls.Pads[device - 2];
+                upHeld |= pad.IsButtonDown(Buttons.DPadUp) || pad.ThumbSticks.Left.Y > .5f;
+                downHeld |= pad.IsButtonDown(Buttons.DPadDown) || pad.ThumbSticks.Left.Y < -.5f;
                 leftHeld |= pad.IsButtonDown(Buttons.DPadLeft) || pad.ThumbSticks.Left.X < -.5f;
                 rightHeld |= pad.IsButtonDown(Buttons.DPadRight) || pad.ThumbSticks.Left.X > .5f;
             }
@@ -57,7 +68,10 @@ internal readonly record struct MenuInput(
             released && !held,
             Key(Keys.U) || Pad(Buttons.X),
             Key(Keys.Tab) || Pad(Buttons.Y),
-            (rightHeld ? 1 : 0) - (leftHeld ? 1 : 0)
+            (rightHeld ? 1 : 0) - (leftHeld ? 1 : 0),
+            (downHeld ? 1 : 0) - (upHeld ? 1 : 0),
+            Key(Keys.C) || Pad(Buttons.LeftShoulder),
+            Key(Keys.T) || Pad(Buttons.RightShoulder)
         );
     }
 }

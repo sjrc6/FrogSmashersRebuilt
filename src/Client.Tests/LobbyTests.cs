@@ -71,21 +71,29 @@ internal static class LobbyTests
             inputs[0] = tick < 3 ? new(0, 0, InputButtons.Attack) : default;
             world.Advance(inputs.Select(frame => new MatchInput(frame)).ToArray());
             bots.Observe(world, roster.Membership());
-            hit = world.Events.Any(item => item.Kind == SimulationEventKind.Hit && item.Player == 1 && item.Other == 0);
+            hit = world.Events.Any(item =>
+                item.Kind == SimulationEventKind.LobbyContact && item.Player == 1 && item.Other == 0
+            );
         }
-        check(hit, "Lobby retaliation fixture delivers a real bat hit");
+        check(hit, "A harmless bat contact activates the CPU");
         world.Players[0].X = world.Players[1].X - 10;
         world.Players[0].Y = world.Players[1].Y;
         world.Players[2].X = world.Players[1].X + 1;
         world.Players[2].Y = world.Players[1].Y;
-        check(bots.Read(world, 1).X == -1, "Provoked CPU pursues its attacker instead of a closer innocent player");
+        world.BeachBall.X = world.Players[1].X + 8;
+        world.BeachBall.Y = world.Players[1].Y + 1;
+        check(bots.Read(world, 1).X == 1, "The CPU pursues the ball rather than either human");
+        check(
+            world.Players[1].HitsTaken == 0 && world.Players[1].LastHitBy == -1,
+            "CPU activation does not inflict damage"
+        );
         world.SetLobbySlot(0, false, 0);
         world.SetLobbySlot(0, true, 0);
-        check(bots.Read(world, 1) == default, "Attacker respawn clears lobby retaliation");
+        check(bots.Read(world, 1).X == 1, "Human respawn does not interrupt ball play");
         bots.Observe(world, roster.Membership());
         world.SetLobbySlot(1, false, 1);
         world.SetLobbySlot(1, true, 1);
-        check(bots.Read(world, 1) == default, "CPU respawn clears lobby retaliation");
+        check(bots.Read(world, 1) == default, "An absent CPU produces no ball-play inputs");
     }
 
     private static void VerifyDoorways(GameContent content, MapData map, Action<bool, string> check)

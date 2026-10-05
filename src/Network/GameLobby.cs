@@ -31,6 +31,8 @@ public abstract class GameLobby : IGameLobby
 
     public bool EditSlot(int room, SlotType type) => Active?.EditSlot(room, type) ?? false;
 
+    public bool ChangeCpu(int room, bool team, int direction) => Active?.ChangeCpu(room, team, direction) ?? false;
+
     public SlotType GetSlotType(int room) => Active?.GetSlotType(room) ?? Roster.Slots[room].Type;
 
     public bool IsSlotEditPending(int room) => Active?.IsSlotEditPending(room) ?? false;

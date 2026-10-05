@@ -5,6 +5,48 @@ namespace FrogSmashers.Tests;
 
 internal static partial class LobbyTests
 {
+    private static void CpuAppearanceEdits()
+    {
+        using var rig = new Rig
+        {
+            Delay = 150,
+            Jitter = 30,
+            Loss = .03,
+            DatagramMode = true,
+        };
+        var host = rig.Add("host", [new(0, Spawned: true)]);
+        var guest = rig.Add("guest", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Appearance fixture did not connect");
+        Check(host.Lobby.EditSlot(7, SlotType.Cpu), "CPU creation for appearance editing");
+        rig.WaitFor(() => !host.Lobby.IsSlotEditPending(7), "CPU creation did not confirm");
+        var original = host.Simulation.Membership.Rooms[7]!;
+        var session = host.Lobby.LobbySession;
+        int checkpoints = rig.CheckpointMessages;
+        Check(!guest.Lobby.ChangeCpu(7, false, 1), "Guests cannot edit CPU colors");
+        Check(
+            host.Lobby.ChangeCpu(7, false, 1) && host.Lobby.ChangeCpu(7, true, 1),
+            "Host can coalesce color and team edits"
+        );
+        rig.WaitFor(() => host.Lobby.HostCommand.Revision > 0, "Appearance command did not enter the input stream");
+        Check(host.Lobby.ChangeCpu(7, true, 1), "A later team edit composes with an in-flight command");
+        rig.WaitFor(() => !host.Lobby.IsSlotEditPending(7), "Appearance edits did not confirm");
+        rig.Steps(150);
+        foreach (var node in rig.Nodes)
+        {
+            var cpu = node.Simulation.Membership.Rooms[7]!;
+            Check(
+                cpu.Color != original.Color && cpu.Team == (original.Team + 2) % 8 && cpu.Id == original.Id,
+                "Every peer receives the new CPU appearance with stable identity"
+            );
+            Check(node.Simulation.World.Players[7].ColorIndex == cpu.Color, "CPU body reflects the selected color");
+        }
+        Check(
+            ReferenceEquals(session, host.Lobby.LobbySession) && checkpoints == rig.CheckpointMessages,
+            "CPU appearance uses existing rollback rather than restarting the lobby"
+        );
+        rig.AssertConfirmedStates();
+    }
+
     private static void CpuCommandsDoNotRestartRollback(int delay)
     {
         using var rig = new Rig

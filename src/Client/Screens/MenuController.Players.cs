@@ -10,6 +10,13 @@ internal sealed partial class MenuController
             .. game.Lobby.Roster.Spectators,
         ];
 
+    private int[] UnseatedPeers() =>
+        game.Lobby.Online?.PeerIds.Where(peer =>
+                game.Lobby.Roster.Humans(peer).Length == 0 && game.Lobby.Roster.Spectator(peer) == null
+            )
+            .ToArray()
+        ?? [];
+
     private string PlayerLabel(LobbyPlayer player)
     {
         if (!player.Cpu && player.Peer == game.Lobby.LocalPeer)
@@ -45,6 +52,8 @@ internal sealed partial class MenuController
             if (spectator)
                 firstSpectator = false;
         }
+        foreach (int peer in UnseatedPeers())
+            rows.Add(new($"connection-{peer}", peer == 0 ? "HOST" : $"GUEST {peer}", Value: "NOT JOINED"));
         rows.Add(new("back", "BACK", Back));
         return rows;
     }
@@ -53,7 +62,25 @@ internal sealed partial class MenuController
     {
         var player = ListedPlayers().ElementAtOrDefault(Selected);
         if (player == null)
+        {
+            int index = Selected - ListedPlayers().Length;
+            int[] peers = UnseatedPeers();
+            if (index >= 0 && index < peers.Length && peers[index] != game.Lobby.LocalPeer && game.Lobby.IsHost)
+            {
+                int peer = peers[index];
+                return (
+                    null,
+                    new(
+                        "kick-connection",
+                        "KICK",
+                        () => game.Online.Lobby!.Kick(peer, false),
+                        Role: MenuRole.Destructive,
+                        DisabledReason: ShowingMatch ? "LOBBY ONLY" : null
+                    )
+                );
+            }
             return (null, null);
+        }
         string? disabled = PlayerActionDisabledReason(player);
         MenuEntry Action(string label, Action activate) =>
             new(
@@ -77,7 +104,7 @@ internal sealed partial class MenuController
         MenuEntry? remove = null;
         if (remote && game.Lobby.IsHost)
             remove = Action("KICK", () => game.Online.Lobby!.Kick(player.Peer, false));
-        else if (!spectator && !multiple && game.Lobby.Online != null && game.Lobby.IsHost)
+        else if (!spectator && !multiple && game.Lobby.Online != null)
             remove = Action("BACK OUT", () => game.Lobby.Remove(player.Peer, player.Id));
         return (accept, remove);
     }

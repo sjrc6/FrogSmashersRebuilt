@@ -29,7 +29,7 @@ internal static class LobbyDiscoveryTests
             }
         )
             Check(
-                LobbyAddress.TrySteam(text, out ulong id) && id == lobby,
+                LobbyAddress.TrySteam(text, out ulong id, out _) && id == lobby,
                 "Clipboard recognizes lobby codes and Steam invite links"
             );
         foreach (
@@ -45,7 +45,7 @@ internal static class LobbyDiscoveryTests
                 new string('9', 600),
             }
         )
-            Check(!LobbyAddress.TrySteam(text, out _), "Clipboard rejects unrelated or malformed lobby links");
+            Check(!LobbyAddress.TrySteam(text, out _, out _), "Clipboard rejects unrelated or malformed lobby links");
         foreach (string text in new[] { "127.0.0.1:30000", "udp://127.0.0.1:30000", " udp:127.0.0.1:30000\n" })
             Check(
                 LobbyAddress.TryUdp(text, 24804, out var host, out int port) && host == "127.0.0.1" && port == 30000,

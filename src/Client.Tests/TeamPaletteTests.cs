@@ -24,8 +24,12 @@ internal static class TeamPaletteTests
                 check(shades.All(color => color.A == 255), "Team shades stay fully opaque");
                 if (count > 1)
                     check(
-                        shades[0] == Color.Lerp(PlayerPalette.Colors[team], Color.White, .7f),
-                        "Team shades use the full brightness range"
+                        shades.All(shade =>
+                            shade.R <= Color.Lerp(PlayerPalette.Colors[team], Color.White, .25f).R
+                            && shade.G <= Color.Lerp(PlayerPalette.Colors[team], Color.White, .25f).G
+                            && shade.B <= Color.Lerp(PlayerPalette.Colors[team], Color.White, .25f).B
+                        ),
+                        "Team shades preserve color instead of washing teammates out to white"
                     );
                 var players = rooms.OfType<LobbyPlayer>().Reverse().ToArray();
                 var rules = new GameRules(

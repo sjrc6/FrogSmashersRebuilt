@@ -221,6 +221,24 @@ internal sealed class AutomatedGame : FrogGame
             LobbyTick = Menus.ShowingLobby ? Lobby.World?.TickNumber : null,
             MatchSettings = Setup.Preferences,
             ActiveModifiers = Match.World?.Rules.Modifiers,
+            ActiveFormat = Match.World?.Rules.Format.ToString(),
+            ActiveScoring = Match.World?.Rules.Scoring.ToString(),
+            Progress = Match
+                .World?.Match.Players.Select(player => new
+                {
+                    player.Stocks,
+                    Participation = player.Participation.ToString(),
+                })
+                .ToArray(),
+            FighterSelections = Match.World?.Match.TeamSelections,
+            LobbyBall = Menus.ShowingLobby && Lobby.World != null
+                ? new
+                {
+                    Lobby.World.BeachBall.Active,
+                    X = Lobby.World.BeachBall.X.ToFloat(),
+                    Y = Lobby.World.BeachBall.Y.ToFloat(),
+                }
+                : null,
             Settings.Volume,
             MenuBackground = Match.IsMenuBackground,
             Paused = Menus.LocalPresentationPaused,

@@ -6,8 +6,14 @@ public sealed partial class World
 {
     private void StartRound()
     {
-        Match.StartRound();
+        Match.StartRound(Rules);
+        ResetArena();
+    }
+
+    private void ResetArena()
+    {
         Fly = new FlyState { SpawnTicks = NextFlySpawnTicks() };
+        ResetBeachBall();
         for (int i = 0; i < Players.Length; i++)
         {
             var prior = Players[i];
@@ -141,7 +147,12 @@ public sealed partial class World
             player,
             player.LastHitBy,
             player.HitsTaken,
-            scoreDelta: Match.DeathScore(Rules, player.LastHitBy, player.HitsTaken)
+            scoreDelta: Rules.Scoring == ScoringMode.Stocks
+                ? Math.Max(
+                    -Match.Players[player.Slot].Stocks,
+                    Match.DeathScore(Rules, player.LastHitBy, player.HitsTaken)
+                )
+                : Match.DeathScore(Rules, player.LastHitBy, player.HitsTaken)
         );
         int winner = Match.RecordDeath(Rules, player.Slot, player.LastHitBy, player.HitsTaken);
         if (winner >= 0)

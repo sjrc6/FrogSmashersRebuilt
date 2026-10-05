@@ -962,7 +962,7 @@
     "smokeRingDistance": 7.5,
     "trailDelay": 0.01
   },
-  "ContentHash": "afbf940e1021464f5dd501e46538c485949c4a22bade0b78963e622573d7b8bc",
+  "ContentHash": "d9ce0bca0c43d4e6ccb79e19bde3e6edd5a27c1975554305757d312cbb6c72d0",
   "Effects": {
     "BackgroundEscapeShip": {
       "Animations": {
@@ -16297,11 +16297,16 @@
         0,
         1
       ],
+      "BeachBallSpawn": {
+        "X": 0,
+        "Y": 4
+      },
       "CameraPanCurve": [],
       "CameraX": 0,
       "CameraY": 0,
       "Collision": [
         {
+          "BeachBallCollision": false,
           "Height": 0.333333333,
           "Name": "Room 0,0 platform",
           "OneWay": true,
@@ -16310,6 +16315,7 @@
           "Y": 9.8333333335
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.333333333,
           "Name": "Room 0,1 platform",
           "OneWay": true,
@@ -16318,6 +16324,7 @@
           "Y": 9.8333333335
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.333333333,
           "Name": "Room 0,2 platform",
           "OneWay": true,
@@ -16326,6 +16333,7 @@
           "Y": 9.8333333335
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.333333333,
           "Name": "Room 1,0 platform",
           "OneWay": true,
@@ -16334,6 +16342,7 @@
           "Y": -0.1666666665
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.333333333,
           "Name": "Room 1,2 platform",
           "OneWay": true,
@@ -16342,6 +16351,7 @@
           "Y": -0.1666666665
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.333333333,
           "Name": "Room 2,0 platform",
           "OneWay": true,
@@ -16350,6 +16360,7 @@
           "Y": -10.1666666665
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.333333333,
           "Name": "Room 2,1 platform",
           "OneWay": true,
@@ -16358,6 +16369,7 @@
           "Y": -10.1666666665
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.333333333,
           "Name": "Room 2,2 platform",
           "OneWay": true,
@@ -16366,6 +16378,7 @@
           "Y": -10.1666666665
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.8,
           "Name": "Floor",
           "OneWay": false,
@@ -16374,6 +16387,7 @@
           "Y": 4.6
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.4,
           "Name": "Floor opening platform",
           "OneWay": true,
@@ -16382,6 +16396,7 @@
           "Y": 4.8
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.8,
           "Name": "Floor",
           "OneWay": false,
@@ -16390,6 +16405,7 @@
           "Y": 4.6
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.8,
           "Name": "Floor",
           "OneWay": false,
@@ -16398,6 +16414,7 @@
           "Y": 4.6
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.4,
           "Name": "Floor opening platform",
           "OneWay": true,
@@ -16406,6 +16423,7 @@
           "Y": 4.8
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.8,
           "Name": "Floor",
           "OneWay": false,
@@ -16414,6 +16432,7 @@
           "Y": 4.6
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.8,
           "Name": "Floor",
           "OneWay": false,
@@ -16422,6 +16441,7 @@
           "Y": 4.6
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.4,
           "Name": "Floor opening platform",
           "OneWay": true,
@@ -16430,6 +16450,7 @@
           "Y": 4.8
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.8,
           "Name": "Floor",
           "OneWay": false,
@@ -16438,6 +16459,7 @@
           "Y": 4.6
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.8,
           "Name": "Floor",
           "OneWay": false,
@@ -16446,6 +16468,7 @@
           "Y": -5.4
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.4,
           "Name": "Floor opening platform",
           "OneWay": true,
@@ -16454,6 +16477,7 @@
           "Y": -5.2
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.8,
           "Name": "Floor",
           "OneWay": false,
@@ -16462,6 +16486,7 @@
           "Y": -5.4
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.8,
           "Name": "Floor",
           "OneWay": false,
@@ -16470,6 +16495,7 @@
           "Y": -5.4
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.4,
           "Name": "Floor opening platform",
           "OneWay": true,
@@ -16478,6 +16504,7 @@
           "Y": -5.2
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.8,
           "Name": "Floor",
           "OneWay": false,
@@ -16486,6 +16513,7 @@
           "Y": -5.4
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.8,
           "Name": "Floor",
           "OneWay": false,
@@ -16494,6 +16522,7 @@
           "Y": -5.4
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.4,
           "Name": "Floor opening platform",
           "OneWay": true,
@@ -16502,6 +16531,7 @@
           "Y": -5.2
         },
         {
+          "BeachBallCollision": false,
           "Height": 0.8,
           "Name": "Floor",
           "OneWay": false,

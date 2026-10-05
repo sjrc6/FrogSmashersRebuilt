@@ -53,6 +53,7 @@ internal static class CompatibilityTests
             data => data.Maps[0].Spawns[0].Y += 1,
             data => data.Maps[0].KillBounds.Bottom -= 1,
             data => data.Maps[0].FlySpawn.X += 1,
+            data => data.PresentationScenes["Lobby"].BeachBallSpawn.X += 1,
             data => data.PresentationScenes["Lobby"].Collision[0].X += 1,
             data => data.Maps.Add(TestFixtures.Map()),
         ];

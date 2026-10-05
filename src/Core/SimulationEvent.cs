@@ -29,6 +29,10 @@ public enum SimulationEventKind
     Footstep,
     Launch,
     LobbyPreview,
+    LobbyContact,
+    BeachBallHit,
+    BeachBallBounce,
+    BeachBallLaunch,
 }
 
 public readonly record struct SimulationEvent(

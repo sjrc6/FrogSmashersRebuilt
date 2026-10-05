@@ -55,7 +55,7 @@ internal sealed partial class PresentationChecks
             renderer.Reset();
             renderer.Update(0);
             renderer.DrawWorld(world, null, 1, false);
-            var pose = new CharacterPresentation { Rotation = rotation, LastSmoke = new(100, 0) };
+            var pose = new CharacterPresentation { Rotation = rotation, Flight = { LastSmoke = new(100, 0) } };
             renderer.Effects.UpdateCharacter(launched, world, new(0, -1), pose, 0);
             var rings = renderer.Effects.Active.Where(effect => effect.Name.StartsWith("SmokeRing")).ToArray();
             foreach (var other in renderer.Effects.Active.Except(rings))

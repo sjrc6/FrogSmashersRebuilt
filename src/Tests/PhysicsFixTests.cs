@@ -13,7 +13,7 @@ internal static class PhysicsFixTests
         Platforms();
         TongueSweeps();
         Console.WriteLine(
-            "Physics fixes: thin terrain, body edges, wall slides, speed, earliest tongue hits and restoration passed"
+            "Physics fixes: thin terrain, body edges, wall slides, speed, original tongue latches, corners and friendly pass-through and restoration passed"
         );
     }
 
@@ -204,174 +204,166 @@ internal static class PhysicsFixTests
         Check(spike.Players[0].Y < 0, "Downward bat knockback still bypasses one-way platforms");
     }
 
-    private static World Tongue(decimal wallX, decimal width = .001m, bool oneWay = false)
+    private static World TongueWorld(bool fixes, MapData map, int speed = 60, bool teams = false, bool lobby = false)
     {
-        var world = Geometry(
-            new BoxData()
-            {
-                X = wallX,
-                Y = 0,
-                Width = width,
-                Height = 20,
-                OneWay = oneWay,
-            }
+        if (lobby)
+            map.Spawns = TestFixtures.Map().Spawns;
+        var world = new World(
+            [map],
+            new GameRules(
+                playerCount: 3,
+                lobby: lobby,
+                format: teams ? MatchFormat.Teams : MatchFormat.Ffa,
+                teams: [0, 0, 1],
+                modifiers: new GameModifiers { PhysicsFixes = fixes }
+            ),
+            1,
+            new() { ["tongueSpeed"] = speed, ["gravity"] = 0 }
         );
-        var p = world.Players[0];
-        p.Mode = CharacterMode.Tongue;
-        p.TonguePhase = TonguePhase.Extending;
-        p.WasBouncingBeforeTongue = true;
-        p.TongueDistance = 4;
+        foreach (var player in world.Players)
+        {
+            if (lobby)
+                world.SetLobbySlot(player.Slot, true, player.Slot);
+            player.Alive = player.Slot == 0;
+            player.SpawnTicks = 10000;
+            player.X = player.Y = 0;
+        }
+        world.Players[0].Mode = CharacterMode.Tongue;
+        world.Players[0].TongueDistance = 4;
+        world.BeachBall.X = 100;
         return world;
     }
 
     private static void TongueSweeps()
     {
-        var ordering = new World(
-            [new() { Id = "ordered-hits" }],
-            new(playerCount: 3),
-            1,
-            new() { ["tongueSpeed"] = 1200, ["gravity"] = 0 }
-        );
-        foreach (var player in ordering.Players)
-            player.Alive = true;
-        ordering.Players[0].Mode = CharacterMode.Tongue;
-        ordering.Players[0].TongueDistance = 4;
-        ordering.Players[1].X = 9;
-        ordering.Players[2].X = 6;
-        ordering.Fly.Active = true;
-        ordering.Fly.X = 10;
-        ordering.Fly.Y = FromDecimal(1.5m);
-        ordering.Fly.DirectionTicks = 100;
-        Step(ordering);
-        Check(
-            ordering.Players[2].LastHitBy == 0 && ordering.Players[1].LastHitBy == -1 && ordering.Fly.Owner == -1,
-            "Earliest contact wins over player iteration order and the old fly-first priority"
-        );
-        foreach (int speed in new[] { -800, -20, 0, 20, 800 })
-        {
-            var world = Tongue(6);
-            var p = world.Players[0];
-            p.VX = speed;
-            bool stopped = false;
-            for (int i = 0; i < 10; i++)
+        foreach (
+            var wall in new[]
             {
-                Step(world);
-                if (p.TonguePhase != TonguePhase.Extending)
+                new BoxData
                 {
-                    stopped = true;
-                    Check(p.TongueTip.X <= FromDecimal(5.501m), "Swept tongue remains on the near side of a thin wall");
-                    break;
-                }
+                    X = 6,
+                    Y = 2,
+                    Width = 2,
+                    Height = 8,
+                },
+                new BoxData
+                {
+                    X = 2,
+                    Y = 2,
+                    Width = 4,
+                    Height = 8,
+                },
             }
-            Check(stopped, $"Tongue stops at thin wall with initial frog velocity {speed}");
-        }
-        var near = Tongue(2);
-        near.Players[0].TongueDistance = 0;
-        Step(near, count: 3);
-        Check(
-            near.Players[0].TonguePhase == TonguePhase.Retracting && near.Players[0].TongueTip.X < 2,
-            "A wall inside minimum grapple range stops and retracts the tongue instead of letting it pass"
-        );
-
-        var blockedFly = Tongue(5);
-        blockedFly.Fly.Active = true;
-        blockedFly.Fly.X = 7;
-        blockedFly.Fly.Y = FromDecimal(1.5m);
-        blockedFly.Fly.DirectionTicks = 100;
-        blockedFly.Players[0].VX = 300;
-        Step(blockedFly);
-        Check(
-            blockedFly.Fly.Owner == -1 && blockedFly.Players[0].TonguePhase == TonguePhase.Retracting,
-            "Terrain wins before a fly behind it, even when the tip crosses both in one tick"
-        );
-        var visibleFly = Tongue(8);
-        visibleFly.Fly.Active = true;
-        visibleFly.Fly.X = 6;
-        visibleFly.Fly.Y = FromDecimal(1.5m);
-        visibleFly.Fly.DirectionTicks = 100;
-        visibleFly.Players[0].VX = 300;
-        Step(visibleFly);
-        Check(visibleFly.Fly.Owner == 0, "A fly encountered before the wall can be caught");
-
-        var enemies = Tongue(20);
-        enemies.Players[1].Alive = true;
-        enemies.Players[1].X = 7;
-        enemies.Players[1].Y = 0;
-        enemies.Players[0].VX = 300;
-        Step(enemies);
-        Check(
-            enemies.Players[1].LastHitBy == 0 && enemies.Players[0].TonguePhase == TonguePhase.RetractingHitEnemy,
-            "Swept tongue hits an enemy crossed between endpoints"
-        );
-        var blockedEnemy = Tongue(5);
-        blockedEnemy.Players[1].Alive = true;
-        blockedEnemy.Players[1].X = 8;
-        blockedEnemy.Players[1].Y = 0;
-        blockedEnemy.Players[0].VX = 300;
-        Step(blockedEnemy);
-        Check(blockedEnemy.Players[1].LastHitBy == -1, "A frog behind the first wall cannot be tongued");
-
-        foreach (int direction in new[] { -1, 1 })
+        )
         {
-            var world = Geometry(
-                new BoxData()
-                {
-                    X = 0,
-                    Y = 0,
-                    Width = 10,
-                    Height = .1m,
-                    OneWay = true,
-                }
-            );
-            var p = world.Players[0];
-            p.Y = direction < 0 ? 6 : -8;
-            p.Mode = CharacterMode.Tongue;
-            p.TongueY = direction;
-            p.TongueX = 0;
-            p.WasBouncingBeforeTongue = true;
-            p.TongueDistance = 4;
-            bool latched = false;
+            var map = new MapData { Id = "latch-depth", Collision = [wall] };
+            var original = TongueWorld(false, map);
+            var fixedWorld = TongueWorld(true, map);
+            if (wall.X == 2)
+                original.Players[0].TongueDistance = fixedWorld.Players[0].TongueDistance = 0;
             for (int tick = 0; tick < 8; tick++)
             {
-                Step(world);
-                latched |= world.Events.Any(e => e.Kind == SimulationEventKind.TongueLatch);
+                Step(original);
+                Step(fixedWorld);
+                var a = original.Players[0];
+                var b = fixedWorld.Players[0];
+                Check(
+                    a.TongueDistance == b.TongueDistance && a.TonguePhase == b.TonguePhase,
+                    "Normal wall latches preserve original extension depth, minimum range and retraction"
+                );
+                if (a.TonguePhase == TonguePhase.AttachedToTerrain)
+                    break;
             }
-            Check(latched == (direction < 0), "Tongue sweeps respect the top-only direction of one-way platforms");
         }
-        var snapshot = Tongue(6);
-        var saved = snapshot.Capture();
-        Step(snapshot, count: 30);
-        var expected = snapshot.Capture();
-        snapshot.Restore(saved);
-        Step(snapshot, count: 30);
-        Check(
-            snapshot.Capture().SequenceEqual(expected),
-            "Restoring before a swept latch reproduces the complete grapple"
-        );
-        var edge = Geometry(
-            new BoxData
-            {
-                X = 0,
-                Y = 0,
-                Width = 2,
-                Height = .1m,
-                OneWay = true,
-            }
-        );
-        var edgeShot = edge.Players[0];
-        edgeShot.X = FromDecimal(1.25m);
-        edgeShot.Y = 4;
-        edgeShot.Mode = CharacterMode.Tongue;
-        edgeShot.TongueX = 0;
-        edgeShot.TongueY = -1;
-        edgeShot.WasBouncingBeforeTongue = true;
-        edgeShot.TongueDistance = 4;
-        bool edgeLatch = false;
-        for (int tick = 0; tick < 5; tick++)
+        var thin = new MapData
         {
-            Step(edge);
-            edgeLatch |= edge.Events.Any(e => e.Kind == SimulationEventKind.TongueLatch);
+            Id = "thin",
+            Collision =
+            [
+                new()
+                {
+                    X = 4.7m,
+                    Y = 2,
+                    Width = .001m,
+                    Height = 8,
+                },
+            ],
+        };
+        var baseline = TongueWorld(false, thin, 200);
+        var caught = TongueWorld(true, thin, 200);
+        Step(baseline);
+        Step(caught);
+        Check(
+            baseline.Players[0].TonguePhase == TonguePhase.Extending
+                && caught.Players[0].TonguePhase == TonguePhase.AttachedToTerrain
+                && caught.Players[0].TongueDistance == baseline.Players[0].TongueDistance,
+            "A skipped thin wall stops continued extension without shortening the current extension step"
+        );
+        var corner = new MapData
+        {
+            Id = "corner",
+            Collision =
+            [
+                new()
+                {
+                    X = 3,
+                    Y = 2.8m,
+                    Width = 1,
+                    Height = 1,
+                },
+                new()
+                {
+                    X = 9,
+                    Y = 2,
+                    Width = 1,
+                    Height = 8,
+                },
+            ],
+        };
+        var around = TongueWorld(true, corner);
+        var frog = around.Players[0];
+        frog.TongueDistance = 5;
+        frog.VY = 80;
+        Step(around);
+        Check(
+            frog.TonguePhase == TonguePhase.Extending,
+            "Moving the frog around a corner does not collide the already extended tongue shaft"
+        );
+        frog.VY = 0;
+        for (int tick = 0; tick < 8 && frog.TonguePhase == TonguePhase.Extending; tick++)
+            Step(around);
+        Check(
+            frog.TonguePhase == TonguePhase.AttachedToTerrain,
+            "A tongue past a corner still latches onto a later wall"
+        );
+        foreach (bool fixes in new[] { false, true })
+        foreach (bool lobby in new[] { false, true })
+        {
+            var world = TongueWorld(fixes, new() { Id = "friendly" }, teams: !lobby, lobby: lobby);
+            world.Players[1].Alive = world.Players[2].Alive = true;
+            world.Players[1].X = 5;
+            world.Players[1].Mode = CharacterMode.Tongue;
+            world.Players[1].TongueX = -1;
+            world.Players[1].TongueDistance = 1;
+            world.Players[1].TongueDelayLeft = 10;
+            world.Players[2].X = 9;
+            Step(world);
+            Check(
+                world.Players[0].TonguePhase == TonguePhase.Extending,
+                "Tongues pass through friendly frogs and their tongues in both physics modes"
+            );
+            for (int tick = 0; tick < 8; tick++)
+                Step(world);
+            Check(
+                lobby ? world.Players[2].LastHitBy == -1 : world.Players[2].LastHitBy == 0,
+                "Lobby tongues pass all frogs; team tongues can still hit an opponent beyond a teammate"
+            );
         }
-        Check(edgeLatch, "The tongue's circular tip can catch the edge of a one-way platform from above");
+        var snapshot = caught.Capture();
+        Step(caught, count: 30);
+        var expected = caught.Capture();
+        caught.Restore(snapshot);
+        Step(caught, count: 30);
+        Check(caught.Capture().SequenceEqual(expected), "A caught thin-wall latch restores and resimulates exactly");
     }
 }

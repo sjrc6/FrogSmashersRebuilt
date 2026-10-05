@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework;
 
 namespace FrogSmashers.Client;
 
-internal sealed class MatchController : IDisposable
+internal sealed partial class MatchController : IDisposable
 {
     private const double TickSeconds = 1.0 / World.TickRate;
     private readonly GameContent content;
@@ -142,6 +142,8 @@ internal sealed class MatchController : IDisposable
         audio.TitleBackground = IsMenuBackground;
         controls.ClearPendingEdges();
         commands.Clear();
+        fighterChoices.Clear();
+        selectionInputs.Clear();
         accumulator = 0;
         Paused = false;
         Error = null;
@@ -176,6 +178,9 @@ internal sealed class MatchController : IDisposable
         {
             return;
         }
+
+        if (!Paused && !ReplayPlayback)
+            UpdateCrewSelection();
 
         accumulator += elapsedSeconds;
         for (int step = 0; step < 30; step++)

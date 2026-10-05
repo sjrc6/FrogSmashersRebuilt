@@ -55,6 +55,10 @@ internal sealed partial class MenuController
             int target = y * 3 + x;
             SelectRoom(target > 4 ? target - 1 : target);
         }
+        if (input.CpuColor)
+            ChangeSelectedCpu(false);
+        if (input.CpuTeam)
+            ChangeSelectedCpu(true);
         if (input.Remove)
             RemoveSelectedPlayer();
         if (input.ApplyAll)
@@ -67,6 +71,13 @@ internal sealed partial class MenuController
             Back();
             return;
         }
+        if (game.Lobby.Roster.Slots[SelectedSeat].Player is { Cpu: true } && clicked)
+            for (int action = -2; action <= -1; action++)
+                if (MenuLayout.SlotAction(SelectedSeat, action).Contains(point))
+                {
+                    ChangeSelectedCpu(action == -1, game.Controls.MouseRightPressed ? -1 : 1);
+                    return;
+                }
         if (game.Controls.MousePressed && MenuLayout.SlotAction(SelectedSeat, 2).Contains(point))
         {
             ApplySelectedType();
@@ -91,6 +102,17 @@ internal sealed partial class MenuController
             }
     }
 
+    private void ChangeSelectedCpu(bool team, int direction = 1)
+    {
+        if (game.Lobby.Roster.Slots[SelectedSeat].Player is not { Cpu: true })
+            return;
+        if (team && !game.Lobby.UsesTeams)
+            game.Toasts.Show("ENABLE TEAMS FIRST");
+        else
+            game.Lobby.ChangeCpu(SelectedSeat, team, direction);
+        menuSoundPending = true;
+    }
+
     private void SelectRoom(int room)
     {
         menuSoundPending |= SelectedSeat != room;
@@ -106,6 +128,8 @@ internal sealed partial class MenuController
             return;
         }
         SlotType[] types = game.Lobby.Online == null ? [SlotType.Local, SlotType.Cpu] : Enum.GetValues<SlotType>();
+        if (Rules.Format == Core.MatchFormat.Crews)
+            types = types.Where(type => type != SlotType.Cpu).ToArray();
         var type = types[Wrap(Array.IndexOf(types, SelectedSlotType) + direction, types.Length)];
         if (preview)
         {

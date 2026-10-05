@@ -6,12 +6,36 @@ namespace FrogSmashers.Network;
 
 public static class LobbyAddress
 {
-    public static bool TrySteam(string text, out ulong lobby)
+    public static string SteamCode(ulong lobby, string secret = "")
+    {
+        if (lobby == 0 || secret.Length != 0 && !ValidSecret(secret))
+            throw new ArgumentException("Invalid lobby code");
+        string id = lobby.ToString(CultureInfo.InvariantCulture);
+        return secret.Length == 0 ? id : $"frog:{id}:{secret}";
+    }
+
+    private static bool ValidSecret(string secret) => secret.Length == 64 && secret.All(char.IsAsciiHexDigit);
+
+    public static bool TrySteam(string text, out ulong lobby, out string secret)
     {
         lobby = 0;
+        secret = "";
         text = text.Trim();
         if (text.Length > 512)
             return false;
+        if (text.StartsWith("frog:", StringComparison.OrdinalIgnoreCase))
+        {
+            var code = text.Split(':');
+            if (
+                code.Length != 3
+                || !ValidSecret(code[2])
+                || !ulong.TryParse(code[1], NumberStyles.None, CultureInfo.InvariantCulture, out lobby)
+                || lobby == 0
+            )
+                return false;
+            secret = code[2].ToUpperInvariant();
+            return true;
+        }
         if (text.StartsWith("steam:", StringComparison.OrdinalIgnoreCase) && !text.Contains('/'))
             text = text[6..];
         if (ulong.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out lobby))

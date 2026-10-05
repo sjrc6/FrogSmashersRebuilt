@@ -24,7 +24,8 @@ internal sealed record MenuEntry(
     bool IsTitle = false,
     bool SeparatorBefore = false,
     bool RepeatAdjust = false,
-    string? Help = null
+    string? Help = null,
+    ulong? Avatar = null
 )
 {
     public string Text => Value == null ? Label : Label + ": " + Value;

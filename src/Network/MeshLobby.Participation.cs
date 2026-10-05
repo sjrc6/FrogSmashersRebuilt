@@ -155,9 +155,13 @@ internal sealed partial class MeshLobby
         )
             return;
         foreach (
-            int peer in Roster
-                .Spectators.Select(player => player.Peer)
-                .Where(peer => peer != 0 && !passivePeers.Contains(peer))
+            int peer in peerAddresses
+                .Keys.Where(peer =>
+                    peer != 0
+                    && Roster.Humans(peer).Length == 0
+                    && simulationReadyPeers.Contains(peer)
+                    && !passivePeers.Contains(peer)
+                )
                 .ToArray()
         )
         {

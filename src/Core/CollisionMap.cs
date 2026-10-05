@@ -14,7 +14,8 @@ internal sealed class CollisionMap
                 Fixed.FromDecimal(box.X + box.Width / 2),
                 Fixed.FromDecimal(box.Y - box.Height / 2),
                 Fixed.FromDecimal(box.Y + box.Height / 2),
-                box.OneWay
+                box.OneWay,
+                box.BeachBallCollision
             ))
             .ToArray();
     }
@@ -209,5 +210,56 @@ internal sealed class CollisionMap
         return hit;
     }
 
-    private readonly record struct Box(Fixed Left, Fixed Right, Fixed Bottom, Fixed Top, bool OneWay);
+    public bool SweepBall(
+        FixedVector start,
+        FixedVector delta,
+        Fixed radius,
+        out Fixed fraction,
+        out FixedVector normal
+    )
+    {
+        fraction = 1;
+        normal = default;
+        bool hit = false;
+        foreach (var box in boxes)
+        {
+            if (!box.BeachBallCollision || box.OneWay && (delta.Y >= 0 || start.Y - radius < box.Top))
+                continue;
+            var bottom = box.OneWay ? box.Top : box.Bottom;
+            if (
+                !CollisionQueries.SweepCircleBox(
+                    start,
+                    start + delta,
+                    radius,
+                    box.Left,
+                    bottom,
+                    box.Right,
+                    box.Top,
+                    out var time
+                )
+            )
+                continue;
+            var point = start + delta * time;
+            var closest = new FixedVector(
+                Fixed.Clamp(point.X, box.Left, box.Right),
+                Fixed.Clamp(point.Y, bottom, box.Top)
+            );
+            var side = (point - closest).Normalized;
+            if (side == default || FixedVector.Dot(delta, side) >= 0 || hit && time >= fraction)
+                continue;
+            hit = true;
+            fraction = time;
+            normal = side;
+        }
+        return hit;
+    }
+
+    private readonly record struct Box(
+        Fixed Left,
+        Fixed Right,
+        Fixed Bottom,
+        Fixed Top,
+        bool OneWay,
+        bool BeachBallCollision
+    );
 }

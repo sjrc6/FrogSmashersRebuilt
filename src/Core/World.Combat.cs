@@ -70,6 +70,14 @@ public sealed partial class World
                 }
 
                 player.AttackPhase = AttackPhase.Recovering;
+                var ballRadius = radius + BeachBallState.Radius;
+                if (
+                    Rules.Lobby
+                    && BeachBall.Active
+                    && PointSegmentDistanceSquared(BeachBall.Position, player.Center, player.Center + direction * range)
+                        <= ballRadius * ballRadius
+                )
+                    HitBeachBall(player, direction, GetAttackCharge(player));
                 player.AttackRecoverTimeLeft = tuning.AttackRecoverTime;
             }
         }
@@ -143,17 +151,9 @@ public sealed partial class World
                 player.TongueDistance += Fixed.Abs(player.VY) * deltaTime;
             }
 
-            if (Rules.Modifiers.PhysicsFixes)
-            {
-                player.TongueDistance = Fixed.Min(player.TongueDistance, tuning.TongueRange);
-                SweepExtendingTongue(player, priorTip);
-            }
-            else
-                CheckTongueEndpoint(player);
+            CheckTongueContact(player, priorTip);
 
-            bool atRangeLimit = Rules.Modifiers.PhysicsFixes
-                ? player.TongueDistance >= tuning.TongueRange
-                : player.TongueDistance > tuning.TongueRange;
+            bool atRangeLimit = player.TongueDistance > tuning.TongueRange;
             if (player.TonguePhase == TonguePhase.Extending && atRangeLimit)
             {
                 player.TonguePhase = TonguePhase.Retracting;
@@ -260,14 +260,23 @@ public sealed partial class World
                 Emit(SimulationEventKind.TongueLatch, player, position: tip);
             }
         }
+        else if (
+            Rules.Lobby
+            && BeachBall.Active
+            && (tip - BeachBall.Position).Length <= BeachBallState.Radius + FromDecimal(.5m)
+        )
+        {
+            HitBeachBall(player, -direction, 0, tongue: true);
+            player.TonguePhase = TonguePhase.RetractingHitEnemy;
+            Emit(SimulationEventKind.TongueHit, player, position: tip);
+        }
         else if (player.TongueDistance > tuning.MinimumTongueDistance)
         {
             bool hitTongue = false;
             foreach (var other in Players)
             {
                 if (
-                    other != player
-                    && other.Alive
+                    CanTongueHit(player, other)
                     && other.Mode == CharacterMode.Tongue
                     && other.TonguePhase != TonguePhase.Stunned
                     && other.TonguePhase != TonguePhase.Burping
@@ -285,9 +294,7 @@ public sealed partial class World
                 foreach (var other in Players)
                 {
                     if (
-                        other != player
-                        && other.Alive
-                        && (!Rules.UsesTeams || other.Team != player.Team)
+                        CanTongueHit(player, other)
                         && CircleTouchesBox(tip, 1, other.X - 1, other.Y, other.X + 1, other.Y + 2)
                     )
                     {
@@ -330,6 +337,11 @@ public sealed partial class World
 
     private void Hit(PlayerState victim, PlayerState attacker, FixedVector direction, Fixed power, bool tongue)
     {
+        if (Rules.Lobby)
+        {
+            Emit(SimulationEventKind.LobbyContact, victim, attacker.Slot);
+            return;
+        }
         if (!tongue)
         {
             victim.HitsTaken++;
@@ -345,18 +357,14 @@ public sealed partial class World
         }
 
         ResetHit(victim, attacker.Slot, direction);
-        if (direction.Y == Fixed.Zero)
-        {
-            direction = new(direction.X, tongue ? FromDecimal(.1m) : FromDecimal(.33m));
-        }
-
-        var totalPower = tongue ? (Fixed)25 : 10 + victim.HitsTaken * 10 + power * 30;
-        SetVelocity(victim, direction.Normalized * totalPower);
+        var velocity = HitVelocity(direction, victim.HitsTaken, power, tongue);
+        var totalPower = HitPower(victim.HitsTaken, power, tongue);
+        SetVelocity(victim, velocity);
         ApplyHitstop(victim, tongue ? FromDecimal(.75m) : victim.HitsTaken + power, 0);
         ApplyHitstop(attacker, tongue ? FromDecimal(.5m) : victim.HitsTaken + power, 0);
         if (!tongue)
         {
-            ApplyNearbyHitstop(victim, victim.HitsTaken + power);
+            ApplyNearbyHitstop(victim.Position, victim.HitsTaken + power);
         }
 
         Emit(
@@ -372,18 +380,33 @@ public sealed partial class World
         );
     }
 
+    private static Fixed HitPower(int hits, Fixed power, bool tongue) =>
+        tongue ? (Fixed)25 : 10 + hits * 10 + power * 30;
+
+    private static FixedVector HitVelocity(FixedVector direction, int hits, Fixed power, bool tongue)
+    {
+        if (direction.Y == Fixed.Zero)
+            direction = new(direction.X, tongue ? FromDecimal(.1m) : FromDecimal(.33m));
+        return direction.Normalized * HitPower(hits, power, tongue);
+    }
+
+    private static int HitstopTicks(Fixed duration)
+    {
+        long raw = (duration * FromDecimal(.175m) * TickRate).Raw;
+        return (int)((raw + Fixed.Unit - 1) / Fixed.Unit);
+    }
+
     private void ApplyHitstop(PlayerState player, Fixed duration, Fixed scale)
     {
         player.HitstopScale = player.HitstopTicks > 0 ? Fixed.Min(player.HitstopScale, scale) : scale;
-        long durationRaw = (duration * FromDecimal(.175m) * TickRate).Raw;
-        player.HitstopTicks = Math.Max(player.HitstopTicks, (int)((durationRaw + Fixed.Unit - 1) / Fixed.Unit));
+        player.HitstopTicks = Math.Max(player.HitstopTicks, HitstopTicks(duration));
     }
 
-    private void ApplyNearbyHitstop(PlayerState victim, Fixed duration)
+    private void ApplyNearbyHitstop(FixedVector position, Fixed duration)
     {
         foreach (var other in Players)
         {
-            var distance = (other.Position - victim.Position).LengthSquared;
+            var distance = (other.Position - position).LengthSquared;
             if (other.Alive && distance < 225)
             {
                 ApplyHitstop(other, duration, distance / 225);

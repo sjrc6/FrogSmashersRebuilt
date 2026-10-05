@@ -15,6 +15,13 @@ internal sealed class LobbyAdmissionPolicy
     private readonly HashSet<ulong> grants = new();
     public LobbyPrivacy Privacy { get; }
     public string Secret { get; private set; }
+    public string CodeFingerprint => Fingerprint(Secret);
+
+    private static string Fingerprint(string secret) =>
+        Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(secret)));
+
+    internal static bool CanShare(string secret, string fingerprint) =>
+        secret.Length == 64 && fingerprint.Length == 64 && Fingerprint(secret) == fingerprint;
 
     public LobbyAdmissionPolicy(LobbyPrivacy privacy)
     {
@@ -46,6 +53,22 @@ internal sealed class LobbyAdmissionPolicy
     }
 
     public void Revoke(ulong steamId) => grants.Remove(steamId);
+
+    public bool Invite(ulong steamId, Func<bool> send)
+    {
+        bool added = Grant(steamId);
+        bool sent = false;
+        try
+        {
+            sent = send();
+            return sent;
+        }
+        finally
+        {
+            if (!sent && added)
+                Revoke(steamId);
+        }
+    }
 
     public void Rotate()
     {

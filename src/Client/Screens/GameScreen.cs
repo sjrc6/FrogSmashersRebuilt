@@ -21,6 +21,7 @@ internal enum GameScreen
     JoinLobby,
     BrowseSteam,
     BrowseLan,
+    InviteFriends,
     JoinUdp,
     Extras,
     Bindings,

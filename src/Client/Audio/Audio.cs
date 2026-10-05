@@ -335,6 +335,21 @@ public sealed class Audio : IDisposable
         {
             long id = e.Id << 3;
             var position = new Vector3(e.X.ToFloat(), e.Y.ToFloat(), 0);
+            if (e.Kind == SimulationEventKind.BeachBallHit)
+            {
+                PlayAt(
+                    e.HitKind == HitKind.Bat ? "BatHit" + Math.Clamp(e.ComboHits, 1, 5) : "TongueCollide",
+                    id,
+                    .5f,
+                    position
+                );
+                continue;
+            }
+            if (e.Kind == SimulationEventKind.BeachBallLaunch)
+            {
+                PlayAt("Launch3", id, .5f, position);
+                continue;
+            }
             if (e.Kind == SimulationEventKind.Hit)
             {
                 if (e.HitKind == HitKind.Bat)
@@ -384,7 +399,7 @@ public sealed class Audio : IDisposable
                 SimulationEventKind.TongueLaunch => "TongueLaunch",
                 SimulationEventKind.TongueLatch => "TongueCollideSurface",
                 SimulationEventKind.Burp => "Burp",
-                SimulationEventKind.Bounce => "FrogBounce",
+                SimulationEventKind.Bounce or SimulationEventKind.BeachBallBounce => "FrogBounce",
                 SimulationEventKind.Death => e.Other < 0 ? "KnockoutSuicide"
                 : e.Strength <= 1 ? "Knockout1"
                 : e.Strength <= 3 ? "Knockout2"

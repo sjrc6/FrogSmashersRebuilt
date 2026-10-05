@@ -5,7 +5,7 @@ namespace FrogSmashers.Client;
 internal static class MenuLayout
 {
     private const int RowPadding = 7;
-    private const int LineThickness = 2;
+    private const int LineThickness = 4;
     private const int SectionSpacing = RowPadding * 2 + LineThickness;
 
     public sealed record Measurement(Rectangle Panel, MeasuredRow[] Rows, int Page, int[] PageStarts)
@@ -32,7 +32,7 @@ internal static class MenuLayout
             GameScreen.Main => 240,
             GameScreen.Bindings => 480,
             GameScreen.Modifiers => 560,
-            GameScreen.BrowseSteam or GameScreen.BrowseLan => 560,
+            GameScreen.BrowseSteam or GameScreen.BrowseLan or GameScreen.InviteFriends => 560,
             _ => 440,
         };
         int width = Math.Min(preferredWidth, view.Width - margin * 2);
@@ -55,7 +55,7 @@ internal static class MenuLayout
                 rows[index] = new(new Rectangle(12, 12, width - 24, 72), text);
                 continue;
             }
-            int rowHeight = (int)MathF.Ceiling(text.Height) + RowPadding * 2;
+            int rowHeight = (int)MathF.Ceiling(Math.Max(text.Height, entry.Avatar != null ? 40 : 0)) + RowPadding * 2;
             int separator = entry.SeparatorBefore && used > 0 ? SectionSpacing : 0;
             if (rowHeight > capacity)
                 throw new ArgumentException("Menu row exceeds the viewport");
@@ -108,7 +108,7 @@ internal static class MenuLayout
         Func<MenuEntry, Vector2>? accessorySize
     )
     {
-        float width = panelWidth - 64;
+        float width = panelWidth - 64 - (entry.Avatar != null ? 48 : 0);
         string label;
         if (entry.Key != null || entry.Button != null)
         {

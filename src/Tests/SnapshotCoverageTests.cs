@@ -37,6 +37,7 @@ internal static class SnapshotCoverageTests
                 player.Facing = sample == 1 ? -1 : 1;
             }
             Populate(source.Fly, sample);
+            Populate(source.BeachBall, sample);
             source.Fly.Owner = sample;
             source.Fly.IngestedBy = sample + 1;
             foreach (var field in typeof(World).GetFields(Fields))
@@ -46,6 +47,7 @@ internal static class SnapshotCoverageTests
                     || field.FieldType == typeof(PlayerState[])
                     || field.FieldType == typeof(MatchState)
                     || field.FieldType == typeof(FlyState)
+                    || field.FieldType == typeof(BeachBallState)
                 )
                     continue;
                 field.SetValue(source, Sample(field.FieldType, sample));
@@ -74,7 +76,10 @@ internal static class SnapshotCoverageTests
                 field.GetValue(bots) as Array
                 ?? throw new Exception($"Add a snapshot sample for LobbyBots.{field.Name}");
             for (int index = 0; index < values.Length; index++)
-                values.SetValue(field.FieldType == typeof(int[]) ? (object)(index % 8) : (uint)(index + 37), index);
+                values.SetValue(
+                    field.FieldType == typeof(bool[]) ? (object)(index % 2 == 0) : (uint)(index + 37),
+                    index
+                );
         }
         using var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream);
@@ -218,6 +223,8 @@ internal static class SnapshotCoverageTests
                         );
                 }
             }
+            else if (field.FieldType == typeof(BeachBallState))
+                CompareFields(expected.BeachBall, actual.BeachBall);
             else if (field.FieldType == typeof(FlyState))
                 CompareFields(expected.Fly, actual.Fly);
             else
