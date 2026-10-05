@@ -595,7 +595,7 @@
     "Textures/Sprites/BackGrounds/Skyline/smoke.xnb": "a7d984255a00e228750fc3bfb2c6ad31920704f58a477d0faa4bbeb22c2de079",
     "Textures/Sprites/BackGrounds/busstop_bg_temp_v1.xnb": "bbc6ea19752eca7d008b1fe1d26fec6f63193ebfa4f5285ccb9c1b2a566ce819",
     "Textures/Sprites/BackGrounds/join_screen_v1.xnb": "8d07b3559224544f137ca68e6423b60ca831ba758de6e333a84326ef2d4197a9",
-    "Textures/Sprites/BackGrounds/lobby_background_v1.xnb": "ed673f70b859ac39c83fdaf71026ce74b423df985ffa2109421686138c9ff5bb",
+    "Textures/Sprites/BackGrounds/lobby_background_v1.xnb": "0d94c722d855cb5756d00a2113fffa90af781590cf31cfa66b119a4877c0246c",
     "Textures/Sprites/BeachBall/beach-ball.xnb": "55b431d73d05a60745ad17761712b209bbc16c7ee2cca8714e7292f7b38c48ca",
     "Textures/Sprites/Effects/Impact/Star.xnb": "6ceebd1847d29327cffedb3d607c7731c9d728a3f94e38003624ef27ef1f553c",
     "Textures/Sprites/Effects/Impact/fx_hit_v1_02.xnb": "cd926981c3432a6dab55778ec4892dc9a85ad02ad6f588a5268d7c53cdac8875",
@@ -1104,7 +1104,7 @@
     "smokeRingDistance": 7.5,
     "trailDelay": 0.01
   },
-  "ContentHash": "436e8cdbd12d43e0df8a7af1ecadb7795a3f793861715b68926a4ce5150bcf9e",
+  "ContentHash": "97170b4f5715b61a2178f68ff9f900d58a0840ede0f7d283f0a1e17be41b2a7a",
   "Effects": {
     "BackgroundEscapeShip": {
       "Animations": {
@@ -16656,52 +16656,52 @@
           "Y": -5.4
         },
         {
-          "Height": 6.666666667,
+          "Height": 5,
           "Name": "Room wall",
           "OneWay": false,
           "Width": 0.8,
           "X": -9.666666667,
-          "Y": 11.6666666665
+          "Y": 12.5
         },
         {
-          "Height": 6.666666667,
+          "Height": 5,
           "Name": "Room wall",
           "OneWay": false,
           "Width": 0.8,
           "X": -9.666666667,
-          "Y": 1.6666666665
+          "Y": 2.5
         },
         {
-          "Height": 6.666666667,
+          "Height": 5,
           "Name": "Room wall",
           "OneWay": false,
           "Width": 0.8,
           "X": -9.666666667,
-          "Y": -8.3333333335
+          "Y": -7.5
         },
         {
-          "Height": 6.666666667,
+          "Height": 5,
           "Name": "Room wall",
           "OneWay": false,
           "Width": 0.8,
           "X": 9.666666667,
-          "Y": 11.6666666665
+          "Y": 12.5
         },
         {
-          "Height": 6.666666667,
+          "Height": 5,
           "Name": "Room wall",
           "OneWay": false,
           "Width": 0.8,
           "X": 9.666666667,
-          "Y": 1.6666666665
+          "Y": 2.5
         },
         {
-          "Height": 6.666666667,
+          "Height": 5,
           "Name": "Room wall",
           "OneWay": false,
           "Width": 0.8,
           "X": 9.666666667,
-          "Y": -8.3333333335
+          "Y": -7.5
         },
         {
           "Height": 36,

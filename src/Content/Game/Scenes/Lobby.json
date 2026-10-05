@@ -224,52 +224,52 @@
       "Y": -5.4
     },
     {
-      "Height": 6.666666667,
+      "Height": 5,
       "Name": "Room wall",
       "OneWay": false,
       "Width": 0.8,
       "X": -9.666666667,
-      "Y": 11.6666666665
+      "Y": 12.5
     },
     {
-      "Height": 6.666666667,
+      "Height": 5,
       "Name": "Room wall",
       "OneWay": false,
       "Width": 0.8,
       "X": -9.666666667,
-      "Y": 1.6666666665
+      "Y": 2.5
     },
     {
-      "Height": 6.666666667,
+      "Height": 5,
       "Name": "Room wall",
       "OneWay": false,
       "Width": 0.8,
       "X": -9.666666667,
-      "Y": -8.3333333335
+      "Y": -7.5
     },
     {
-      "Height": 6.666666667,
+      "Height": 5,
       "Name": "Room wall",
       "OneWay": false,
       "Width": 0.8,
       "X": 9.666666667,
-      "Y": 11.6666666665
+      "Y": 12.5
     },
     {
-      "Height": 6.666666667,
+      "Height": 5,
       "Name": "Room wall",
       "OneWay": false,
       "Width": 0.8,
       "X": 9.666666667,
-      "Y": 1.6666666665
+      "Y": 2.5
     },
     {
-      "Height": 6.666666667,
+      "Height": 5,
       "Name": "Room wall",
       "OneWay": false,
       "Width": 0.8,
       "X": 9.666666667,
-      "Y": -8.3333333335
+      "Y": -7.5
     },
     {
       "Height": 36,

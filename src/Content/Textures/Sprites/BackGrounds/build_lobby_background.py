@@ -65,10 +65,10 @@ def main():
     )
     canvas.paste(center, (xs[1], ys[1]))
 
-    # Each vertical opening occupies the lowest third of its room wall.
+    # Each vertical opening occupies the lowest half of its room wall.
     # A six-pixel shift puts the top of each floor wall at the image bottom.
     vertical_walls = Image.new("L", CANVAS_SIZE, 0)
-    vertical_opening = room_height // 3
+    vertical_opening = room_height // 2
     floors = [
         ys[1] - half_wall + FLOOR_SHIFT,
         ys[2] - half_wall + FLOOR_SHIFT,
