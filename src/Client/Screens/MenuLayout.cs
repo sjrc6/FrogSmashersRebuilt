@@ -35,6 +35,11 @@ internal static class MenuLayout
             GameScreen.BrowseSteam or GameScreen.BrowseLan or GameScreen.InviteFriends => 560,
             _ => 440,
         };
+        if (screen == GameScreen.Main)
+        {
+            float labelWidth = entries.Select(entry => font.Measure(entry.Label).X).DefaultIfEmpty().Max();
+            preferredWidth = Math.Max(preferredWidth, (int)MathF.Ceiling(labelWidth) + 64);
+        }
         int width = Math.Min(preferredWidth, view.Width - margin * 2);
         int header = RowsOffset(screen);
         int footer = (showSticks ? 32 : 0) + RowPadding + FooterHeight(screen);
@@ -150,7 +155,7 @@ internal static class MenuLayout
     private static int FooterHeight(GameScreen screen) =>
         screen switch
         {
-            GameScreen.ViewPlayers => 82,
+            GameScreen.ViewPlayers or GameScreen.InviteFriends => 82,
             GameScreen.Modifiers => 140,
             _ => 50,
         };
@@ -176,6 +181,16 @@ internal static class MenuLayout
         paired
             ? new(panel.Center.X + 4, panel.Bottom - 44, (panel.Width - 44) / 2, 30)
             : new(panel.Left + 18, panel.Bottom - 44, panel.Width - 36, 30);
+
+    public static Rectangle FooterRefresh(Rectangle panel) =>
+        new(panel.Left + 18, panel.Bottom - 78, panel.Width - 36, 30);
+
+    public static int PageSelection(Measurement layout, int direction)
+    {
+        int pages = layout.PageStarts.Length;
+        int page = (layout.Page + direction + pages) % pages;
+        return layout.PageStarts[page];
+    }
 
     public static Rectangle FooterBack(Rectangle panel) =>
         new(panel.Center.X, panel.Bottom - 48, panel.Width / 2 - 18, 36);

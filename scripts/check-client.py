@@ -124,16 +124,17 @@ def verify_connections_and_repeat():
     assert edited["Page"] == "SlotEditor" and not edited["ConnectionsVisible"], edited
 
     settings = [key(0, "Down"), key(2, "Down"), key(4, "Down"), key(6, "Enter")]
-    volume = settings + [key(7, "Down"), key(9, "Down"), key(11, "Down")]
+    volume = settings
     for name, action in [("key", dict(Keys=["Left"])), ("pad", dict(Pads={0: ["DPadLeft"]}))]:
         changed = capture("repeat-volume-" + name,
                           volume + [dict(From=13, To=110, **action)], 108)
         assert changed["Volume"] == 0, changed
-    toggled = capture("no-repeat-toggle", settings + [key(7, "Down"), dict(From=9, To=90, Keys=["Right"])], 95)
+    graphics = settings + [key(7, "Down"), key(9, "Down"), key(11, "Enter")]
+    toggled = capture("no-repeat-toggle", graphics + [key(13, "Down"), dict(From=15, To=90, Keys=["Right"])], 95)
     assert "VSYNC: ON" in toggled["MenuItems"], toggled
-    rollback = settings + [key(frame, "Down") for frame in (7, 9, 11, 13, 15, 17, 19)] + [key(21, "Enter")]
+    rollback = settings + [key(frame, "Down") for frame in (7, 9, 11, 13)] + [key(15, "Enter")]
     adjusted = capture("repeat-rollback", rollback + [dict(From=23, To=80, Keys=["Right"])], 85)
-    assert adjusted["Page"] == "Rollback" and len(adjusted["MenuItems"]) == 4, adjusted
+    assert adjusted["Page"] == "Rollback" and len(adjusted["MenuItems"]) == 3, adjusted
     assert adjusted["MenuItems"][0] != "DELAY: 20.0 MS", adjusted
     settings_file.write_bytes(initial_settings)
     print("PASS: Tab visibility, eight-player layout, local lobby, slot editor, numeric repeat and single-press toggles.")
@@ -372,12 +373,12 @@ def verify_lobby_menus():
     assert pad_backed_out["LobbySlots"][0]["Player"] is None, pad_backed_out
 
     settings = joining + [key(15, "Escape")] + [key(frame, "S") for frame in (17, 19, 21, 23)] + [key(25, "Enter")]
-    settings += [key(frame, "S") for frame in (27, 29, 31)] + [key(33, "D")]
+    settings += [key(27, "D")]
     personal = capture("personal-settings", settings, 35)
     assert personal["Page"] == "Settings" and abs(personal["Volume"] - .70) < .001, personal
     assert not any("TEAMS" in row or "WIN SCORE" in row or "MACHINES" in row for row in personal["MenuItems"]), personal
     # Mouse actions still work, and returning from personal settings preserves the party.
-    returned = capture("return-to-lobby", settings + [click(37, *menu_center(personal, "back")), key(39, "Escape")], 50)
+    returned = capture("return-to-lobby", settings + [click(37, *menu_center(personal, "back", "MenuButtons")), key(39, "Escape")], 50)
     assert returned["Page"] == "Seats" and returned["LocalDevices"] == [0, 1], returned
 
     cpu = [key(1, "Enter"), key(3, "U"), key(5, "U"), key(7, "Escape")]
@@ -421,13 +422,13 @@ def verify_lobby_menus():
         assert hints["JoinHintDevices"] == expected, hints
     online = [key(1, "Down"), key(3, "Enter")]
     choices = capture("online-choices", online, 5)
-    assert choices["MenuItems"] == ["CREATE LOBBY", "JOIN LOBBY", "BACK"], choices
+    assert choices["MenuItems"] == ["CREATE LOBBY", "JOIN LOBBY"], choices
     assert choices["MenuBackground"] and choices["LobbySlots"] is None, choices
     backed = capture("online-back", online + [key(7, "Escape")], 9)
     assert backed["Page"] == "Main" and backed["MenuBackground"] and backed["LobbySlots"] is None, backed
     join = online + [key(7, "Down"), key(9, "Enter")]
     joining = capture("join-lobby-options", join, 11)
-    assert joining["MenuItems"] == ["BROWSE STEAM LOBBIES", "JOIN CLIPBOARD LOBBY", "BROWSE LAN LOBBIES", "JOIN UDP", "BACK"], joining
+    assert joining["MenuItems"] == ["BROWSE STEAM LOBBIES", "JOIN CLIPBOARD LOBBY", "BROWSE LAN LOBBIES", "JOIN BY ADDRESS"], joining
     assert joining["MenuBackground"] and joining["LobbySlots"] is None, joining
     udp = join + [key(13, "Down"), key(15, "Down"), key(17, "Down"), key(19, "Enter")]
     direct = capture("join-udp-options", udp, 21)
@@ -438,7 +439,7 @@ def verify_lobby_menus():
     returned = capture("browse-lan-back", lan + [key(23, "Escape")], 25)
     assert returned["Page"] == "JoinLobby" and returned["MenuBackground"], returned
     creation = capture("create-lobby", online + [key(7, "Enter")], 9)
-    assert creation["Page"] == "CreateLobby" and creation["MenuItems"][:2] == ["MAX PLAYERS: 8", "TYPE: PUBLIC"], creation
+    assert creation["Page"] == "CreateLobby" and creation["MenuItems"][:2] == ["MAX PLAYERS: 4", "TYPE: PUBLIC"], creation
 
     controller_online = [pad(1, 0, "DPadDown"), pad(3, 0, "A"), pad(5, 0, "A")]
     controller_creation = capture("controller-create-lobby", controller_online, 8)
@@ -673,7 +674,7 @@ def verify_guest_match_settings(modifiers=False):
             assert guest["MatchSettings"]["Modifiers"]["PhysicsFixes"] and not guest["MatchSettings"]["Modifiers"]["BodyBouncing"], guest
         else:
             assert "FORMAT: TEAMS" in guest["MenuItems"] and "ROUND TARGET: 1" in guest["MenuItems"], values
-        assert all(row["DisabledReason"] == "HOST ONLY" for row in guest["MenuRows"] if row["Id"] != "back"), guest
+        assert all(row["DisabledReason"] == "HOST ONLY" for row in guest["MenuRows"]), guest
         assert guest["MatchSettings"]["Format"] == 0 and guest["MatchSettings"]["WinScore"] == 0, guest
         print("PASS: guests see live host settings, cannot edit them, and retain their own local draft.")
     finally:

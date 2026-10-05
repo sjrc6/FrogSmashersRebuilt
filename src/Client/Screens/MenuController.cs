@@ -16,6 +16,7 @@ internal sealed partial class MenuController : IDisposable
     private GameScreen context = GameScreen.Main;
     private bool menuSoundPending;
     private readonly MenuRepeat adjustRepeat = new();
+    private readonly MenuRepeat pageRepeat = new();
     private readonly MenuRepeat navigationRepeat = new(.3, .05);
     private GameScreen navigationScreen;
     private (GameScreen Screen, string? Identity) repeatTarget;
@@ -47,8 +48,6 @@ internal sealed partial class MenuController : IDisposable
     private static string OnOff(bool value) => value ? "ON" : "OFF";
 
     private MenuEntry Link(string label, GameScreen screen) => new("page-" + screen, label, () => Open(screen));
-
-    private MenuEntry BackRow() => new("back", "BACK", Back);
 
     public IReadOnlyList<MenuEntry> Entries()
     {
@@ -154,6 +153,9 @@ internal sealed partial class MenuController : IDisposable
             case GameScreen.ViewPlayers:
                 UpdatePlayerList(input);
                 break;
+            case GameScreen.InviteFriends:
+                UpdateFriends(input);
+                break;
             case GameScreen.Outro:
                 if (game.Match.Network?.Error != null && !game.Match.Network.IsTransportFailure)
                     game.Fail(game.Match.Network.Error);
@@ -217,7 +219,10 @@ internal sealed partial class MenuController : IDisposable
     private MenuInput RepeatNavigation(MenuInput input, double elapsedSeconds)
     {
         if (navigationScreen != Screen || game.Controls.MouseMoved)
+        {
             navigationRepeat.Reset();
+            pageRepeat.Reset();
+        }
         navigationScreen = Screen;
         if (
             Screen
@@ -234,6 +239,8 @@ internal sealed partial class MenuController : IDisposable
             navigationRepeat.Reset();
             return input;
         }
+        if (Screen == GameScreen.InviteFriends)
+            input = input with { Horizontal = pageRepeat.Read(input.HorizontalHeld, input.Horizontal, elapsedSeconds) };
         return input with { Vertical = navigationRepeat.Read(input.VerticalHeld, input.Vertical, elapsedSeconds) };
     }
 
@@ -329,8 +336,7 @@ internal sealed partial class MenuController : IDisposable
             foreach (int direction in new[] { -1, 1 })
                 if (MenuLayout.PageButton(layout, direction).Contains(point))
                 {
-                    int page = Wrap(layout.Page + direction, layout.PageStarts.Length);
-                    SelectRow(layout.PageStarts[page]);
+                    SelectRow(MenuLayout.PageSelection(layout, direction));
                     return true;
                 }
         }
@@ -527,6 +533,7 @@ internal sealed partial class MenuController : IDisposable
         if (
             Screen
             is GameScreen.Settings
+                or GameScreen.Graphics
                 or GameScreen.Rollback
                 or GameScreen.MatchSettings
                 or GameScreen.Modifiers

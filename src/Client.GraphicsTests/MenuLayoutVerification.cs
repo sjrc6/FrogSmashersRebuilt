@@ -110,6 +110,30 @@ internal sealed partial class PresentationChecks
                         && friendLayout.Rows.Where(row => !row.Bounds.IsEmpty).All(row => row.Bounds.Height >= 54),
                     $"Friend portraits reserve their height even before avatar data arrives at {size}"
                 );
+                Check(
+                    friendLayout.Panel.Contains(MenuLayout.FooterRefresh(friendLayout.Panel))
+                        && friendLayout
+                            .Rows.Where(row => !row.Bounds.IsEmpty)
+                            .All(row =>
+                                row.Bounds.Bottom <= MenuLayout.FooterLine(GameScreen.InviteFriends, friendLayout.Panel)
+                            ),
+                    $"Friend rows leave room for the refresh and navigation hints at {size}"
+                );
+                for (int page = 0; page < friendLayout.PageStarts.Length; page++)
+                {
+                    var current = MenuLayout.Measure(
+                        GameScreen.InviteFriends,
+                        friends,
+                        assets.Font,
+                        selected: friendLayout.PageStarts[page]
+                    );
+                    int next = MenuLayout.PageSelection(current, 1);
+                    var nextLayout = MenuLayout.Measure(GameScreen.InviteFriends, friends, assets.Font, selected: next);
+                    Check(
+                        nextLayout.Page == (page + 1) % friendLayout.PageStarts.Length,
+                        $"Friend paging reaches the next measured page at {size}"
+                    );
+                }
                 var small = new MenuEntry("number", "VARIABLE TARGET", Value: "1", ValueSample: "999");
                 var large = small with { Value = "999" };
                 var first = MenuLayout.Measure(GameScreen.Settings, [small], assets.Font);

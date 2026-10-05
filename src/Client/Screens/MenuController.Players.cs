@@ -54,7 +54,6 @@ internal sealed partial class MenuController
         }
         foreach (int peer in UnseatedPeers())
             rows.Add(new($"connection-{peer}", peer == 0 ? "HOST" : $"GUEST {peer}", Value: "NOT JOINED"));
-        rows.Add(new("back", "BACK", Back));
         return rows;
     }
 
@@ -117,7 +116,8 @@ internal sealed partial class MenuController
             return;
         }
         var entries = Entries();
-        SelectRow(Wrap(Selected + input.Vertical, entries.Count));
+        if (entries.Count > 0)
+            SelectRow(Wrap(Selected + input.Vertical, entries.Count));
         var layout = MeasurePointer(entries);
         bool clickedRow = ClickRow(entries, layout);
         if (clickedRow)
@@ -126,8 +126,6 @@ internal sealed partial class MenuController
         var actions = PlayerActions();
         if (input.Accept && actions.Accept != null)
             ActivateEntry(actions.Accept);
-        else if (input.Accept && Selected == entries.Count - 1)
-            Back();
         else if (input.Remove && actions.Remove != null)
             ActivateEntry(actions.Remove);
         else if (game.Controls.MousePressed && Pointer() is { } point)

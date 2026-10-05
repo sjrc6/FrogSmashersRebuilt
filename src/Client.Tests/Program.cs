@@ -49,6 +49,7 @@ internal static class Program
             SettingsSaveTests.Run(Check);
             Ipv6FirewallTests.Run(Check);
             MenuRepeatTests.Run(Check);
+            FriendMenuTests.Run(Check);
             LocalTestLauncherTests.Run(Check);
             LobbyMenuTests.Run(Check);
             LobbyPresentationTests.Run(Check);

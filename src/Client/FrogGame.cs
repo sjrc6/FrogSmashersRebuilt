@@ -400,15 +400,6 @@ public class FrogGame : Game
         Menus.ShowSeats();
     }
 
-    internal void WatchCpus()
-    {
-        var demo = new MatchSetup(Setup.Seed, Assets.Data.Maps, Setup.FirstMap);
-        for (int slot = 0; slot < 4; slot++)
-            demo.Lobby.Join(-1, slot % 2);
-        Match.StartLocal(demo.CreateOptions(Options.MapOrder), demo.Seats);
-        ShowMatch();
-    }
-
     internal void MainMenu()
     {
         LastError = null;

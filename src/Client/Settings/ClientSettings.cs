@@ -12,7 +12,7 @@ public sealed class ClientSettings
     public bool VSync { get; set; } = true;
     public int FrameLimit { get; set; } = 240;
     public float Volume { get; set; } = .65f;
-    public float TitleVolume { get; set; } = 1;
+    public float TitleVolume { get; set; } = .35f;
     public bool ScreenShake { get; set; } = true;
     public Dictionary<string, PadBindings> ControllerBindings { get; set; } = new();
     public KeyBindings[] Keyboard { get; set; } =

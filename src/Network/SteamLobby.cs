@@ -419,24 +419,32 @@ public sealed class SteamLobby : GameLobby
             : null;
     }
 
-    public IReadOnlyList<SteamFriend> Friends()
+    public IReadOnlyList<SteamFriend> Friends(IReadOnlySet<ulong> invited)
     {
         if (!initialized || disposed)
             return [];
         var friends = new List<SteamFriend>();
         const EFriendFlags flags = EFriendFlags.k_EFriendFlagImmediate;
         int count = SteamFriends.GetFriendCount(flags);
+        var currentApp = SteamUtils.GetAppID();
         for (int index = 0; index < count; index++)
         {
             var id = SteamFriends.GetFriendByIndex(index, flags);
             string name = LobbyListing.DisplayName(SteamFriends.GetFriendPersonaName(id), "FRIEND");
-            bool online = SteamFriends.GetFriendPersonaState(id) != EPersonaState.k_EPersonaStateOffline;
-            friends.Add(new(id.m_SteamID, name, online));
+            var state = SteamFriends.GetFriendPersonaState(id);
+            bool inGame = SteamFriends.GetFriendGamePlayed(id, out var game);
+            friends.Add(
+                new(
+                    id.m_SteamID,
+                    name,
+                    state,
+                    inGame,
+                    inGame && game.m_gameID.AppID() == currentApp,
+                    inGame && game.m_steamIDLobby.IsValid()
+                )
+            );
         }
-        return friends
-            .OrderByDescending(friend => friend.Online)
-            .ThenBy(friend => friend.Name, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        return SteamFriend.Sort(friends, invited);
     }
 
     public override IPeerTransport CreateTransport() =>

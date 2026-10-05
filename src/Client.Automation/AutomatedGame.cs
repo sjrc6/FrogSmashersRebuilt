@@ -116,7 +116,7 @@ internal sealed class AutomatedGame : FrogGame
 
         var buffer = GraphicsDevice.PresentationParameters;
         var entries = Menus.Entries();
-        var layout = entries.Count > 0 ? MenuRenderer.Measure(entries) : null;
+        var layout = entries.Count > 0 || Menus.Screen == GameScreen.ViewPlayers ? MenuRenderer.Measure(entries) : null;
         var playerActions = Menus.Screen == GameScreen.ViewPlayers ? Menus.PlayerActions() : default;
         var buttons = new Dictionary<string, Rectangle>();
         if (layout != null)

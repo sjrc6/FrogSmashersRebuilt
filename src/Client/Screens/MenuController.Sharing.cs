@@ -1,4 +1,5 @@
 using FrogSmashers.Network;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace FrogSmashers.Client;
@@ -100,8 +101,8 @@ internal sealed partial class MenuController
             return;
         ClearFriendAvatars();
         avatarRefresh = 0;
-        friends = lobby.Friends();
         invitedFriends.Clear();
+        friends = lobby.Friends(invitedFriends);
         Open(GameScreen.InviteFriends);
     }
 
@@ -114,20 +115,59 @@ internal sealed partial class MenuController
                 "friend-" + friend.Id,
                 friend.Name,
                 () => SendInvitation(friend.Id),
-                Role: MenuRole.Positive,
                 Avatar: friend.Id,
-                Value: invitedFriends.Contains(friend.Id) ? "INVITED"
-                    : friend.Online ? "ONLINE"
-                    : "OFFLINE",
-                ValueSample: "INVITED",
-                DisabledReason: disabled
+                Value: invitedFriends.Contains(friend.Id) ? "INVITED" : FriendPresentation.Status(friend.Presence),
+                ValueSample: "IN-GAME",
+                DisabledReason: disabled,
+                LabelColor: Color.White,
+                ValueColor: invitedFriends.Contains(friend.Id)
+                    ? FriendPresentation.OnlineColor
+                    : FriendPresentation.StatusColor(friend.Presence)
             ))
             .ToList();
         if (rows.Count == 0)
             rows.Add(new("no-friends", "NO FRIENDS FOUND", DisabledReason: "NO FRIENDS FOUND"));
-        rows.Add(new("refresh", "REFRESH", () => friends = lobby?.Friends() ?? []));
-        rows.Add(BackRow());
         return rows;
+    }
+
+    public ButtonGlyph[] FriendRefreshGlyphs() =>
+        HintDevice < 2
+            ? [ButtonGlyph.Key(game.Settings.Keyboard[HintDevice].Attack)]
+            : ButtonGlyph.PadBinding(game.Controls.ControllerBindings(HintDevice - 2).Attack);
+
+    private void UpdateFriends(MenuInput input)
+    {
+        var entries = Entries();
+        var layout = game.MenuRenderer.Measure(entries);
+        if (input.Back || ClickBackHint(layout))
+        {
+            Back();
+            return;
+        }
+        bool refresh =
+            game.Controls.MousePressed
+            && Pointer() is { } point
+            && MenuLayout.FooterRefresh(layout.Panel).Contains(point);
+        if (FriendPresentation.RefreshDevice(game.Controls, game.Settings) is { } device)
+        {
+            HintDevice = device;
+            refresh = true;
+        }
+        if (refresh)
+        {
+            friends = (game.Online.Lobby as SteamLobby)?.Friends(invitedFriends) ?? [];
+            avatarRefresh = 0;
+            menuSoundPending = true;
+            game.Toasts.Show("FRIENDS REFRESHED");
+            return;
+        }
+        if (input.Horizontal != 0 && layout.Paginated)
+        {
+            SelectRow(MenuLayout.PageSelection(layout, input.Horizontal));
+            game.Controls.SuspendMouseHover();
+            return;
+        }
+        UpdateRows(input);
     }
 
     private void SendInvitation(ulong friend)

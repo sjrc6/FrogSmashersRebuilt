@@ -17,7 +17,7 @@ internal sealed partial class MenuController
     {
         var options = DisplayedMatchOptions();
         if (options == null)
-            return [new("waiting", "WAITING FOR HOST", DisabledReason: "WAITING FOR HOST"), BackRow()];
+            return [new("waiting", "WAITING FOR HOST", DisabledReason: "WAITING FOR HOST")];
         var rules = options.Rules;
         var entries = ModifierCatalog
             .All.Select(definition => new MenuEntry(
@@ -41,7 +41,6 @@ internal sealed partial class MenuController
                 Help: "RESTORE DEFAULT MODIFIERS, INCLUDING PHYSICS FIXES ON AND BODY BOUNCING OFF."
             )
         );
-        entries.Add(BackRow());
         return entries;
     }
 }

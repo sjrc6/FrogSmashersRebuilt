@@ -48,7 +48,6 @@ internal sealed partial class MenuController
                 Change: amount => Change(value => value with { MaxExtraDelay = value.MaxExtraDelay + amount })
             )
         );
-        rows.Add(new("back", "BACK", Back));
         return rows;
     }
 }

@@ -13,7 +13,7 @@ internal sealed partial class MenuController
                 [
                     new("local", "LOCAL", () => ShowSeats()),
                     new("online", "ONLINE", OpenOnline),
-                    new("join-clipboard-lobby", "JOIN FROM CLIPBOARD", JoinClipboardLobby, Role: MenuRole.Positive),
+                    new("join-clipboard-lobby", "JOIN CLIPBOARD", JoinClipboardLobby, Role: MenuRole.Positive),
                     Link("SETTINGS", GameScreen.Settings),
                     Link("EXTRAS", GameScreen.Extras),
                     new("quit", "QUIT", game.Exit, Role: MenuRole.Destructive),
@@ -23,16 +23,14 @@ internal sealed partial class MenuController
                 [
                     new(
                         "play-intro",
-                        "PLAY INTRO",
+                        "INTRO",
                         () =>
                         {
                             game.Cinematics.StartIntro();
                             Screen = GameScreen.Intro;
                         }
                     ),
-                    new("watch-cpus", "WATCH CPUS", game.WatchCpus),
                     new("credits", "CREDITS", OpenCredits),
-                    BackRow(),
                 ];
             case GameScreen.Seats:
                 return [];
@@ -90,6 +88,8 @@ internal sealed partial class MenuController
                 return PlayerRows();
             case GameScreen.Settings:
                 return PersonalRows();
+            case GameScreen.Graphics:
+                return GraphicsRows();
             case GameScreen.Rollback:
                 return RollbackRows();
             case GameScreen.MatchSettings:
@@ -97,12 +97,7 @@ internal sealed partial class MenuController
             case GameScreen.Modifiers:
                 return ModifierRows();
             case GameScreen.Online:
-                return
-                [
-                    Link("CREATE LOBBY", GameScreen.CreateLobby),
-                    Link("JOIN LOBBY", GameScreen.JoinLobby),
-                    BackRow(),
-                ];
+                return [Link("CREATE LOBBY", GameScreen.CreateLobby), Link("JOIN LOBBY", GameScreen.JoinLobby)];
             case GameScreen.CreateLobby:
                 var creation = new List<MenuEntry>
                 {
@@ -122,7 +117,6 @@ internal sealed partial class MenuController
                     }
                 );
                 creation.Add(new("create-lobby", "CREATE LOBBY", CreateOnlineLobby));
-                creation.Add(BackRow());
                 return creation;
             case GameScreen.CreateLobbyAdvanced:
                 return
@@ -140,7 +134,6 @@ internal sealed partial class MenuController
                             game.ScheduleSettingsSave();
                         }
                     ),
-                    BackRow(),
                 ];
             case GameScreen.JoinLobby:
                 return
@@ -148,8 +141,7 @@ internal sealed partial class MenuController
                     Link("BROWSE STEAM LOBBIES", GameScreen.BrowseSteam),
                     new("join-clipboard-lobby", "JOIN CLIPBOARD LOBBY", JoinClipboardLobby),
                     Link("BROWSE LAN LOBBIES", GameScreen.BrowseLan),
-                    Link("JOIN UDP", GameScreen.JoinUdp),
-                    BackRow(),
+                    Link("JOIN BY ADDRESS", GameScreen.JoinUdp),
                 ];
             case GameScreen.BrowseSteam or GameScreen.BrowseLan:
                 return browserEntries;
@@ -161,7 +153,6 @@ internal sealed partial class MenuController
                     new("address", "ADDRESS", BeginAddressEdit, Value: JoinAddress),
                     new("join-lobby", "JOIN LOBBY", () => game.BeginLobby("udp:" + JoinAddress, false)),
                     new("join-clipboard-address", "JOIN CLIPBOARD ADDRESS", JoinClipboardAddress),
-                    BackRow(),
                 ];
             case GameScreen.Connecting:
                 return [new("cancel", "CANCEL", game.CancelConnection)];
@@ -183,7 +174,6 @@ internal sealed partial class MenuController
                     .Append(
                         new MenuEntry("reset-to-default", "RESET TO DEFAULT", ResetBindings, Role: MenuRole.Destructive)
                     )
-                    .Append(BackRow())
                     .ToArray();
             default:
                 return [];

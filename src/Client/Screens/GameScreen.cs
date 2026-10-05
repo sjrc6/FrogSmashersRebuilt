@@ -10,6 +10,7 @@ internal enum GameScreen
     Connecting,
     Playing,
     Settings,
+    Graphics,
     Rollback,
     MatchSettings,
     Modifiers,

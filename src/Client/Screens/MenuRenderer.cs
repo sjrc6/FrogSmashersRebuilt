@@ -157,6 +157,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             game.Renderer.CenteredText(text.Label, row.Center.X, row.Center.Y, color, center: true);
             return;
         }
+        color = entry.LabelColor ?? color;
         float left = panel.Left + 32;
         if (entry.Avatar is { } avatar)
         {
@@ -193,13 +194,13 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             if (!text.Stacked)
             {
                 game.Renderer.CenteredText(text.Label, left, row.Center.Y, color);
-                RightText(value, right, row.Center.Y, color);
+                RightText(value, right, row.Center.Y, entry.ValueColor ?? color);
             }
             else
             {
                 float top = row.Center.Y - text.Height / 2;
                 game.Renderer.Text(text.Label, left, top, color);
-                RightText(value, right, top + text.Height - font.Measure(value).Y / 2, color);
+                RightText(value, right, top + text.Height - font.Measure(value).Y / 2, entry.ValueColor ?? color);
             }
         }
         else
@@ -356,6 +357,18 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             CenteredHint(ButtonGlyph.Menu(menu.HintDevice), "CANCEL", panel.Center.X, panel.Bottom - 30);
             return;
         }
+        if (menu.Screen == GameScreen.InviteFriends)
+        {
+            var glyphs = menu.FriendRefreshGlyphs();
+            float width = glyphs.Sum(GlyphWidth) + HintGap * glyphs.Length + game.Assets.Font.Measure("REFRESH").X;
+            float x = panel.Center.X - width / 2;
+            foreach (var glyph in glyphs)
+            {
+                Glyph(glyph, x, panel.Bottom - 62);
+                x += GlyphWidth(glyph) + HintGap;
+            }
+            game.Renderer.CenteredText("REFRESH", x, panel.Bottom - 62, Color.White);
+        }
         var accept = ButtonGlyph.Accept(menu.HintDevice);
         if (menu.Screen == GameScreen.Main)
         {
@@ -363,7 +376,10 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             return;
         }
         var back = ButtonGlyph.Back(menu.HintDevice);
-        string acceptText = menu.EditingAddress ? "DONE" : "SELECT";
+        string acceptText =
+            menu.EditingAddress ? "DONE"
+            : menu.Screen == GameScreen.InviteFriends ? "INVITE"
+            : "SELECT";
         string backText =
             menu.WaitingForBinding ? "CANCEL"
             : menu.EditingAddress ? "DONE"
@@ -447,6 +463,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
         {
             GameScreen.LobbyMenu => "LOBBY",
             GameScreen.Settings => "SETTINGS",
+            GameScreen.Graphics => "GRAPHICS",
             GameScreen.Rollback => "ROLLBACK",
             GameScreen.MatchSettings => "MATCH SETTINGS",
             GameScreen.Modifiers => "MODIFIERS",
@@ -470,8 +487,8 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
     {
         bool editing = menu.Screen == GameScreen.SlotEditor;
         string heading =
-            game.Online.Lobby is SteamLobby steam ? $"STEAM LOBBY {steam.LobbyCode}"
-            : game.Online.Lobby != null ? $"UDP LOBBY :{game.Options.Port}"
+            game.Online.Lobby is SteamLobby ? "ONLINE LOBBY"
+            : game.Online.Lobby != null ? $"LAN LOBBY : {game.Options.Port}"
             : "LOCAL LOBBY";
         if (!editing)
             game.Renderer.Text(heading, 640, 17, Color.White, center: true);

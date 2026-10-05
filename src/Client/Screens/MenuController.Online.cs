@@ -75,7 +75,6 @@ internal sealed partial class MenuController
                 }
             )
         );
-        browserEntries.Add(BackRow());
     }
 
     private string? ReadClipboard()

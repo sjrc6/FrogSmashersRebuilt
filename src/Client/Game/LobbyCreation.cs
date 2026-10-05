@@ -5,7 +5,7 @@ namespace FrogSmashers.Client;
 internal sealed class LobbyCreation
 {
     private int type = 2;
-    private int capacity = 8;
+    private int capacity = 4;
     public bool Lan => type == 3;
     public LobbyPrivacy Privacy =>
         type switch
@@ -15,7 +15,7 @@ internal sealed class LobbyCreation
             4 => LobbyPrivacy.PrivateCode,
             _ => LobbyPrivacy.Public,
         };
-    public string TypeLabel => new[] { "PRIVATE", "FRIENDS", "PUBLIC", "LAN / UDP", "PRIVATE CODE" }[type];
+    public string TypeLabel => new[] { "PRIVATE", "FRIENDS", "PUBLIC", "LAN", "PRIVATE CODE" }[type];
     public SlotType SlotType =>
         type switch
         {
@@ -26,7 +26,7 @@ internal sealed class LobbyCreation
 
     public int Capacity(LobbyRoster roster) => Math.Clamp(capacity, Math.Max(1, roster.Count), 8);
 
-    public void Reset(LobbyRoster roster) => capacity = Math.Max(1, roster.Capacity);
+    public void Reset(LobbyRoster roster) => capacity = Math.Max(4, roster.Count);
 
     public void CycleType(int direction) => type = (type + direction + 5) % 5;
 

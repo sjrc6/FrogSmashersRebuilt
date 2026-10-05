@@ -8,7 +8,7 @@ internal sealed partial class MenuController
     {
         var options = DisplayedMatchOptions();
         if (options == null)
-            return [new("waiting", "WAITING FOR HOST", DisabledReason: "WAITING FOR HOST"), BackRow()];
+            return [new("waiting", "WAITING FOR HOST", DisabledReason: "WAITING FOR HOST")];
         var rules = options.Rules;
         string? readOnly = MatchSettingsReadOnly;
         var entries = new List<MenuEntry>
@@ -72,7 +72,6 @@ internal sealed partial class MenuController
                 Change: _ => Rules.ShuffleMaps = !Rules.ShuffleMaps,
                 DisabledReason: readOnly
             ),
-            BackRow(),
         };
         return entries;
     }
