@@ -8,7 +8,7 @@ internal sealed class Installation(string directory, string platform)
     private const string BackupOwner = "FrogSmashersRebuilt update backup";
     private string Backup => Path.Combine(directory, BackupName);
 
-    private sealed record Journal(PackageManifest Previous, PackageManifest Next, string[] Existing);
+    internal sealed record Journal(PackageManifest Previous, PackageManifest Next, string[] Existing);
 
     public void Apply(string staged, PackageManifest previous, PackageManifest next)
     {
@@ -40,7 +40,7 @@ internal sealed class Installation(string directory, string platform)
             var journal = new Journal(previous, next, existing.ToArray());
             using (var output = new FileStream(Path.Combine(Backup, "journal.tmp"), FileMode.CreateNew))
             {
-                JsonSerializer.Serialize(output, journal);
+                JsonSerializer.Serialize(output, journal, UpdaterJson.Default.Journal);
                 output.Flush(true);
             }
             File.Move(Path.Combine(Backup, "journal.tmp"), Path.Combine(Backup, "journal.json"));
@@ -90,7 +90,7 @@ internal sealed class Installation(string directory, string platform)
             return;
         }
         var journal =
-            JsonSerializer.Deserialize<Journal>(File.ReadAllText(journalPath))
+            JsonSerializer.Deserialize(File.ReadAllText(journalPath), UpdaterJson.Default.Journal)
             ?? throw new InvalidDataException("The update recovery journal is unreadable.");
         journal.Previous.Validate(platform);
         journal.Next.Validate(platform);

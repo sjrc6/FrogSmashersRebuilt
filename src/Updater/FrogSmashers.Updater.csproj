@@ -3,6 +3,9 @@
     <OutputType>Exe</OutputType>
     <AssemblyName>FrogSmashersUpdater</AssemblyName>
     <ApplicationIcon>../Client/Icons/FrogSmashersRebuilt.ico</ApplicationIcon>
+    <PublishTrimmed>true</PublishTrimmed>
+    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+    <ILLinkTreatWarningsAsErrors>true</ILLinkTreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="FrogSmashers.Updater.Tests" />

@@ -24,7 +24,7 @@ internal sealed record PackageManifest(string Platform, string Commit, Dictionar
         if (new FileInfo(path).Length > 4 * 1024 * 1024)
             throw new InvalidDataException("Installation manifest is too large.");
         var manifest =
-            JsonSerializer.Deserialize<PackageManifest>(File.ReadAllText(path))
+            JsonSerializer.Deserialize(File.ReadAllText(path), UpdaterJson.Default.PackageManifest)
             ?? throw new InvalidDataException("Invalid installation manifest.");
         manifest.Validate(platform);
         return manifest;

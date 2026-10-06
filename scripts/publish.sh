@@ -17,7 +17,7 @@ for rid in "${targets[@]}"; do
     -p:DebugType=embedded -o "$out_dir"
   dotnet publish src/Updater/FrogSmashers.Updater.csproj -c Release -r "$rid" \
     --self-contained true -m:1 -nr:false -p:RuntimeFrameworkVersion=10.0.10 \
-    -p:PublishTrimmed=false -p:PublishSingleFile=true \
+    -p:PublishSingleFile=true \
     -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true \
     -p:DebugType=embedded -o "$out_dir"
   if [[ "$rid" == linux-x64 ]]; then

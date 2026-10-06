@@ -43,7 +43,7 @@ internal sealed class ReleaseClient(HttpClient http)
             throw new InvalidOperationException("GitHub temporarily refused the update check. Try again later.");
         response.EnsureSuccessStatusCode();
         var release =
-            await response.Content.ReadFromJsonAsync<GithubRelease>(cancellation)
+            await response.Content.ReadFromJsonAsync(UpdaterJson.Default.GithubRelease, cancellation)
             ?? throw new InvalidDataException("GitHub returned an empty release.");
         if (release.Draft || release.Prerelease || string.IsNullOrWhiteSpace(release.Tag) || release.Assets == null)
             throw new InvalidDataException("The latest release is not a complete stable release.");
