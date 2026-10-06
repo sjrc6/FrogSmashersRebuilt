@@ -139,6 +139,18 @@ public sealed class Controls
         return false;
     }
 
+    internal sbyte HorizontalPress(int device)
+    {
+        if (device < KeyboardCount)
+        {
+            var keys = KeyboardBindings(device);
+            return (sbyte)((Press(keys.Right) ? 1 : 0) - (Press(keys.Left) ? 1 : 0));
+        }
+        int pad = device - KeyboardCount;
+        var bindings = ControllerBindings(pad);
+        return (sbyte)((BindingPress(pad, bindings.Right) ? 1 : 0) - (BindingPress(pad, bindings.Left) ? 1 : 0));
+    }
+
     public int Horizontal(int device, bool menu = false)
     {
         if (device < 2)

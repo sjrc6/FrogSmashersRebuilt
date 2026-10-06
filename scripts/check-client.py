@@ -342,10 +342,14 @@ def verify_lobby_menus():
         path.write_text(json.dumps(rows))
         return run(name, ["--no-intro", "--input-script", str(path), "--frames", str(frames), "--capture", str(out / (name + ".png"))])
 
-    joining = [key(1, "Enter"), key(3, "U"), key(5, "Y"), key(9, "U"), key(11, "OemPeriod"), key(13, "OemPeriod")]
+    joining = [key(1, "Enter"), key(3, "U"), key(5, "D"), key(9, "U"), key(11, "OemPeriod"), key(13, "OemPeriod")]
     choosing = capture("lobby-color", joining, 8)
     assert choosing["Page"] == "Seats" and choosing["LocalDevices"] == [], choosing
     assert 0 <= choosing["LobbySlots"][0]["Player"]["Color"] < 8 and not choosing["LobbyPlayers"][0]["Alive"], choosing
+    for name, direction in [("right", "D"), ("left", "A")]:
+        color = capture("lobby-color-puff-" + name,
+                        [key(1, "Enter"), key(3, "U"), key(65, direction)], 68)
+        assert color["LobbySpawnPuffs"] == 1, color
     spawned = capture("lobby-spawn", joining, 60)
     assert spawned["LocalDevices"] == [0, 1] and sum(p["Alive"] for p in spawned["LobbyPlayers"]) == 2, spawned
     walking = capture("lobby-walk", joining + [dict(From=30, To=60, Keys=["D"])], 60)
@@ -597,11 +601,22 @@ def verify_match_configuration():
     script.write_text(json.dumps(rows + [key(27, "Escape"), key(29, "Up"), key(31, "Enter")]))
     selecting = run("crew-selection", ["--no-intro", "--input-script", str(script), "--frames", "40",
                                         "--capture", str(out / "crew-selection.png")])
-    assert selecting["Page"] == "Playing" and selecting["Phase"] == "Selecting", selecting
+    assert selecting["Page"] == "Playing" and selecting["Phase"] == "ChoosingCrews", selecting
     assert selecting["ActiveFormat"] == "Crews" and selecting["ActiveScoring"] == "Stocks", selecting
     # Both keyboard profiles retain independent controls during selection.
-    script.write_text(json.dumps(rows + [key(27, "Escape"), key(29, "Up"), key(31, "Enter"),
-                                          key(43, "U"), key(45, "OemPeriod"), key(49, "T"), key(53, "M")]))
+    fighters = rows + [key(27, "Escape"), key(29, "Up"), key(31, "Enter"),
+                       key(43, "A"), key(45, "Right"), key(49, "T"), key(53, "M"),
+                       key(57, "A"), key(59, "Right"), key(61, "U"), key(63, "OemPeriod"),
+                       key(67, "D"), key(71, "Left"), key(75, "T"),
+                       key(79, "A"), key(83, "Right"),
+                       key(87, "D"), key(91, "Left"), key(95, "T"), key(99, "M")]
+    script.write_text(json.dumps(fighters))
+    for name, frame, expected in [("outward", 65, [-1, -1]), ("inward", 73, [0, 1]),
+                                   ("backout", 85, [-1, -1])]:
+        value = run("crew-fighters-" + name, ["--no-intro", "--input-script", str(script),
+                    "--frames", str(frame), "--capture", str(out / ("crew-fighters-" + name + ".png"))])
+        assert value["Phase"] == "Selecting" and value["FighterSelections"][:2] == expected, value
+        assert not any(p["Ready"] for p in value["Progress"]), value
     playing = run("crew-playing", ["--no-intro", "--input-script", str(script), "--frames", "150",
                                     "--capture", str(out / "crew-playing.png")])
     assert playing["Phase"] == "Playing" and all(p["Participation"] == "Active" for p in playing["Progress"]), playing
@@ -754,9 +769,9 @@ def verify_modes_network():
                       key(170, "Escape"), key(172, "Up"), key(600 if crews else 180, "Enter")]
         guest_rows = []
         if crews:
-            guest_rows = [key(220, "U"), key(240, "Y"), key(260, "U")]
-            host_rows += [key(800, "U"), key(820, "T")]
-            guest_rows += [key(800, "U"), key(820, "T")]
+            guest_rows = [key(220, "U"), key(240, "D"), key(260, "U")]
+            host_rows += [key(720, "A"), key(740, "T"), key(1000, "D"), key(1060, "T")]
+            guest_rows += [key(720, "D"), key(740, "T"), key(1000, "A"), key(1060, "T")]
         processes = []
         common = ["--local-players", "1", "--port", str(port), "--ticks", "480"]
         for name, target, rows in [(mode + "-host", ["--host", "udp"], host_rows),
@@ -898,8 +913,8 @@ def verify_lobby_color_respawn():
     script = out / "lobby-color-respawn-input.json"
     script.write_text(json.dumps([
         dict(From=frame, To=frame + 1, Keys=[key])
-        for frame, key in [(240, "U"), (300, "Y"), (360, "U"),
-                           (480, "U"), (540, "Y"), (600, "U")]
+        for frame, key in [(240, "U"), (300, "D"), (360, "U"),
+                           (480, "U"), (540, "D"), (600, "U")]
     ]))
     for name, frames, spawned in [("lobby-guest-choosing", 330, False),
                                   ("lobby-guest-respawned", 720, True)]:

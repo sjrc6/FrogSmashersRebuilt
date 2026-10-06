@@ -48,6 +48,25 @@ internal static class TestFixtures
             FlySpawn = new PointData { X = 0, Y = 12 },
         };
 
+    public static void ChooseCrews(World world)
+    {
+        world.Advance(
+            Enumerable
+                .Range(0, world.Players.Length)
+                .Select(slot => new MatchInput(
+                    default,
+                    new(MatchCommandKind.ChooseCrew, (byte)world.Rules.Teams[slot])
+                ))
+                .ToArray()
+        );
+        world.Advance(
+            Enumerable
+                .Range(0, world.Players.Length)
+                .Select(slot => new MatchInput(default, new(MatchCommandKind.ToggleReady)))
+                .ToArray()
+        );
+    }
+
     public static World MakeWorld(int players) =>
         new(Map(), new GameRules(playerCount: players, winScore: 99, matchRounds: 3), 12345);
 

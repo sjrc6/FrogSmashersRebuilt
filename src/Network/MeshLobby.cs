@@ -173,7 +173,10 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
         phase = LobbyPhase.AwaitingSimulation;
         if (IsHost)
         {
-            simulation.ApplyRoster(Roster);
+            var initial = CopyRoster();
+            foreach (int peer in peerAddresses.Keys.Where(peer => peer != LocalPeer))
+                initial.RemovePeer(peer);
+            simulation.ApplyRoster(initial);
             rosterChanged = addresses.Count > 0;
             CreateLobbySession();
             phase = LobbyPhase.Lobby;
@@ -301,6 +304,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
         admissions.Clear();
         preparedPeers.Clear();
         preparedPeers.Add(0);
+        simulationReadyPeers.Clear();
         passivePeers.Clear();
         incomingBootstrap = null;
         preparedLinks.Clear();
@@ -631,6 +635,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
             Generation = control.Generation;
             SessionId = control.Session;
             phase = LobbyPhase.AwaitingSimulation;
+            simulation = null;
             checkpoint = null;
             LobbySession?.Dispose();
             LobbySession = null;
@@ -739,7 +744,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
         }
         if (clientNonces[peer] != control.Nonce)
             return;
-        if (control.CanSimulate)
+        if (control.CanSimulate && control.Generation == Generation)
             simulationReadyPeers.Add(peer);
         if (peerRollback.GetValueOrDefault(peer) != control.Rollback)
         {
@@ -792,8 +797,9 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
             )
             .ToArray();
         if (
-            slots.Where(slot => slot.Player != null).Select(slot => slot.Player!.Color).Distinct().Count()
-            == Roster.Count
+            simulation.SharedColors
+            || slots.Where(slot => slot.Player != null).Select(slot => slot.Player!.Color).Distinct().Count()
+                == Roster.Count
         )
             Roster.Replace(slots, Roster.Spectators);
     }

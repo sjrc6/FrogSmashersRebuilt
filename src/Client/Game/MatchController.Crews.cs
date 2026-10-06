@@ -23,7 +23,7 @@ internal sealed partial class MatchController
     private void UpdateCrewSelection()
     {
         var world = World!;
-        if (world.Match.Phase != MatchPhase.Selecting)
+        if (world.Match.Phase is not (MatchPhase.Selecting or MatchPhase.ChoosingCrews))
         {
             selectionInputs.Clear();
             return;
@@ -36,16 +36,27 @@ internal sealed partial class MatchController
             var input = controls.Read(device, consume: false);
             var previous = selectionInputs.GetValueOrDefault(device, input);
             var pressed = input.Buttons & ~previous.Buttons;
+            int direction = input.X != previous.X ? input.X : 0;
             selectionInputs[device] = input;
-            int selected = world.Match.TeamSelections[world.Rules.Teams[slot]];
+            if (world.Match.Phase == MatchPhase.ChoosingCrews)
+            {
+                if (direction != 0)
+                    commands[device] = new(MatchCommandKind.ChooseCrew, (byte)(direction < 0 ? 0 : 1));
+                else if ((pressed & InputButtons.Jump) != 0)
+                    commands[device] = new(MatchCommandKind.ToggleReady);
+                continue;
+            }
+            int team = world.Match.Team(world.Rules, slot);
+            int inward = team == 0 ? 1 : -1;
+            int selected = world.Match.TeamSelections[team];
             if (selected == slot)
             {
-                if ((pressed & InputButtons.Attack) != 0 && world.Match.CanBackOut(world.Rules, slot))
+                if (direction == -inward && world.Match.CanBackOut(world.Rules, slot))
                     commands[device] = new(MatchCommandKind.BackOutFighter);
                 else if ((pressed & InputButtons.Jump) != 0)
                     commands[device] = new(MatchCommandKind.ToggleReady);
             }
-            else if (selected < 0 && (pressed & InputButtons.Attack) != 0)
+            else if (selected < 0 && direction == inward)
                 commands[device] = new(MatchCommandKind.SelectFighter, (byte)slot);
         }
     }

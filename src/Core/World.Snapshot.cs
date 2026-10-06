@@ -5,7 +5,7 @@ namespace FrogSmashers.Core;
 public sealed partial class World
 {
     private const int SnapshotMagic = 0x46535253;
-    private const int SnapshotVersion = 9;
+    private const int SnapshotVersion = 10;
     private readonly MemoryStream snapshotBuffer = new(4096);
 
     public byte[] Capture()
@@ -67,7 +67,7 @@ public sealed partial class World
             if (
                 players[i].ColorIndex is < 0 or > 7
                 || players[i].Slot != i
-                || players[i].Team != Rules.Teams[i]
+                || players[i].Team != match.Team(Rules, i)
                 || players[i].Facing is not (-1 or 1)
                 || !Enum.IsDefined(players[i].Mode)
                 || !Enum.IsDefined(players[i].AttackPhase)

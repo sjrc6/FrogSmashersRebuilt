@@ -7,6 +7,7 @@ public enum MatchPhase
     MatchFinished,
     RoundScores,
     Selecting,
+    ChoosingCrews,
 }
 
 public enum Participation
@@ -57,6 +58,11 @@ public sealed class MatchState
     public int PhaseTicks;
     public bool IsShowdown;
     public PlayerProgress[] Players { get; }
+    public int[] CrewTeams { get; } = Enumerable.Repeat(-1, 8).ToArray();
+
+    public int Team(GameRules rules, int slot) =>
+        rules.Format == MatchFormat.Crews ? CrewTeams[slot] : rules.Teams[slot];
+
     public int[] TeamSelections { get; } = Enumerable.Repeat(-1, 8).ToArray();
 
     public MatchState(GameRules rules)
@@ -73,7 +79,7 @@ public sealed class MatchState
     }
 
     public bool IsWinner(GameRules rules, int slot) =>
-        Winner >= 0 && (rules.UsesTeams ? rules.Teams[slot] == rules.Teams[Winner] : slot == Winner);
+        Winner >= 0 && (rules.UsesTeams ? Team(rules, slot) == Team(rules, Winner) : slot == Winner);
 
     public void StartRound(GameRules rules)
     {
@@ -96,7 +102,8 @@ public sealed class MatchState
         if (rules.Format == MatchFormat.Crews)
         {
             IsShowdown = false;
-            Phase = MatchPhase.Selecting;
+            Array.Fill(CrewTeams, -1);
+            Phase = MatchPhase.ChoosingCrews;
         }
     }
 
@@ -129,7 +136,7 @@ public sealed class MatchState
         if (credited < 0 || credited >= Players.Length || points == 0)
             return -1;
         for (int index = 0; index < Players.Length; index++)
-            if (index == credited || rules.UsesTeams && rules.Teams[index] == rules.Teams[credited])
+            if (index == credited || rules.UsesTeams && Team(rules, index) == Team(rules, credited))
                 Players[index].Score += points;
         return Players[credited].Score >= rules.TargetScore ? credited : -1;
     }
@@ -211,7 +218,7 @@ public sealed class MatchState
         return true;
     }
 
-    private static int WinningSide(GameRules rules, int[] candidates)
+    private int WinningSide(GameRules rules, int[] candidates)
     {
         if (candidates.Length == 0)
             return -1;
@@ -221,14 +228,14 @@ public sealed class MatchState
         if (!rules.UsesTeams)
             return -1;
         foreach (int slot in candidates)
-            if (rules.Teams[slot] != rules.Teams[first])
+            if (Team(rules, slot) != Team(rules, first))
                 return -1;
         return first;
     }
 
     public bool CanBackOut(GameRules rules, int slot) =>
         Phase == MatchPhase.Selecting
-        && TeamSelections[rules.Teams[slot]] == slot
+        && TeamSelections[Team(rules, slot)] == slot
         && Players[slot].Participation == Participation.Waiting;
 
     public void ApplyCommand(GameRules rules, int source, MatchCommand command)
@@ -241,15 +248,20 @@ public sealed class MatchState
                 PhaseTicks = 0;
             return;
         }
+        if (Phase == MatchPhase.ChoosingCrews)
+        {
+            ApplyCrewChoice(source, command);
+            return;
+        }
         if (Phase != MatchPhase.Selecting || rules.Format != MatchFormat.Crews)
             return;
-        int team = rules.Teams[source];
+        int team = Team(rules, source);
         var player = Players[source];
         switch (command.Kind)
         {
             case MatchCommandKind.SelectFighter:
                 if (
-                    command.Player == source
+                    command.Selection == source
                     && TeamSelections[team] < 0
                     && player.Participation == Participation.Waiting
                 )
@@ -272,6 +284,34 @@ public sealed class MatchState
         }
     }
 
+    private void ApplyCrewChoice(int slot, MatchCommand command)
+    {
+        var player = Players[slot];
+        if (
+            command.Kind == MatchCommandKind.ChooseCrew
+            && command.Selection < 2
+            && CrewTeams[slot] != command.Selection
+        )
+        {
+            CrewTeams[slot] = command.Selection;
+            player.Ready = false;
+        }
+        else if (command.Kind == MatchCommandKind.ToggleReady && CrewTeams[slot] >= 0)
+            player.Ready = !player.Ready;
+    }
+
+    public void CompleteCrewChoices()
+    {
+        if (Phase != MatchPhase.ChoosingCrews || Players.Any(player => !player.Ready))
+            return;
+        var teams = CrewTeams.Take(Players.Length).ToArray();
+        if (teams.Any(team => team < 0) || !teams.Contains(0) || !teams.Contains(1))
+            return;
+        foreach (var player in Players)
+            player.Ready = false;
+        Phase = MatchPhase.Selecting;
+    }
+
     private int[] RemainingPlayers() =>
         Enumerable
             .Range(0, Players.Length)
@@ -289,7 +329,7 @@ public sealed class MatchState
             player.Ready = false;
         foreach (int slot in RemainingPlayers())
             if (Players[slot].Participation == Participation.Active)
-                TeamSelections[rules.Teams[slot]] = slot;
+                TeamSelections[Team(rules, slot)] = slot;
     }
 
     public bool CompleteCrewSelection(GameRules rules)
@@ -299,14 +339,14 @@ public sealed class MatchState
         int[] remaining = RemainingPlayers();
         if (
             remaining
-                .Select(slot => rules.Teams[slot])
+                .Select(slot => Team(rules, slot))
                 .Distinct()
                 .Any(team => TeamSelections[team] < 0 || !Players[TeamSelections[team]].Ready)
         )
             return false;
         foreach (int slot in remaining)
             Players[slot].Participation =
-                TeamSelections[rules.Teams[slot]] == slot ? Participation.Active : Participation.Waiting;
+                TeamSelections[Team(rules, slot)] == slot ? Participation.Active : Participation.Waiting;
         IsShowdown = remaining.Length == 2;
         Phase = MatchPhase.Playing;
         return true;
@@ -322,6 +362,8 @@ public sealed class MatchState
         writer.Write(IsShowdown);
         foreach (var player in Players)
             player.WriteSnapshot(writer);
+        foreach (int team in CrewTeams)
+            writer.Write(team);
         foreach (int selection in TeamSelections)
             writer.Write(selection);
     }
@@ -353,10 +395,29 @@ public sealed class MatchState
                 throw new InvalidDataException("Invalid progression snapshot");
             state.Players[slot] = player;
         }
+        for (int slot = 0; slot < state.CrewTeams.Length; slot++)
+        {
+            int team = reader.ReadInt32();
+            bool assigned =
+                rules.Format == MatchFormat.Crews
+                && slot < rules.PlayerCount
+                && state.Phase != MatchPhase.ChoosingCrews;
+            if (
+                team < (assigned ? 0 : -1)
+                || team > 1
+                || (rules.Format != MatchFormat.Crews || slot >= rules.PlayerCount) && team != -1
+            )
+                throw new InvalidDataException("Invalid crew assignment snapshot");
+            state.CrewTeams[slot] = team;
+        }
         for (int team = 0; team < state.TeamSelections.Length; team++)
         {
             int selection = reader.ReadInt32();
-            if (selection < -1 || selection >= rules.PlayerCount || selection >= 0 && rules.Teams[selection] != team)
+            if (
+                selection < -1
+                || selection >= rules.PlayerCount
+                || selection >= 0 && state.Team(rules, selection) != team
+            )
                 throw new InvalidDataException("Invalid team selection snapshot");
             state.TeamSelections[team] = selection;
         }

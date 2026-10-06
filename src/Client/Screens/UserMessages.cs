@@ -1,12 +1,7 @@
-using FrogSmashers.Core;
-
 namespace FrogSmashers.Client;
 
 internal static class UserMessages
 {
-    public static string? MatchStart(MatchStartBlock reason) =>
-        reason == MatchStartBlock.CrewTeamCount ? "CREWS REQUIRES TWO TEAMS" : null;
-
     public static string ConnectionError(string detail)
     {
         string error = detail.ToUpperInvariant();

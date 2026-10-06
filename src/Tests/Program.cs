@@ -12,6 +12,12 @@ internal static class Program
     {
         try
         {
+            if (args.Contains("--udp-departure"))
+            {
+                UdpLobbyDepartureTests.Run(args.Contains("--match"));
+                Console.WriteLine($"PASS: {TestAssert.Count} UDP departure checks");
+                return 0;
+            }
             if (args.Contains("--discovery"))
             {
                 LobbyDiscoveryTests.Run(!args.Contains("--no-sockets"));
@@ -147,6 +153,8 @@ internal static class Program
             if (!args.Contains("--no-sockets"))
             {
                 UdpProcessTests.LocalhostProcesses();
+                UdpLobbyDepartureTests.Run(false);
+                UdpLobbyDepartureTests.Run(true);
             }
 
             Console.WriteLine($"PASS: {TestAssert.Count} checks in {timer.Elapsed.TotalSeconds:F2}s");

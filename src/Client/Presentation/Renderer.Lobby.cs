@@ -26,11 +26,11 @@ public sealed partial class Renderer
     internal Vector2 LobbyPreviewPosition(MapData map, int room) =>
         new((float)map.Spawns[room].X, (float)map.Spawns[room].Y + assets.Data.CharacterOffsetY);
 
-    internal void LobbyColorEffect(MapData map, int room, Color color, long tick, float age = 0)
+    internal void LobbyColorEffect(World world, int room, Color color, long tick, float age = 0)
     {
-        SetMap(map);
-        var point = map.Spawns[room];
-        SpawnPuff(map, new((float)point.X, (float)point.Y), color, tick, age);
+        SetMap(world);
+        var point = world.Map.Spawns[room];
+        SpawnPuff(world.Map, new((float)point.X, (float)point.Y), color, tick, age);
     }
 
     private void DrawLobbyPreview(World world, int room)

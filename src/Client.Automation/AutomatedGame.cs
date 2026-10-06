@@ -241,6 +241,7 @@ internal sealed class AutomatedGame : FrogGame
                     Participation = player.Participation.ToString(),
                 })
                 .ToArray(),
+            CrewTeams = Match.World?.Match.CrewTeams,
             FighterSelections = Match.World?.Match.TeamSelections,
             MatchPlayers = Match.PlayerViews,
             LobbyBall = Menus.ShowingLobby && Lobby.World != null

@@ -60,8 +60,7 @@ internal static partial class LobbyTests
         {
             node.Simulation = new LobbySimulation(
                 new World(TestFixtures.Map(), new GameRules(lobby: true, playerCount: 8), 13),
-                node.Lobby.Roster,
-                71
+                node.Lobby.Roster
             );
             node.Lobby.AttachSimulation(node.Simulation);
         }

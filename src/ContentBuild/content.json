@@ -879,6 +879,7 @@
     "Textures/Sprites/logo_rebuilt.xnb": "84376d3960909eb307ce89c63c31f7c0ff5ef8290d7b91476beda1412fd2d143",
     "Textures/Sprites/logo_v2.xnb": "ba7b404293ef3039d9899d302b16dc71866a6599c9592626fe6adf66c526f84a",
     "Textures/Sprites/white.xnb": "1d1def8c9ea3d55945ab366c426d85b15f1ba76525c84b8733f6f29ad5fd55f8",
+    "UI/Buttons/keyboard/arrows.xnb": "0aa360835297fa917c1c48d1267312b8c74da26d5a38d693679f257b3520db0c",
     "UI/Buttons/keyboard/baked/A.xnb": "b6ea2e86eb49c6d094798bc858fc72cd41f0e4d79c03817dc661bef6db2d3781",
     "UI/Buttons/keyboard/baked/Add.xnb": "6e845289a79a980d485564b531b1103c3ec7309fbc8e0a0d0f52c38b16f9e579",
     "UI/Buttons/keyboard/baked/Apps.xnb": "2b65aeb70522ae67d20231419736215f6f236c58269e74b6b3e265aee9ba577d",
@@ -985,6 +986,7 @@
     "UI/Buttons/keyboard/baked/Y.xnb": "60a8c57145f40703d80f61e4ffa345c0ae8c036e8cea3ef8cc412dd11bbf7a16",
     "UI/Buttons/keyboard/baked/Z.xnb": "1dfeed207735206bf3c4cb4837e52c2c4035f72da2f8fc86a8c03899972f864d",
     "UI/Buttons/keyboard/key.xnb": "a88d1dbe7f41e37644547539665a95e5a039f2847143a9a7a3f33d3c8e60911c",
+    "UI/Buttons/keyboard/wasd.xnb": "cc9614b1fc8dc4d58cc6b4bdd78320b76a2f956fd8c5991723eaf688395ffd98",
     "UI/Buttons/ps4/circle.xnb": "3b627840bc511c7fbe437e5039fd8bb12b7720e9be8ad0cd0d682f0b4e5dcc94",
     "UI/Buttons/ps4/dPad.xnb": "b356558df5b0febb6bc82bc56daf5f3a283456a398b1de355eb84cc8373d252e",
     "UI/Buttons/ps4/dPadDown.xnb": "19011eb7f8781f8d3ffe99bc3ef0489d0769ac19c44c8bef3e2a12be84393268",
@@ -1104,7 +1106,7 @@
     "smokeRingDistance": 7.5,
     "trailDelay": 0.01
   },
-  "ContentHash": "6683cc3826ec7a0c951f2e77b46581d662e1919afbc53e538283edf772d070e1",
+  "ContentHash": "d5cd7b11f0e8e969bb24c97225c3b9b521894ff00d2559a1776e61a264eb55a8",
   "Effects": {
     "BackgroundEscapeShip": {
       "Animations": {

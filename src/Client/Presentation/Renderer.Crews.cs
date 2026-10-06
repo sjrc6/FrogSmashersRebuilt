@@ -37,7 +37,7 @@ public sealed partial class Renderer
     private void DrawCrewRoster(World world, IReadOnlyList<MatchPlayerView> players, Controls controls, bool selecting)
     {
         crewLayout.Update(world, selecting, frameSeconds);
-        int leftTeam = world.Rules.Teams.Take(world.Players.Length).Min();
+        int leftTeam = world.Match.CrewTeams.Take(world.Players.Length).Min();
         var sprite = assets.Data.Sprites[assets.Frame("idle", 1)!];
         var source = CrewSpriteBounds(sprite);
         var spriteScale = selecting ? assets.Font.PixelScale(1.4f) : ScoreDisplay.IconPixelScale(sprite, 20);
@@ -59,7 +59,7 @@ public sealed partial class Renderer
                 0,
                 Vector2.Zero,
                 spriteScale,
-                world.Rules.Teams[slot] == leftTeam ? SpriteEffects.None : SpriteEffects.FlipHorizontally,
+                world.Match.Team(world.Rules, slot) == leftTeam ? SpriteEffects.None : SpriteEffects.FlipHorizontally,
                 0
             );
         }
@@ -69,7 +69,7 @@ public sealed partial class Renderer
         {
             var progress = world.Match.Players[slot];
             var view = players.ElementAtOrDefault(slot);
-            int team = world.Rules.Teams[slot];
+            int team = world.Match.Team(world.Rules, slot);
             int selected = world.Match.TeamSelections[team];
             bool active = selected == slot;
             bool left = team == leftTeam;
@@ -96,7 +96,7 @@ public sealed partial class Renderer
                 selecting && selected < 0 && progress.Participation == Participation.Waiting && view?.Device >= 0;
             if (canFight)
             {
-                var fight = CrewGlyphs(controls, view!.Device, InputButtons.Attack);
+                ButtonGlyph[] fight = [ButtonGlyph.HorizontalDirection(controls, view!.Device, left: !left)];
                 float hintOffset = frogSize.X / 2 + 12 + CrewHintWidth(fight, "PRESS") / 2;
                 float hintX = position.X + (left ? hintOffset : -hintOffset);
                 DrawCrewHint(fight, "PRESS", new Vector2(hintX, position.Y), labelFirst: true);
@@ -114,14 +114,10 @@ public sealed partial class Renderer
                     center: true
                 );
             else if (view?.Device >= 0)
-                DrawCrewHint(
-                    CrewGlyphs(controls, view.Device, InputButtons.Jump),
-                    "READY",
-                    new Vector2(position.X, readyY)
-                );
+                DrawCrewHint(CrewReadyGlyphs(controls, view.Device), "READY", new Vector2(position.X, readyY));
             if (view?.Device >= 0 && world.Match.CanBackOut(world.Rules, slot))
                 DrawCrewHint(
-                    CrewGlyphs(controls, view.Device, InputButtons.Attack),
+                    [ButtonGlyph.HorizontalDirection(controls, view.Device, left)],
                     "TO BACKOUT",
                     new Vector2(position.X, readyY + 24)
                 );
@@ -208,15 +204,15 @@ public sealed partial class Renderer
         return crewSpriteBounds.Value;
     }
 
-    private static ButtonGlyph[] CrewGlyphs(Controls controls, int device, InputButtons action)
+    private static ButtonGlyph[] CrewReadyGlyphs(Controls controls, int device)
     {
         if (device < 2)
         {
             var keys = controls.KeyboardBindings(device);
-            return [ButtonGlyph.Key(action == InputButtons.Attack ? keys.Attack : keys.Jump)];
+            return [ButtonGlyph.Key(keys.Jump)];
         }
         var pad = controls.ControllerBindings(device - 2);
-        return ButtonGlyph.PadBinding(action == InputButtons.Attack ? pad.Attack : pad.Jump);
+        return ButtonGlyph.PadBinding(pad.Jump);
     }
 
     private float MatchHintWidth(ButtonGlyph[] glyphs, string label) =>

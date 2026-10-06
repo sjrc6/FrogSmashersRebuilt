@@ -104,12 +104,14 @@ internal static class SnapshotCoverageTests
         var rules = new GameRules(playerCount: 8, lobby: true);
         var roster = new LobbyRoster();
         roster.SetPlayers(0, [new(0, Color: 3, Spawned: true), new(1, Color: 5)]);
-        var source = new LobbySimulation(new World(TestFixtures.Map(), rules, 1), roster, 123);
-        var target = new LobbySimulation(new World(TestFixtures.Map(), rules, 9), new LobbyRoster(), 456);
+        var source = new LobbySimulation(new World(TestFixtures.Map(), rules, 1), roster);
+        var target = new LobbySimulation(new World(TestFixtures.Map(), rules, 9), new LobbyRoster());
         foreach (var field in typeof(LobbySimulation).GetFields(Fields))
         {
             if (field.Name is "<CpuRevision>k__BackingField" or "<RosterRevision>k__BackingField")
                 field.SetValue(source, 123);
+            else if (field.Name == "<SharedColors>k__BackingField")
+                field.SetValue(source, true);
             else if (field.FieldType == typeof(uint))
                 field.SetValue(source, field.Name == "pendingPreviews" ? 0x5au : 1234567u);
             else
@@ -134,6 +136,7 @@ internal static class SnapshotCoverageTests
             "Lobby snapshot restores actual slot records"
         );
         Check(source.RosterRevision == target.RosterRevision, "Lobby snapshot restores membership revision");
+        Check(source.SharedColors == target.SharedColors, "Lobby snapshot restores shared color policy");
         Check(source.CpuRevision == target.CpuRevision, "Lobby snapshot restores applied CPU command revision");
         Check(source.InputSources.SequenceEqual(target.InputSources), "Lobby snapshot rebuilds input identities");
         Check(source.InputRooms.SequenceEqual(target.InputRooms), "Lobby snapshot rebuilds input rooms");
@@ -146,7 +149,7 @@ internal static class SnapshotCoverageTests
             Populate(player, sample);
         foreach (var field in typeof(MatchState).GetFields(Fields))
         {
-            if (field.FieldType == typeof(PlayerProgress[]))
+            if (field.FieldType == typeof(PlayerProgress[]) || field.Name == "<CrewTeams>k__BackingField")
                 continue;
             if (field.FieldType == typeof(int[]))
             {

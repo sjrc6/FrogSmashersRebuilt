@@ -30,7 +30,7 @@ internal sealed class RollbackInputCodec : IInputCodec<RollbackInput>
         BinaryPrimitives.WriteUInt32LittleEndian(destination[13..], input.Cpu.Colors);
         BinaryPrimitives.WriteUInt32LittleEndian(destination[17..], input.Cpu.Teams);
         destination[21] = (byte)input.Match.Kind;
-        destination[22] = input.Match.Player;
+        destination[22] = input.Match.Selection;
     }
 
     public RollbackInput Decode(ReadOnlySpan<byte> source)
@@ -58,7 +58,7 @@ internal sealed class RollbackInputCodec : IInputCodec<RollbackInput>
         _ = InputFrame.FromPacked(input.Gameplay.Packed);
         input.Match.Validate();
         if (
-            (input.Actions & ~3) != 0
+            (input.Actions & ~7) != 0
             || input.ColorStep is < -1 or > 1
             || input.TeamStep is < -1 or > 1
             || !input.Cpu.IsValid

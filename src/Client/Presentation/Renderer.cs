@@ -182,7 +182,7 @@ public sealed partial class Renderer : IDisposable
 
     public void Consume(IEnumerable<SimulationEvent> events, World world, float age = 0)
     {
-        SetMap(world.Map, world.Match.RoundNumber);
+        SetMap(world);
         foreach (var e in events)
         {
             if (!seen.Add(e.Id))
@@ -387,8 +387,10 @@ public sealed partial class Renderer : IDisposable
             _ => (Vector2.Zero, 0),
         };
 
-    private void SetMap(MapData map, int round = 0)
+    private void SetMap(World world)
     {
+        var map = world.Map;
+        int round = world.Match.RoundNumber;
         if (mapId == map.Id && mapRound == round)
         {
             return;

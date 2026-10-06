@@ -261,11 +261,9 @@ public class FrogGame : Game
     {
         LastError = null;
         var options = Setup.CreateOptions(Options.MapOrder);
-        if (options.Rules.StartBlockedReason() is { } reason)
+        if (options.Rules.StartBlockedReason() != null)
         {
             Menus.ShowSeats();
-            if (UserMessages.MatchStart(reason) is { } message)
-                Toasts.Show(message);
             return;
         }
 
@@ -494,7 +492,9 @@ public class FrogGame : Game
         else if (Match.World != null && (Menus.ShowingMatch || Menus.ShowingMenuBackground))
         {
             var world = Match.World;
-            if (world.Match.Phase == MatchPhase.Selecting)
+            if (world.Match.Phase == MatchPhase.ChoosingCrews)
+                Renderer.DrawCrewPicking(world, Match.PlayerViews, Controls);
+            else if (world.Match.Phase == MatchPhase.Selecting)
             {
                 Renderer.DrawCrewSelection(world, Match.PlayerViews, Controls);
             }

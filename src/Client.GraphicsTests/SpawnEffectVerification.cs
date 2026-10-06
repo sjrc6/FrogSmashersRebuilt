@@ -59,7 +59,7 @@ internal sealed partial class PresentationChecks
                 if (map == lobby)
                 {
                     renderer.Reset();
-                    renderer.LobbyColorEffect(map, room, PlayerPalette.Colors[room], 0);
+                    renderer.LobbyColorEffect(world, room, PlayerPalette.Colors[room], 0);
                     Check(
                         Vector2.Distance(renderer.Effects.Active.Single().Position, position) < .0001f,
                         $"lobby room {room}: color change and spawn use the same puff origin"
@@ -68,6 +68,25 @@ internal sealed partial class PresentationChecks
             }
 
         var lobbyWorld = new World(lobby, new GameRules(lobby: true, playerCount: 8));
+        renderer.Reset();
+        renderer.Update(0);
+        renderer.LobbyColorEffect(lobbyWorld, 0, PlayerPalette.Colors[0], -1);
+        var joinPuff = renderer.Effects.Active.Single();
+        renderer.DrawWorld(lobbyWorld, null, 1, showGameplayUi: false);
+        Check(renderer.Effects.Active.Contains(joinPuff), "Lobby join puff survives the first world draw");
+        renderer.Update(.08f);
+        renderer.LobbyColorEffect(lobbyWorld, 1, PlayerPalette.Colors[1], 0);
+        var colorPuff = renderer.Effects.Active.Last();
+        renderer.Consume([], lobbyWorld);
+        renderer.DrawWorld(lobbyWorld, null, 1, showGameplayUi: false);
+        Check(
+            renderer.Effects.Active.Contains(joinPuff) && renderer.Effects.Active.Contains(colorPuff),
+            "Lobby color changes preserve existing puffs through event consumption and drawing"
+        );
+        Check(
+            joinPuff.Sprite == puff.Frames[0] && colorPuff.Sprite == puff.InitialSpriteId,
+            "Lobby puffs retain independent animation ages across color changes"
+        );
         foreach (int height in new[] { 720, 1080 })
         {
             renderer.Reset();

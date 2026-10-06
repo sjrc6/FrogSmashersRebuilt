@@ -208,8 +208,7 @@ internal static class SteamLegacyWireTests
         var simulations = lobbies
             .Select(lobby => new LobbySimulation(
                 new World(TestFixtures.Map(), new GameRules(lobby: true, playerCount: 8), 13),
-                lobby.Roster,
-                71
+                lobby.Roster
             ))
             .ToArray();
         var pending = new List<(long Due, ulong Source, ulong Target, byte[] Data)>();

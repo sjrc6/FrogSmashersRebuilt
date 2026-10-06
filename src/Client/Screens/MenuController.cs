@@ -65,7 +65,6 @@ internal sealed partial class MenuController : IDisposable
         bool waiting = MatchSetup.MatchPlayers(game.Lobby.Roster).Any(player => !player.Spawned);
         string? message =
             updating ? "LOBBY UPDATING"
-            : reason != null ? UserMessages.MatchStart(reason.Value)
             : waiting ? "WAITING FOR PLAYERS"
             : null;
         return new(
@@ -434,12 +433,9 @@ internal sealed partial class MenuController : IDisposable
                     menuSoundPending = true;
                     continue;
                 }
-                bool changeColor =
-                    device < 2
-                        ? game.Controls.Press(game.Settings.Keyboard[device].Tongue)
-                        : game.Controls.BindingPress(device - 2, game.Controls.ControllerBindings(device - 2).Tongue);
-                if (changeColor)
-                    game.Lobby.ChooseColor(device);
+                sbyte direction = game.Controls.HorizontalPress(device);
+                if (direction != 0)
+                    game.Lobby.ChooseColor(device, direction);
             }
         }
     }
@@ -475,7 +471,6 @@ internal sealed partial class MenuController : IDisposable
         if (game.Online.Lobby?.Connected == true)
         {
             ShowSeats();
-            game.Toasts.Show("LOBBY READY");
             CompleteLobbyShare();
         }
     }

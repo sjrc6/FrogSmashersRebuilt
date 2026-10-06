@@ -104,10 +104,8 @@ public sealed class GameRules
         if (PlayerCount < 2)
             return MatchStartBlock.TooFewPlayers;
         int teamCount = Teams.Take(PlayerCount).Distinct().Count();
-        if (UsesTeams && teamCount < 2)
+        if (Format == MatchFormat.Teams && teamCount < 2)
             return MatchStartBlock.TooFewTeams;
-        if (Format == MatchFormat.Crews && teamCount != 2)
-            return MatchStartBlock.CrewTeamCount;
         if (Format == MatchFormat.Crews && CpuPlayers.Take(PlayerCount).Any(cpu => cpu))
             return MatchStartBlock.CpuInCrews;
         return null;

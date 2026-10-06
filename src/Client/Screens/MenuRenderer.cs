@@ -534,13 +534,9 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
                 continue;
             if (!player.Spawned)
             {
-                var colorButton =
-                    player.Id >= 2
-                        ? ButtonGlyph.PadBinding(game.Controls.ControllerBindings(player.Id - 2).Tongue)[0]
-                        : ButtonGlyph.Key(game.Settings.Keyboard[player.Id].Tongue);
                 CenteredHint(
-                    colorButton,
-                    game.Lobby.UsesTeams ? $"COLOR / TEAM {player.Team + 1}" : "COLOR",
+                    ButtonGlyph.Horizontal(game.Controls, player.Id),
+                    game.Lobby.UsesTeams ? "CHANGE TEAM" : "CHANGE COLOR",
                     rect.Center.X,
                     rect.Bottom - 72,
                     Color.Black
@@ -620,6 +616,18 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
 
     private void CenteredHint(ButtonGlyph glyph, string text, float x, float y, Color? color = null) =>
         ActionHint(glyph, text, x - HintWidth(glyph, text) / 2, y, color);
+
+    private void CenteredHint(ButtonGlyph[] glyphs, string text, float x, float y, Color color)
+    {
+        float width = glyphs.Sum(glyph => GlyphWidth(glyph) + HintGap) + game.Assets.Font.Measure(text).X;
+        float left = x - width / 2;
+        foreach (var glyph in glyphs)
+        {
+            Glyph(glyph, left, y);
+            left += GlyphWidth(glyph) + HintGap;
+        }
+        game.Renderer.CenteredText(text, left, y, color);
+    }
 
     private void ActionHint(ButtonGlyph glyph, string text, float x, float y, Color? color = null)
     {

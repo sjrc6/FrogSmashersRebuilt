@@ -74,10 +74,5 @@ internal static class ToastTests
             UserMessages.ConnectionError("LOBBY UNAVAILABLE") == "LOBBY UNAVAILABLE",
             "The current admission rejection preserves its specific explanation"
         );
-        check(
-            UserMessages.MatchStart(FrogSmashers.Core.MatchStartBlock.TooFewPlayers) == null
-                && UserMessages.MatchStart(FrogSmashers.Core.MatchStartBlock.TooFewTeams) == null,
-            "Obvious start requirements disable the button silently"
-        );
     }
 }

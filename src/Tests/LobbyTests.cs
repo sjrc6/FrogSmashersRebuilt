@@ -51,6 +51,9 @@ internal static partial class LobbyTests
         EmptyParties();
         ObserverCapacity();
         CpuAppearanceEdits();
+        SharedCrewColorsSurviveMembershipChanges();
+        CrewStartAfterDeparture(false);
+        CrewStartAfterDeparture(true);
     }
 
     private static void SpectatorTransitionAtLatency()
@@ -508,10 +511,11 @@ internal static partial class LobbyTests
         {
             node.Simulation = new LobbySimulation(
                 new World(TestFixtures.Map(), new GameRules(lobby: true, playerCount: 8), 13),
-                node.Lobby.Roster,
-                71
+                node.Lobby.Roster
             );
             node.Lobby.AttachSimulation(node.Simulation);
+            if (node == host)
+                rig.Steps(8);
         }
         rig.WaitFor(() => rig.Ready, "Returned lobby did not create a new rollback session");
         rig.Steps(80);
@@ -862,6 +866,7 @@ internal static partial class LobbyTests
         public int Jitter;
         public double Loss;
         public bool DatagramMode;
+        public bool SharedColors;
         public readonly Dictionary<string, int> DeliveryDelay = new();
         public Func<Node, int, RollbackInput>? Input;
         public bool Ready =>
@@ -915,8 +920,7 @@ internal static partial class LobbyTests
             );
             var simulation = new LobbySimulation(
                 new World(map ?? TestFixtures.Map(), new GameRules(lobby: true, playerCount: 8), 13),
-                lobby.Roster,
-                71
+                lobby.Roster
             );
             var node = new Node(wire, lobby, simulation);
             Nodes.Add(node);
@@ -974,7 +978,11 @@ internal static partial class LobbyTests
                     session
                         .LocalSlots.Select(handle =>
                             node.Simulation.InputSources[handle].HostCommand
-                                ? new RollbackInput(default, Cpu: node.Lobby.HostCommand)
+                                ? new RollbackInput(
+                                    default,
+                                    SharedColors ? (byte)LobbyInputActions.SharedColors : (byte)0,
+                                    Cpu: node.Lobby.HostCommand
+                                )
                                 : Input?.Invoke(node, handle) ?? default
                         )
                         .ToArray()

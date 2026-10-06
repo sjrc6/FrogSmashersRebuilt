@@ -7,6 +7,7 @@ internal static class StocksAndCrewsTests
 {
     public static void Run()
     {
+        CrewPicking();
         Stocks();
         TeamStocks();
         Crews();
@@ -25,6 +26,65 @@ internal static class StocksAndCrewsTests
         player.HitsTaken = hits;
         player.LastHitBy = -1;
         world.Advance(new MatchInput[world.Players.Length]);
+    }
+
+    private static void CrewPicking()
+    {
+        var rules = new GameRules(
+            playerCount: 4,
+            format: MatchFormat.Crews,
+            scoring: ScoringMode.Stocks,
+            teams: [7, 7, 7, 7]
+        );
+        var world = new World(TestFixtures.Map(), rules);
+        Check(
+            world.Match.CrewTeams.All(team => team == -1),
+            "Crew membership starts unassigned, independent of lobby teams"
+        );
+        void Command(int slot, MatchCommandKind kind, byte choice = 0)
+        {
+            var input = new MatchInput[4];
+            input[slot] = new(new(1, 0, InputButtons.Attack), new(kind, choice));
+            world.Advance(input);
+        }
+        Command(0, MatchCommandKind.ToggleReady);
+        Check(!world.Match.Players[0].Ready, "Unassigned players cannot ready");
+        for (int slot = 0; slot < 4; slot++)
+        {
+            Command(slot, MatchCommandKind.ChooseCrew);
+            Command(slot, MatchCommandKind.ToggleReady);
+        }
+        Check(
+            world.Match.Phase == MatchPhase.ChoosingCrews && world.Players.All(player => !player.Alive),
+            "A fully ready single crew cannot start or advance physics"
+        );
+        Command(3, MatchCommandKind.ChooseCrew, 1);
+        Check(
+            !world.Match.Players[3].Ready && world.Match.Players[0].Ready,
+            "Changing sides unreadies only the player moving"
+        );
+        Command(3, MatchCommandKind.ToggleReady);
+        Check(
+            world.Match.Phase == MatchPhase.Selecting && world.Match.Players.All(player => !player.Ready),
+            "All players ready on two crews opens fighter selection with fresh readiness"
+        );
+        Check(
+            world.Players.Select(player => player.Team).SequenceEqual([0, 0, 0, 1]),
+            "Uneven crew choices determine physics teams"
+        );
+        Check(rules.Teams.All(team => team == 7), "Crew choices never mutate the initial rules");
+        byte[] snapshot = world.Capture();
+        world.Restore(snapshot);
+        Check(world.Capture().SequenceEqual(snapshot), "Dynamic crew membership survives snapshots");
+        Command(0, MatchCommandKind.ChooseCrew, 1);
+        Check(world.Match.CrewTeams[0] == 0, "Crews cannot change after fighter selection starts");
+        Select(world, (0, 0), (3, 3));
+        Ready(world, 0, 3);
+        Kill(world, 3, 5);
+        Check(
+            world.Match.IsWinner(rules, 2) && !world.Match.IsWinner(rules, 3),
+            "Crew victory uses the chosen sides, including waiting teammates"
+        );
     }
 
     private static void Stocks()
@@ -103,6 +163,8 @@ internal static class StocksAndCrewsTests
 
     private static void Select(World world, params (int Source, int Target)[] choices)
     {
+        if (world.Match.Phase == MatchPhase.ChoosingCrews)
+            TestFixtures.ChooseCrews(world);
         var inputs = new MatchInput[world.Players.Length];
         foreach (var (source, target) in choices)
             inputs[source] = new(default, new(MatchCommandKind.SelectFighter, (byte)target));
@@ -145,9 +207,9 @@ internal static class StocksAndCrewsTests
         };
         var world = new World([arena, showdown], rules, 71, null);
         Check(
-            world.Match.Phase == MatchPhase.Selecting
+            world.Match.Phase == MatchPhase.ChoosingCrews
                 && world.Match.Players.All(p => p.Participation == Participation.Waiting),
-            "Crews starts with both teams choosing on the frozen transition screen"
+            "Crews starts with players choosing their crew on the frozen screen"
         );
         Select(world, (0, 2));
         Check(world.Match.TeamSelections[0] == -1, "A teammate cannot choose for the opponent");

@@ -9,7 +9,7 @@ internal static class LobbySimulationTests
     public static void Run()
     {
         CompactInputsAddressTheirOwnRooms();
-        CommandsAndColorRandomnessRestoreExactly();
+        CommandsAndColorsRestoreExactly();
         RosterChangesPreserveIncumbentFrogs();
         CpuBallPlaySurvivesRollback();
         EmptyLobbyAndSnapshotsRemainIndependent();
@@ -17,6 +17,61 @@ internal static class LobbySimulationTests
         SpectatingRetainsTheLastConfirmedSelection();
         SlotPoliciesAreOutsideSimulation();
         TeamsRespectCapacityAndRollback();
+        SharedColorsAndDirectionalSelection();
+    }
+
+    private static void SharedColorsAndDirectionalSelection()
+    {
+        var roster = new LobbyRoster();
+        roster.SetPlayers(0, [new(0, Color: 0), new(1, Color: 1)]);
+        var simulation = Create(roster);
+        simulation.Tick([default, new(default, ColorStep: 1), default]);
+        Check(simulation.Membership.Rooms[0]!.Color == 2, "Right cycles forward and skips occupied colors");
+        simulation.Tick([default, new(default, ColorStep: -1), default]);
+        Check(simulation.Membership.Rooms[0]!.Color == 0, "Left cycles backward and skips occupied colors");
+        var shared = new RollbackInput(default, (byte)LobbyInputActions.SharedColors);
+        simulation.Tick([shared, new(default, ColorStep: 1), default]);
+        Check(
+            simulation.Membership.Rooms[0]!.Color == 1 && simulation.Membership.Rooms[1]!.Color == 1,
+            "Crews can select duplicate colors"
+        );
+        roster.ApplyMembership(simulation.Membership);
+        roster.SetPlayers(0, roster.Players(0));
+        simulation.ApplyRoster(roster);
+        Check(
+            simulation.Membership.Rooms.Take(2).All(player => player!.Color == 1),
+            "Roster refreshes preserve shared colors"
+        );
+        var reopened = new LobbySimulation(
+            new World(TestFixtures.Map(), new GameRules(lobby: true, playerCount: 8)),
+            roster,
+            sharedColors: true
+        );
+        Check(
+            reopened.Membership.Rooms.Take(2).All(player => player!.Color == 1),
+            "Returning to a Crews lobby preserves duplicate colors"
+        );
+        byte[] before = simulation.Capture();
+        simulation.Tick([default, default, default]);
+        Check(
+            simulation.Membership.Rooms[0]!.Color != simulation.Membership.Rooms[1]!.Color,
+            "Leaving Crews resolves shared colors deterministically"
+        );
+        byte[] after = simulation.Capture();
+        simulation.Restore(before);
+        Check(simulation.SharedColors, "Shared color policy is restored with its snapshot");
+        simulation.Tick([default, default, default]);
+        Check(simulation.Capture().SequenceEqual(after), "Shared color transitions replay identically");
+        var frame = new LobbyFrame
+        {
+            SharedColors = true,
+            Membership = LobbyRosterCommand.From(1, roster.Membership()),
+        };
+        var codec = new LobbyFrameCodec();
+        var bytes = new byte[codec.Size];
+        codec.Encode(frame, bytes);
+        Check(codec.Decode(bytes).Equals(frame), "Shared colors and duplicate membership survive lobby wire encoding");
+        Check(LobbyFrame.Predict(frame, 5).SharedColors, "Prediction retains the host's color policy");
     }
 
     private static void SlotPoliciesAreOutsideSimulation()
@@ -50,8 +105,8 @@ internal static class LobbySimulationTests
         );
     }
 
-    private static LobbySimulation Create(LobbyRoster roster, uint seed = 71) =>
-        new(new World(TestFixtures.Map(), new GameRules(lobby: true, playerCount: 8), 13), roster, seed);
+    private static LobbySimulation Create(LobbyRoster roster) =>
+        new(new World(TestFixtures.Map(), new GameRules(lobby: true, playerCount: 8), 13), roster);
 
     private static void TeamsRespectCapacityAndRollback()
     {
@@ -141,7 +196,7 @@ internal static class LobbySimulationTests
         Check(simulation.Membership.Rooms[7]!.Color == 7, "Changing one frog's color leaves other room colors alone");
     }
 
-    private static void CommandsAndColorRandomnessRestoreExactly()
+    private static void CommandsAndColorsRestoreExactly()
     {
         var roster = new LobbyRoster();
         roster.SetPlayers(0, [new(0), new(1, Color: 1)]);
@@ -166,7 +221,7 @@ internal static class LobbySimulationTests
             simulation.Tick(ColorInputs(tick));
             Check(
                 simulation.Capture().AsSpan().SequenceEqual(states[tick]),
-                "Rollback restores lobby cosmetics, world state, and the color RNG"
+                "Rollback restores lobby cosmetics and world state"
             );
             Check(
                 simulation.Events.SequenceEqual(previewEvents[tick]),

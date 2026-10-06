@@ -362,7 +362,7 @@ public sealed partial class Renderer
 
     public void DrawWorld(World world, World? previous, float alpha, bool showGameplayUi = true)
     {
-        SetMap(world.Map, world.Match.RoundNumber);
+        SetMap(world);
         float dt = time == lastPresentedTime ? 0 : frameSeconds;
         lastPresentedTime = time;
         if (dt > 0)

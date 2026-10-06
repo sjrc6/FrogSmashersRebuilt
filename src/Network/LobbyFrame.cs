@@ -84,7 +84,6 @@ public readonly record struct LobbyRosterCommand(int Revision, ulong Rooms, ulon
             devices.Clear();
             Span<int> teams = stackalloc int[LobbyRoster.MaxPlayers];
             teams.Clear();
-            int colors = 0;
             for (int room = 0; room < LobbyRoster.MaxPlayers; room++)
             {
                 int owner = (byte)(Rooms >> (room * 8));
@@ -95,10 +94,6 @@ public readonly record struct LobbyRosterCommand(int Revision, ulong Rooms, ulon
                     continue;
                 if (++teams[(detail >> 3) & 7] > LobbyRoster.MaxTeamPlayers)
                     return false;
-                int color = 1 << (detail & 7);
-                if ((colors & color) != 0)
-                    return false;
-                colors |= color;
                 if (owner == 0xfe)
                     continue;
                 int peer = owner >> 4,
@@ -131,11 +126,12 @@ public struct LobbyFrame : IEquatable<LobbyFrame>
 {
     public LobbyRosterCommand Membership;
     public LobbyCpuCommand Cpu;
+    public bool SharedColors;
     public LobbyControls Controls;
 
     public bool Equals(LobbyFrame other)
     {
-        if (Membership != other.Membership || Cpu != other.Cpu)
+        if (Membership != other.Membership || Cpu != other.Cpu || SharedColors != other.SharedColors)
             return false;
         for (int index = 0; index < 10; index++)
             if (Controls[index] != other.Controls[index])
@@ -145,7 +141,7 @@ public struct LobbyFrame : IEquatable<LobbyFrame>
 
     public override bool Equals(object? other) => other is LobbyFrame frame && Equals(frame);
 
-    public override int GetHashCode() => HashCode.Combine(Membership, Cpu);
+    public override int GetHashCode() => HashCode.Combine(Membership, Cpu, SharedColors);
 
     public static LobbyFrame Predict(LobbyFrame input, int age)
     {
@@ -157,7 +153,7 @@ public struct LobbyFrame : IEquatable<LobbyFrame>
 
 internal sealed class LobbyFrameCodec : IInputCodec<LobbyFrame>, ISpectatorInputCodec<LobbyFrame>
 {
-    private const int HeaderSize = 42;
+    private const int HeaderSize = 43;
     public int Size => HeaderSize + 70;
     int ISpectatorInputCodec<LobbyFrame>.Size => HeaderSize + 1 + LobbyRoster.MaxPlayers * 9;
 
@@ -227,12 +223,14 @@ internal sealed class LobbyFrameCodec : IInputCodec<LobbyFrame>, ISpectatorInput
         data[33] = input.Cpu.Enabled;
         BinaryPrimitives.WriteUInt32LittleEndian(data[34..], input.Cpu.Colors);
         BinaryPrimitives.WriteUInt32LittleEndian(data[38..], input.Cpu.Teams);
+        data[42] = input.SharedColors ? (byte)1 : (byte)0;
     }
 
     private static LobbyFrame ReadHeader(ReadOnlySpan<byte> data)
     {
         var frame = new LobbyFrame
         {
+            SharedColors = data[42] == 1,
             Membership = new(
                 BinaryPrimitives.ReadInt32LittleEndian(data),
                 BinaryPrimitives.ReadUInt64LittleEndian(data[4..]),
@@ -247,7 +245,7 @@ internal sealed class LobbyFrameCodec : IInputCodec<LobbyFrame>, ISpectatorInput
                 BinaryPrimitives.ReadUInt32LittleEndian(data[38..])
             ),
         };
-        if (!frame.Membership.IsValid || !frame.Cpu.IsValid)
+        if (!frame.Membership.IsValid || !frame.Cpu.IsValid || data[42] > 1)
             throw new InvalidDataException("Invalid lobby frame");
         return frame;
     }

@@ -54,8 +54,8 @@ internal static class MatchArchitectureTests
                 format: MatchFormat.Crews,
                 scoring: ScoringMode.Stocks,
                 teams: [0, 1, 2, 0]
-            ).StartBlockedReason() == MatchStartBlock.CrewTeamCount,
-            "Crews requires exactly two teams at start"
+            ).StartBlockedReason() == null,
+            "Lobby teams do not constrain the crew-picking screen"
         );
         Check(
             new GameRules(format: MatchFormat.Crews, scoring: ScoringMode.Stocks).StartBlockedReason() == null,
@@ -117,9 +117,6 @@ internal static class MatchArchitectureTests
             new GameRules(playerCount: 4, format: MatchFormat.Crews, scoring: ScoringMode.Stocks),
             123
         );
-        world.Match.Phase = MatchPhase.Selecting;
-        world.Match.Players[2].Participation = Participation.Waiting;
-        world.Match.Players[3].Participation = Participation.Waiting;
         return world;
     }
 
@@ -128,6 +125,8 @@ internal static class MatchArchitectureTests
             new InputFrame(1, 0, InputButtons.Jump),
             (tick, slot) switch
             {
+                (0, _) => new(MatchCommandKind.ChooseCrew, (byte)(slot % 2)),
+                (2, _) => new(MatchCommandKind.ToggleReady),
                 (20 or 40, 2) => new(MatchCommandKind.SelectFighter, 2),
                 (30, 2) => new(MatchCommandKind.BackOutFighter),
                 (50 or 55 or 70, 2) or (100, 3) => new(MatchCommandKind.ToggleReady),
@@ -166,7 +165,7 @@ internal static class MatchArchitectureTests
         {
             replay.Save(path);
             var loaded = InputReplay.Load(path);
-            Check(loaded.Frames[20][2].Command.Player == 2, "Replay binary format retains selection commands");
+            Check(loaded.Frames[20][2].Command.Selection == 2, "Replay binary format retains selection commands");
             loaded.Play(replayed);
             Check(
                 replayed.Capture().SequenceEqual(expected),
@@ -195,10 +194,20 @@ internal static class MatchArchitectureTests
             codec.Encode(command, bytes);
             Check(codec.Decode(bytes) == command, "Network codec retains " + kind);
         }
+        foreach (byte crew in new byte[] { 0, 1 })
+        {
+            var choice = new RollbackInput(default, Match: new(MatchCommandKind.ChooseCrew, crew));
+            codec.Encode(choice, bytes);
+            Check(codec.Decode(bytes) == choice, "Crew choices round trip over the wire");
+        }
+        bytes[^1] = 2;
+        Reject(() => codec.Decode(bytes), "Network rejects an invalid crew choice");
         codec.Encode(selection, bytes);
         bytes[^1] = 8;
         Reject(() => codec.Decode(bytes), "Network rejects out-of-range fighter selection");
-        var adapter = new MatchSimulation(SelectionWorld(), [-1, 2, 0, 3, 1]);
+        var mappedWorld = SelectionWorld();
+        TestFixtures.ChooseCrews(mappedWorld);
+        var adapter = new MatchSimulation(mappedWorld, [-1, 2, 0, 3, 1]);
         adapter.Tick([
             selection,
             new(default, Match: new(MatchCommandKind.SelectFighter, 2)),

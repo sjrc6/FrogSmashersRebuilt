@@ -74,7 +74,7 @@ public sealed class LobbyNetworkSession : IRollbackSession
             );
         else
         {
-            var initial = new LobbyFrame { Membership = ProposedMembership };
+            var initial = new LobbyFrame { Membership = ProposedMembership, SharedColors = simulation.SharedColors };
             var membership = new SessionParticipation<LobbyFrame>(0, initial, input => input.Membership.Players);
             playing = new(
                 sessionId,
@@ -296,7 +296,10 @@ public sealed class LobbyNetworkSession : IRollbackSession
             {
                 var source = simulation.InputSources[handles[index]];
                 if (source.HostCommand)
+                {
                     input.Cpu = inputs[index].Cpu;
+                    input.SharedColors = (inputs[index].Actions & (byte)LobbyInputActions.SharedColors) != 0;
+                }
                 else
                 {
                     input.Controls[source.Id] = inputs[index];

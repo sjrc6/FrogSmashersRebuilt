@@ -122,6 +122,14 @@ public sealed partial class World
         events.Clear();
         for (int slot = 0; slot < inputs.Length; slot++)
             Match.ApplyCommand(Rules, slot, inputs[slot].Command);
+        if (Match.Phase == MatchPhase.ChoosingCrews)
+        {
+            for (int slot = 0; slot < Players.Length; slot++)
+                Players[slot].Team = Match.Team(Rules, slot);
+            Match.CompleteCrewChoices();
+            TickNumber++;
+            return;
+        }
         if (Match.Phase == MatchPhase.Selecting)
         {
             if (Match.CompleteCrewSelection(Rules))

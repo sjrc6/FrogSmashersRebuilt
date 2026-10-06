@@ -4,6 +4,5 @@ public enum MatchStartBlock
 {
     TooFewPlayers,
     TooFewTeams,
-    CrewTeamCount,
     CpuInCrews,
 }

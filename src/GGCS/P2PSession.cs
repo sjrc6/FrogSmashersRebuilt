@@ -252,6 +252,8 @@ public sealed partial class P2PSession<TInput, TState>
         {
             if (IsInputObserver)
                 Close();
+            else if (!PeerParticipates(peerId, CurrentFrame) && !PeerParticipates(peerId, ConfirmedFrame + 1))
+                RemoveInactivePeer(peerId);
             else
                 DisconnectPlayingPeer(peerId);
         }

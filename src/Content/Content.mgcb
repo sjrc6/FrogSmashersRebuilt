@@ -4036,6 +4036,28 @@
 /processorParam:TextureFormat=Color
 /build:Textures/Sprites/BackGrounds/lobby_background_v1.png
 
+#begin UI/Buttons/keyboard/wasd.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyEnabled=False
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=False
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:UI/Buttons/keyboard/wasd.png
+
+#begin UI/Buttons/keyboard/arrows.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyEnabled=False
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=False
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:UI/Buttons/keyboard/arrows.png
+
 #begin UI/Buttons/keyboard/key.png
 /importer:TextureImporter
 /processor:TextureProcessor

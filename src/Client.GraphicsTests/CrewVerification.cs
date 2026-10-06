@@ -1,5 +1,6 @@
 using FrogSmashers.Core;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 
 namespace FrogSmashers.Client.GraphicsTests;
 
@@ -29,6 +30,48 @@ internal sealed partial class PresentationChecks
             .Select(slot => new MatchPlayerView(new LocalSeat(slot).Label, slot))
             .ToArray();
         var controls = new Controls(new ClientSettings());
+        void ChooseTeams(World target)
+        {
+            target.Advance(
+                Enumerable
+                    .Range(0, target.Players.Length)
+                    .Select(slot => new MatchInput(
+                        default,
+                        new(MatchCommandKind.ChooseCrew, (byte)target.Rules.Teams[slot])
+                    ))
+                    .ToArray()
+            );
+            target.Advance(
+                Enumerable
+                    .Range(0, target.Players.Length)
+                    .Select(slot => new MatchInput(default, new(MatchCommandKind.ToggleReady)))
+                    .ToArray()
+            );
+        }
+        void DrawPicking(string name)
+        {
+            for (int frame = 0; frame < 90; frame++)
+            {
+                renderer.Update(1 / 60f);
+                renderer.DrawCrewPicking(world, players, controls);
+            }
+            if (directory != null)
+                SaveFrame(Path.Combine(directory, name + ".png"));
+        }
+        renderer.Reset();
+        DrawPicking("choose-crews-unassigned");
+        for (int slot = 0; slot < 8; slot++)
+            world.Match.ApplyCommand(world.Rules, slot, new(MatchCommandKind.ChooseCrew, (byte)(slot / 4)));
+        DrawPicking("choose-crews-assigned");
+        world.Match.ApplyCommand(world.Rules, 0, new(MatchCommandKind.ToggleReady));
+        DrawPicking("choose-crews-ready");
+        for (int slot = 0; slot < 8; slot++)
+            world.Match.ApplyCommand(world.Rules, slot, new(MatchCommandKind.ChooseCrew, 0));
+        DrawPicking("choose-crews-one-side");
+        for (int slot = 0; slot < 8; slot++)
+            world.Match.Players[slot].Ready = false;
+        ChooseTeams(world);
+        Check(world.Match.Phase == MatchPhase.Selecting, "Readying the chosen crews opens fighter selection");
         var layout = new CrewRosterLayout();
         layout.Update(world, true, 0);
         var side = layout.Positions.ToArray();
@@ -132,6 +175,7 @@ internal sealed partial class PresentationChecks
                 teams: [0, 0, 0, 0, 0, 0, 0, 1]
             )
         );
+        ChooseTeams(uneven);
         layout.Reset();
         layout.Update(uneven, true, 0);
         Check(
@@ -162,6 +206,61 @@ internal sealed partial class PresentationChecks
             !match.TrySkipCelebration(0) && !match.TrySkipCelebration(3) && match.TrySkipCelebration(2),
             "Only the winning controller can skip its celebration"
         );
+
+        KeyboardState keyboard = default;
+        var pad = new GamePadState(Vector2.Zero, Vector2.Zero, 0, 0, Buttons.None);
+        controls.KeyboardSource = () => keyboard;
+        controls.MouseSource = () => default;
+        controls.GamePadSource = index => index == 0 ? pad : default;
+        controls.Poll();
+        controls.KeyboardBindings(0).Left = Keys.J;
+        controls.KeyboardBindings(0).Right = Keys.L;
+        controls.ControllerBindings(0).Left = Buttons.LeftShoulder;
+        controls.ControllerBindings(0).Right = Buttons.RightShoulder;
+        match.StartLocal(
+            new MatchOptions(new GameRules(format: MatchFormat.Crews, scoring: ScoringMode.Stocks, teams: [0, 1])),
+            [new LocalSeat(0), new LocalSeat(2)]
+        );
+        var selection = match.World!;
+        ChooseTeams(selection);
+        void Step(Keys[]? keys = null, Buttons buttons = Buttons.None)
+        {
+            keyboard = new KeyboardState(keys ?? []);
+            pad = new(Vector2.Zero, Vector2.Zero, 0, 0, buttons);
+            controls.Poll();
+            match.Update(.01);
+        }
+        Step();
+        Step([Keys.J], Buttons.RightShoulder);
+        Check(selection.Match.TeamSelections.Take(2).All(slot => slot == -1), "Outward directions cannot join");
+        Step([Keys.L], Buttons.LeftShoulder);
+        Check(
+            selection.Match.TeamSelections.Take(2).SequenceEqual([0, 1]),
+            "Remapped keyboard and controller directions toward the center select their own fighters"
+        );
+        Step([Keys.L], Buttons.LeftShoulder);
+        Step([Keys.U], Buttons.X);
+        Check(
+            selection.Match.TeamSelections.Take(2).SequenceEqual([0, 1]),
+            "Holding inward or pressing Attack leaves selected fighters in place"
+        );
+        Step([Keys.T]);
+        Check(selection.Match.Players[0].Ready, "Jump still readies the selected fighter");
+        Step([Keys.J], Buttons.RightShoulder);
+        Check(
+            selection.Match.TeamSelections.Take(2).All(slot => slot == -1) && !selection.Match.Players[0].Ready,
+            "Outward directions back out both fighters and clear readiness"
+        );
+        Step([Keys.L], Buttons.LeftShoulder);
+        selection.Match.Players[0].Participation = Participation.Active;
+        Step([Keys.J], Buttons.RightShoulder);
+        Check(
+            selection.Match.TeamSelections[0] == 0 && selection.Match.TeamSelections[1] == -1,
+            "The locked survivor cannot back out with an outward direction"
+        );
+        Step([], Buttons.LeftShoulder);
+        Step([Keys.T], Buttons.A);
+        Check(selection.Match.Phase == MatchPhase.Playing, "Both selected fighters ready with Jump to start");
         return checks.ToArray();
     }
 }

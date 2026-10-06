@@ -5,7 +5,7 @@ namespace FrogSmashers.Core;
 public sealed class InputReplay
 {
     private const int FileMagic = 0x46535250;
-    private const int FileVersion = 2;
+    private const int FileVersion = 3;
 
     public byte[] InitialSnapshot { get; private set; } = [];
     public ulong ConfigurationHash { get; private set; }
@@ -73,7 +73,7 @@ public sealed class InputReplay
                 player.Validate();
                 writer.Write(player.Gameplay.Packed);
                 writer.Write((byte)player.Command.Kind);
-                writer.Write(player.Command.Player);
+                writer.Write(player.Command.Selection);
             }
         }
 

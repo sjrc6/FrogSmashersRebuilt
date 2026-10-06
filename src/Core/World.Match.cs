@@ -20,7 +20,7 @@ public sealed partial class World
             Players[i] = new PlayerState
             {
                 Slot = i,
-                Team = prior.Team,
+                Team = Match.Team(Rules, i),
                 ColorIndex = prior.ColorIndex,
                 SpawnTicks = TicksFromSeconds(.5m + .2m * i),
             };

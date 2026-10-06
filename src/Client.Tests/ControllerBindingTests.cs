@@ -7,6 +7,46 @@ internal static class ControllerBindingTests
 {
     public static void Run(Action<bool, string> check)
     {
+        var directionSettings = new ClientSettings();
+        var keyboard = new KeyboardState();
+        var directions = new Controls(directionSettings)
+        {
+            KeyboardSource = () => keyboard,
+            MouseSource = () => default,
+            GamePadSource = _ => default,
+        };
+        directions.Poll();
+        check(ButtonGlyph.Horizontal(directions, 0).Single().Path.EndsWith("/wasd"), "WASD uses one direction hint");
+        check(ButtonGlyph.Horizontal(directions, 1).Single().Path.EndsWith("/arrows"), "Arrows use one direction hint");
+        check(
+            ButtonGlyph.HorizontalDirection(directions, 0, left: true) == ButtonGlyph.Key(Keys.A)
+                && ButtonGlyph.HorizontalDirection(directions, 0, left: false) == ButtonGlyph.Key(Keys.D)
+                && ButtonGlyph.HorizontalDirection(directions, 1, left: true) == ButtonGlyph.Key(Keys.Left)
+                && ButtonGlyph.HorizontalDirection(directions, 1, left: false) == ButtonGlyph.Key(Keys.Right),
+            "Single-direction hints use individual WASD and arrow keys"
+        );
+        directionSettings.Keyboard[0].Left = Keys.J;
+        directionSettings.Keyboard[0].Right = Keys.L;
+        check(
+            ButtonGlyph.Horizontal(directions, 0).SequenceEqual([ButtonGlyph.Key(Keys.J), ButtonGlyph.Key(Keys.L)]),
+            "Remapped directions show two individual icons"
+        );
+        check(
+            ButtonGlyph.HorizontalDirection(directions, 0, left: true) == ButtonGlyph.Key(Keys.J)
+                && ButtonGlyph.HorizontalDirection(directions, 0, left: false) == ButtonGlyph.Key(Keys.L),
+            "Single-direction keyboard hints follow remapped controls"
+        );
+        keyboard = new KeyboardState(Keys.L);
+        directions.Poll();
+        check(
+            directions.HorizontalPress(0) == 1 && directions.HorizontalPress(1) == 0,
+            "Lobby direction changes follow remaps and device ownership"
+        );
+        directions.Poll();
+        check(directions.HorizontalPress(0) == 0, "Holding a direction does not cycle every render frame");
+        keyboard = new KeyboardState(Keys.J);
+        directions.Poll();
+        check(directions.HorizontalPress(0) == -1, "Remapped left selects backward");
         var settings = new ClientSettings();
         var pads = new GamePadState[8];
         var devices = new ControllerDevice[8];
@@ -46,6 +86,11 @@ internal static class ControllerBindingTests
         bindings.Tongue = Buttons.Y;
         bindings.Strafe = Buttons.RightShoulder;
         bindings.Left = Buttons.RightThumbstickLeft;
+        check(
+            ButtonGlyph.HorizontalDirection(controls, 2, left: true) == ButtonGlyph.Pad("rightStick")
+                && ButtonGlyph.HorizontalDirection(controls, 2, left: false) == ButtonGlyph.Pad(Buttons.DPadRight),
+            "Single-direction controller hints show one icon for the chosen binding"
+        );
         pads[0] = new(Vector2.Zero, new Vector2(-1, 0), 0, 1, Buttons.B | Buttons.Y | Buttons.RightShoulder);
         controls.Poll();
         var input = controls.Read(2);

@@ -36,6 +36,30 @@ internal readonly record struct ButtonGlyph(string Path)
     public static ButtonGlyph[] PadBinding(Buttons binding) =>
         PadBindings.BindableButtons.Where(button => (binding & button) != 0).Select(Pad).Distinct().ToArray();
 
+    public static ButtonGlyph[] Horizontal(Controls controls, int device)
+    {
+        if (device < 2)
+        {
+            var keys = controls.KeyboardBindings(device);
+            if (keys.Left == Keys.A && keys.Right == Keys.D)
+                return [new("UI/Buttons/keyboard/wasd")];
+            if (keys.Left == Keys.Left && keys.Right == Keys.Right)
+                return [new("UI/Buttons/keyboard/arrows")];
+        }
+        return [HorizontalDirection(controls, device, left: true), HorizontalDirection(controls, device, left: false)];
+    }
+
+    public static ButtonGlyph HorizontalDirection(Controls controls, int device, bool left)
+    {
+        if (device < 2)
+        {
+            var keys = controls.KeyboardBindings(device);
+            return Key(left ? keys.Left : keys.Right);
+        }
+        var pad = controls.ControllerBindings(device - 2);
+        return PadBinding(left ? pad.Left : pad.Right)[0];
+    }
+
     public static ButtonGlyph Accept(int device) => device >= 2 ? Pad("oButton") : Key(Keys.Enter);
 
     public static ButtonGlyph Back(int device) => device >= 2 ? Pad("aButton") : Key(Keys.Escape);

@@ -159,7 +159,7 @@ public sealed class LobbyRoster
                 return false;
             var used = next.Where((_, index) => index != room).Select(slot => slot.Player?.Color).ToHashSet();
             int color = requested.Color;
-            if (used.Contains(color))
+            if (used.Contains(color) && next[room].Player?.Color != color)
                 color = Enumerable.Range(0, MaxPlayers).First(value => !used.Contains(value));
             next[room] = next[room] with
             {

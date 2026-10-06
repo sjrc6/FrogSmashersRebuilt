@@ -44,7 +44,7 @@ internal sealed partial class LobbyController
             room,
             UsesTeams
         );
-        game.Renderer.LobbyColorEffect(World.Map, room, color, -1);
+        game.Renderer.LobbyColorEffect(World, room, color, -1);
         var position = game.Renderer.LobbyPreviewPosition(World.Map, room);
         game.Audio.PlayAt("CharacterSpawn", --feedbackSound, .3f, new Vector3(position, 0));
     }

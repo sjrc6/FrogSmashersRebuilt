@@ -8,31 +8,32 @@ public enum LobbyInputActions : byte
     None = 0,
     Spawn = 1,
     SelectColor = 2,
+    SharedColors = 4,
 }
 
 public sealed class LobbySimulation : IRollbackSimulation
 {
-    private const int SnapshotMagic = 0x4c465352;
+    private const int SnapshotMagic = 0x4c465353;
     private LobbyBots bots = new();
-    private uint randomState;
     private uint pendingPreviews;
     private readonly List<SimulationEvent> events = new();
     private int[] inputRooms = [];
     private LobbyInputSource[] inputSources = [];
     public int CpuRevision { get; private set; }
     public int RosterRevision { get; private set; } = 1;
+    public bool SharedColors { get; private set; }
     public World World { get; }
     public LobbyMembership Membership { get; private set; } = new(new LobbyPlayer?[LobbyRoster.MaxPlayers], []);
     public IReadOnlyList<SimulationEvent> Events => events;
     public IReadOnlyList<int> InputRooms => Array.AsReadOnly(inputRooms);
     public IReadOnlyList<LobbyInputSource> InputSources => Array.AsReadOnly(inputSources);
 
-    public LobbySimulation(World world, LobbyRoster roster, uint colorSeed = 1)
+    public LobbySimulation(World world, LobbyRoster roster, bool sharedColors = false)
     {
         if (!world.Rules.Lobby || world.Players.Length != LobbyRoster.MaxPlayers)
             throw new ArgumentException("Lobby simulation requires an eight-room lobby world", nameof(world));
         World = world;
-        randomState = colorSeed == 0 ? 1u : colorSeed;
+        SharedColors = sharedColors;
         ApplyRoster(roster);
     }
 
@@ -78,9 +79,10 @@ public sealed class LobbySimulation : IRollbackSimulation
         {
             if (oldRooms[room] >= 0 || next[room] is not { } incoming)
                 continue;
-            int color = usedColors.Contains(incoming.Color)
-                ? Enumerable.Range(0, LobbyRoster.MaxPlayers).First(value => !usedColors.Contains(value))
-                : incoming.Color;
+            int color =
+                !SharedColors && usedColors.Contains(incoming.Color)
+                    ? Enumerable.Range(0, LobbyRoster.MaxPlayers).First(value => !usedColors.Contains(value))
+                    : incoming.Color;
             next[room] = incoming with { Color = color, Team = LobbyRoster.AvailableTeam(incoming.Team, assigned) };
             usedColors.Add(color);
             assigned.Add(next[room]!);
@@ -139,16 +141,25 @@ public sealed class LobbySimulation : IRollbackSimulation
             var input = inputs[handle];
             _ = InputFrame.FromPacked(input.Gameplay.Packed);
             if (
-                (input.Actions & ~(byte)(LobbyInputActions.Spawn | LobbyInputActions.SelectColor)) != 0
+                (
+                    input.Actions
+                    & ~(byte)(LobbyInputActions.Spawn | LobbyInputActions.SelectColor | LobbyInputActions.SharedColors)
+                ) != 0
                 || input.ColorStep is < -1 or > 1
                 || input.TeamStep is < -1 or > 1
                 || !input.Cpu.IsValid
-                || handle != 0 && input.Cpu != default
+                || handle != 0 && (input.Cpu != default || (input.Actions & (byte)LobbyInputActions.SharedColors) != 0)
                 || handle == 0
-                    && (input.Gameplay != default || input.Actions != 0 || input.ColorStep != 0 || input.TeamStep != 0)
+                    && (
+                        input.Gameplay != default
+                        || (input.Actions & ~(byte)LobbyInputActions.SharedColors) != 0
+                        || input.ColorStep != 0
+                        || input.TeamStep != 0
+                    )
             )
                 throw new ArgumentException("Invalid lobby command", nameof(inputs));
         }
+        SetSharedColors((inputs[0].Actions & (byte)LobbyInputActions.SharedColors) != 0);
         ApplyCpuCommand(inputs[0].Cpu);
         var gameplay = new MatchInput[LobbyRoster.MaxPlayers];
         var players = Membership.Rooms.ToArray();
@@ -165,13 +176,12 @@ public sealed class LobbySimulation : IRollbackSimulation
             {
                 if (input.ColorStep != 0)
                 {
-                    var colors = players.Select(player => player?.Color).ToHashSet();
-                    int[] available = Enumerable
-                        .Range(0, LobbyRoster.MaxPlayers)
-                        .Where(color => !colors.Contains(color))
-                        .ToArray();
-                    if (available.Length > 0)
-                        player = player with { Color = available[RandomIndex(available.Length)] };
+                    int color = player.Color;
+                    do
+                    {
+                        color = (color + input.ColorStep + LobbyRoster.MaxPlayers) % LobbyRoster.MaxPlayers;
+                    } while (!SharedColors && color != player.Color && players.Any(other => other?.Color == color));
+                    player = player with { Color = color };
                 }
                 if (input.TeamStep != 0)
                     player = player with
@@ -237,6 +247,7 @@ public sealed class LobbySimulation : IRollbackSimulation
     internal void TickFrame(ReadOnlySpan<GGCS.PlayerInput<LobbyFrame>> inputs)
     {
         var host = inputs[0].Input;
+        SetSharedColors(host.SharedColors);
         if (host.Membership.Revision > RosterRevision)
         {
             var next = host.Membership.Membership(Membership);
@@ -258,7 +269,7 @@ public sealed class LobbySimulation : IRollbackSimulation
             RosterRevision = host.Membership.Revision;
         }
         var controls = new RollbackInput[inputSources.Length];
-        controls[0] = new(default, Cpu: host.Cpu);
+        controls[0] = new(default, host.SharedColors ? (byte)LobbyInputActions.SharedColors : (byte)0, Cpu: host.Cpu);
         for (int handle = 1; handle < controls.Length; handle++)
         {
             var player = inputSources[handle];
@@ -278,7 +289,7 @@ public sealed class LobbySimulation : IRollbackSimulation
         writer.Write(SnapshotMagic);
         writer.Write(RosterRevision);
         writer.Write(CpuRevision);
-        writer.Write(randomState);
+        writer.Write(SharedColors);
         writer.Write(pendingPreviews);
         worldSnapshot = World.Capture();
         writer.Write(worldSnapshot.Length);
@@ -307,13 +318,12 @@ public sealed class LobbySimulation : IRollbackSimulation
             throw new InvalidDataException("Invalid lobby snapshot");
         int rosterRevision = reader.ReadInt32();
         int cpuRevision = reader.ReadInt32();
-        uint nextRandom = reader.ReadUInt32();
+        bool sharedColors = reader.ReadBoolean();
         uint nextPreviews = reader.ReadUInt32();
         int worldLength = reader.ReadInt32();
         if (
             rosterRevision < 1
             || cpuRevision < 0
-            || nextRandom == 0
             || nextPreviews >= 1u << LobbyRoster.MaxPlayers
             || worldLength < 0
             || worldLength > 64 * 1024
@@ -339,7 +349,7 @@ public sealed class LobbySimulation : IRollbackSimulation
         bots = nextBots;
         CpuRevision = cpuRevision;
         RosterRevision = rosterRevision;
-        randomState = nextRandom;
+        SharedColors = sharedColors;
         pendingPreviews = nextPreviews;
         Membership = membership;
         events.Clear();
@@ -425,11 +435,30 @@ public sealed class LobbySimulation : IRollbackSimulation
         CpuRevision = command.Revision;
     }
 
-    private int RandomIndex(int length)
+    private void SetSharedColors(bool enabled)
     {
-        randomState ^= randomState << 13;
-        randomState ^= randomState >> 17;
-        randomState ^= randomState << 5;
-        return (int)(randomState % (uint)length);
+        if (SharedColors == enabled)
+            return;
+        SharedColors = enabled;
+        if (enabled)
+            return;
+        var players = Membership.Rooms.ToArray();
+        var used = players.OfType<LobbyPlayer>().Select(player => player.Color).ToHashSet();
+        var seen = new HashSet<int>();
+        for (int room = 0; room < players.Length; room++)
+        {
+            if (players[room] is not { } player)
+                continue;
+            if (!seen.Add(player.Color))
+            {
+                int color = Enumerable.Range(0, LobbyRoster.MaxPlayers).First(value => !used.Contains(value));
+                players[room] = player with { Color = color };
+                used.Add(color);
+                World.SetLobbySlot(room, player.Spawned, color);
+                if (!player.Spawned)
+                    pendingPreviews |= 1u << room;
+            }
+        }
+        Membership = new(players, Membership.Spectators);
     }
 }

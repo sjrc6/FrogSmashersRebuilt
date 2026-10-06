@@ -15,6 +15,8 @@ internal static partial class LobbyTests
         PromptDeparture(false);
         PromptDeparture(true);
         AbruptDeparture();
+        foreach (int ticks in new[] { 0, 5, 20, 250 })
+            FiveClientDeparture(ticks);
     }
 
     private static void SlowLoadingDoesNotExpireHistory()
@@ -66,6 +68,33 @@ internal static partial class LobbyTests
             ReferenceEquals(session, host.Lobby.LobbySession),
             "Role changes and reconnects replaced the running session"
         );
+    }
+
+    private static void FiveClientDeparture(int ticks)
+    {
+        using var rig = new Rig
+        {
+            Delay = 30,
+            Jitter = 25,
+            Loss = .05,
+            DatagramMode = true,
+        };
+        var host = rig.Add("host", [new(0, Spawned: true)]);
+        for (int peer = 1; peer < 5; peer++)
+            rig.Add("guest" + peer, [new(0, Spawned: true)]);
+        rig.WaitFor(
+            () => host.Lobby.Roster.Count == 5 && rig.Nodes[2].Lobby.Connected,
+            "Five-client departure fixture failed to connect"
+        );
+        rig.Steps(ticks);
+        var leaving = rig.Nodes[2];
+        leaving.Lobby.Dispose();
+        leaving.Active = false;
+        long departed = rig.Now;
+        rig.WaitFor(() => rig.Ready && host.Lobby.Roster.Count == 4, "Five-client departure did not settle", 600);
+        rig.Steps(200);
+        rig.AssertConfirmedStates();
+        Console.WriteLine($"Five-client departure after {ticks} ticks: {rig.Now - departed - 2000} ms to settle");
     }
 
     private static void PromptDeparture(bool hostLeaves)
