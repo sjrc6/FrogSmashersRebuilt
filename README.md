@@ -17,6 +17,10 @@ Spiritually related to [DGR](https://github.com/TheFlyingFoool/DuckGameRebuilt)
   </tr>
 </table>
 
+## Installation
+- Download the latest version from the **[releases](https://github.com/sjrc6/FrogSmashersRebuilt/releases)**
+- After downloading you can update to new versions with the included updater executable
+
 ## Docs
 
 Controls: [controls.txt](docs/controls.txt) \
