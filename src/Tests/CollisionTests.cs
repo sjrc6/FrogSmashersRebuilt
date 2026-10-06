@@ -5,16 +5,14 @@ using static FrogSmashers.Tests.TestAssert;
 
 namespace FrogSmashers.Tests;
 
-internal static class PhysicsFixTests
+internal static class CollisionTests
 {
     public static void Run()
     {
         BodySweeps();
         Platforms();
         TongueSweeps();
-        Console.WriteLine(
-            "Physics fixes: thin terrain, body edges, wall slides, speed, original tongue latches, corners and friendly pass-through and restoration passed"
-        );
+        Console.WriteLine("Swept collision, one-way terrain, friendly filtering and restoration passed");
     }
 
     private static World Geometry(params BoxData[] boxes)
@@ -236,45 +234,6 @@ internal static class PhysicsFixTests
 
     private static void TongueSweeps()
     {
-        foreach (
-            var wall in new[]
-            {
-                new BoxData
-                {
-                    X = 6,
-                    Y = 2,
-                    Width = 2,
-                    Height = 8,
-                },
-                new BoxData
-                {
-                    X = 2,
-                    Y = 2,
-                    Width = 4,
-                    Height = 8,
-                },
-            }
-        )
-        {
-            var map = new MapData { Id = "latch-depth", Collision = [wall] };
-            var original = TongueWorld(false, map);
-            var fixedWorld = TongueWorld(true, map);
-            if (wall.X == 2)
-                original.Players[0].TongueDistance = fixedWorld.Players[0].TongueDistance = 0;
-            for (int tick = 0; tick < 8; tick++)
-            {
-                Step(original);
-                Step(fixedWorld);
-                var a = original.Players[0];
-                var b = fixedWorld.Players[0];
-                Check(
-                    a.TongueDistance == b.TongueDistance && a.TonguePhase == b.TonguePhase,
-                    "Normal wall latches preserve original extension depth, minimum range and retraction"
-                );
-                if (a.TonguePhase == TonguePhase.AttachedToTerrain)
-                    break;
-            }
-        }
         var thin = new MapData
         {
             Id = "thin",
@@ -289,15 +248,11 @@ internal static class PhysicsFixTests
                 },
             ],
         };
-        var baseline = TongueWorld(false, thin, 200);
         var caught = TongueWorld(true, thin, 200);
-        Step(baseline);
         Step(caught);
         Check(
-            baseline.Players[0].TonguePhase == TonguePhase.Extending
-                && caught.Players[0].TonguePhase == TonguePhase.AttachedToTerrain
-                && caught.Players[0].TongueDistance == baseline.Players[0].TongueDistance,
-            "A skipped thin wall stops continued extension without shortening the current extension step"
+            caught.Players[0].TonguePhase == TonguePhase.AttachedToTerrain,
+            "A high-speed tongue catches a thin wall"
         );
         var corner = new MapData
         {

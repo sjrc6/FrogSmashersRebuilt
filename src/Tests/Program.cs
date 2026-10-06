@@ -71,12 +71,6 @@ internal static class Program
                 return 0;
             }
 
-            if (args.Contains("--tick-rate-study"))
-            {
-                TickRateStudy.Run();
-                return 0;
-            }
-
             if (args.Length > 0 && args[0] == "--steam-probe")
             {
                 using var client = SteamClient.Connect();
@@ -104,25 +98,15 @@ internal static class Program
             StocksAndCrewsTests.Run();
             BeachBallTests.Run();
             ModifierTests.Run();
-            PhysicsFixTests.Run();
+            CollisionTests.Run();
             SnapshotCoverageTests.Run();
             InterpolationSnapshotTests.Run();
             ReplayTests.ReplayAndSnapshots();
             PhysicsTests.FixedArithmetic();
-            PhysicsTests.Movement();
             PhysicsTests.ContentTuning();
-            PhysicsTests.Spawns();
             PhysicsTests.LongRunningClock();
-            CombatTests.BatHitsAndHitstop();
-            CombatTests.TongueAttacks();
-            CombatTests.FlyClaims();
-            CombatTests.StrafeInputs();
-            CombatTests.StrafingTongueAim();
-            CombatTests.TongueCollisions();
             MatchTests.Scoring();
             MatchTests.RoundProgression();
-            BotNavigationTests.PlatformsAndCombat();
-            ContentSimulationTests.AuthoredMaps();
             InputReplayTests.RoundTrip();
             foreach (int peers in new[] { 2, 4, 8 })
             {

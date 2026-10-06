@@ -122,21 +122,21 @@ internal static class MatchTests
                 && campaign.Match.Players.All(p => p.Participation == Participation.Active),
             "tied final standings route to the showdown arena"
         );
-        var scoreboard = CreateWorld(new(winScore: 1, matchRounds: 1, roundFinishTicks: 1));
+        var scoreboard = CreateWorld(new(winScore: 1, matchRounds: 1, roundFinishTicks: 1, scoreScreenTicks: 7));
         scoreboard.Players[1].X = 51;
         scoreboard.Players[1].LastHitBy = 0;
         Step(scoreboard);
         Check(
             scoreboard.Match.Phase == MatchPhase.RoundScores
-                && scoreboard.Match.PhaseTicks == World.TickRate * 6
+                && scoreboard.Match.PhaseTicks == scoreboard.Rules.ScoreScreenTicks
                 && scoreboard.Match.RoundNumber == 1
                 && scoreboard.Match.Winner == 0,
-            "winner celebration enters the six-second standings screen before final victory"
+            "winner celebration enters the configured standings screen before final victory"
         );
         var standingPosition = scoreboard.Players[0].Position;
         var standingAnimation = scoreboard.Players[0].AnimationTime;
         var standings = scoreboard.Capture();
-        Step(scoreboard, new(1, 0, InputButtons.Jump | InputButtons.Attack), World.TickRate * 6 - 1);
+        Step(scoreboard, new(1, 0, InputButtons.Jump | InputButtons.Attack), scoreboard.Rules.ScoreScreenTicks - 1);
         Check(
             scoreboard.Match.Phase == MatchPhase.RoundScores
                 && scoreboard.Match.PhaseTicks == 1
@@ -146,7 +146,7 @@ internal static class MatchTests
         );
         var standingsHash = scoreboard.HashState();
         scoreboard.Restore(standings);
-        Step(scoreboard, count: World.TickRate * 6 - 1);
+        Step(scoreboard, count: scoreboard.Rules.ScoreScreenTicks - 1);
         Check(
             scoreboard.HashState() == standingsHash,
             "standings countdown restores deterministically despite irrelevant player input"

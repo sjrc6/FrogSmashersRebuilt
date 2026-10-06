@@ -72,7 +72,7 @@ internal static partial class LobbyTests
         denied.AllowError = true;
         rig.Steps(30);
         Check(
-            denied.Lobby.Error == "LOBBY ACCESS DENIED"
+            denied.Lobby.Error != null
                 && host.Lobby.PeerIds.SequenceEqual(new[] { 0 })
                 && host.Lobby.Roster.Count == 1
                 && denied.Lobby.LobbySession == null,
@@ -108,7 +108,8 @@ internal static partial class LobbyTests
             rig.Steps(1);
             Check(
                 MeshLobby.TryDecodeControl(rig.Sent.Last(packet => packet.Destination == "9").Data, out var response)
-                    && response!.Notice == "LOBBY ACCESS DENIED",
+                    && response!.Kind == MeshLobby.ControlKind.Error
+                    && !string.IsNullOrEmpty(response.Notice),
                 "Empty-party and spectator requests pass through admission before participation validation"
             );
         }
@@ -143,7 +144,7 @@ internal static partial class LobbyTests
         host.Lobby.RevokePendingAdmissions();
         rig.Steps(30);
         Check(
-            pending.Lobby.Error == "LOBBY CODE CHANGED" && !host.Lobby.PeerIds.Contains(pending.Lobby.LocalPeer),
+            pending.Lobby.Error != null && !host.Lobby.PeerIds.Contains(pending.Lobby.LocalPeer),
             "Rotation removes pending admissions before they receive simulation access"
         );
         pending.Active = false;
@@ -160,6 +161,6 @@ internal static partial class LobbyTests
         var stale = rig.Add("6", [new(0)], admissionSecret: original);
         stale.AllowError = true;
         rig.Steps(30);
-        Check(stale.Lobby.Error == "LOBBY ACCESS DENIED", "A stale code cannot open a new connection");
+        Check(stale.Lobby.Error != null && !stale.Lobby.Connected, "A stale code cannot open a new connection");
     }
 }

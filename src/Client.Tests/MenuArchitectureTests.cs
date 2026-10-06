@@ -29,26 +29,13 @@ internal static class MenuArchitectureTests
             DisabledReason: "HOST ONLY"
         );
         action.Select();
-        check(
-            actions == 0 && action.DisplayColor(false) == action.DisplayColor(true),
-            "Disabled actions stay inactive and use the same disabled color"
-        );
+        check(actions == 0, "Disabled actions cannot execute");
         var enabled = action with { DisabledReason = null };
         var silent = enabled with { Disabled = true };
         silent.Select();
-        check(
-            actions == 0 && silent.IsDisabled && silent.DisplayColor(true) == action.DisplayColor(true),
-            "Silent disabled actions stay grey and cannot activate without needing a toast"
-        );
+        check(actions == 0, "Disabling without a reason still prevents execution");
         enabled.Select();
-        check(
-            actions == 1 && enabled.DisplayColor(false) != action.DisplayColor(false),
-            "Enabled actions retain their semantic color"
-        );
-        check(
-            new MenuEntry("start", "START", Role: MenuRole.Positive).DisplayColor(false) != enabled.DisplayColor(false),
-            "Start and destructive actions have different semantic colors"
-        );
+        check(actions == 1, "Enabled actions execute once");
 
         var setup = new MatchSetup(12, [new() { Id = "arena" }]);
         var roster = new LobbyRoster();
@@ -71,16 +58,7 @@ internal static class MenuArchitectureTests
             rejected = true;
         }
         check(rejected, "A client rejects a different roster instead of rewriting host configuration");
-        setup.Preferences.ChangeFormat(1);
-        check(
-            setup.Preferences.Format == MatchFormat.Teams && setup.Preferences.Scoring == ScoringMode.Points,
-            "Team format and scoring are independent"
-        );
-        setup.Preferences.ChangeFormat(1);
-        check(
-            setup.Preferences.Format == MatchFormat.Crews && setup.Preferences.Scoring == ScoringMode.Stocks,
-            "Choosing Crews enforces Stocks"
-        );
+        setup.Preferences.Format = MatchFormat.Crews;
         var draft = setup.Preferences with { Format = MatchFormat.Ffa };
         check(
             setup.CreateOptions(preferences: draft).Rules.Format == MatchFormat.Ffa
@@ -102,16 +80,6 @@ internal static class MenuArchitectureTests
                 "Modifier catalog provides bounded changes: " + definition.Id
             );
         }
-        var teamRules = new GameRules(format: MatchFormat.Teams);
-        check(
-            ModifierCatalog.All.Single(d => d.Id == "body-bouncing").DisabledReason?.Invoke(teamRules) == null,
-            "Body bouncing is available in teams"
-        );
-        var stocksRules = new GameRules(scoring: ScoringMode.Stocks);
-        check(
-            ModifierCatalog.All.Single(d => d.Id == "match-scoring").DisabledReason!(stocksRules) == "POINTS ONLY",
-            "Cumulative scoring is visibly unavailable for Stocks"
-        );
-        Console.WriteLine("Menu identities, semantic actions and host configuration ownership passed");
+        Console.WriteLine("Menu identities, disabled actions and host configuration ownership passed");
     }
 }

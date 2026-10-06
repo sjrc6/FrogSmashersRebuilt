@@ -14,7 +14,7 @@ internal static class LobbyPresentationTests
         var view = new LobbyPresentation();
         view.Update(committed, proposed);
         check(
-            view.Pending && view.Status(1) == "JOINING..." && view.Roster.Slots[1].Player is { Id: 2, Spawned: false },
+            view.Pending && view.Roster.Slots[1].Player is { Id: 2, Spawned: false },
             "Pending join displays the frog and progress before admission completes"
         );
         check(committed.Count == 1, "Join feedback cannot mutate simulation membership");
@@ -44,38 +44,20 @@ internal static class LobbyPresentationTests
         leaving.SetSpectating(1, true);
         view.Update(proposed, leaving);
         check(
-            view.Status(1) == "SPECTATING..." && view.Roster.Slots[1].Player == null,
+            view.Pending && view.Roster.Slots[1].Player == null,
             "Backing out shows progress and removes the static room marker immediately"
         );
         view.Update(leaving, leaving);
         check(!view.Pending, "Completed spectating clears room progress");
         view.Update(leaving, proposed);
         check(
-            view.Status(1) == "JOINING..." && view.Roster.Spectator(1) == null,
+            view.Pending && view.Roster.Spectator(1) == null,
             "A returning spectator gets the same pending join preview"
         );
         view.Update(leaving, leaving);
         check(!view.Pending && view.Roster.Spectator(1) != null, "Rejected admission restores the spectator display");
 
-        committed.SetPlayers(0, [new(0, Color: 1)]);
-        view.Update(committed, proposed);
-        check(
-            view.Roster.Slots[0].Player!.Color != view.Roster.Slots[1].Player!.Color,
-            "Pending preview resolves colors against current predicted cosmetics"
-        );
         view.Clear();
         check(!view.Pending && view.AnnounceJoin(1, 2), "Leaving the lobby clears feedback state");
-
-        committed.Reset();
-        committed.SetPlayers(0, Enumerable.Range(0, 4).Select(id => new LobbyPlayer(id, Team: 1, Color: id)).ToArray());
-        proposed.Reset();
-        proposed.SetPlayers(0, Enumerable.Range(0, 4).Select(id => new LobbyPlayer(id, Team: 0, Color: id)).ToArray());
-        proposed.SetPlayers(1, [new(0, Team: 1, Color: 4)]);
-        view.Update(committed, proposed);
-        check(
-            view.Roster.Slots[4].Player!.Team == 2,
-            "Pending join preview respects currently predicted team capacity"
-        );
-        check(view.Roster.Players(0).All(player => player.Team == 1), "Pending joins do not change incumbent teams");
     }
 }

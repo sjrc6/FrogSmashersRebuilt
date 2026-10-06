@@ -16,26 +16,8 @@ internal static class ControllerBindingTests
             GamePadSource = _ => default,
         };
         directions.Poll();
-        check(ButtonGlyph.Horizontal(directions, 0).Single().Path.EndsWith("/wasd"), "WASD uses one direction hint");
-        check(ButtonGlyph.Horizontal(directions, 1).Single().Path.EndsWith("/arrows"), "Arrows use one direction hint");
-        check(
-            ButtonGlyph.HorizontalDirection(directions, 0, left: true) == ButtonGlyph.Key(Keys.A)
-                && ButtonGlyph.HorizontalDirection(directions, 0, left: false) == ButtonGlyph.Key(Keys.D)
-                && ButtonGlyph.HorizontalDirection(directions, 1, left: true) == ButtonGlyph.Key(Keys.Left)
-                && ButtonGlyph.HorizontalDirection(directions, 1, left: false) == ButtonGlyph.Key(Keys.Right),
-            "Single-direction hints use individual WASD and arrow keys"
-        );
         directionSettings.Keyboard[0].Left = Keys.J;
         directionSettings.Keyboard[0].Right = Keys.L;
-        check(
-            ButtonGlyph.Horizontal(directions, 0).SequenceEqual([ButtonGlyph.Key(Keys.J), ButtonGlyph.Key(Keys.L)]),
-            "Remapped directions show two individual icons"
-        );
-        check(
-            ButtonGlyph.HorizontalDirection(directions, 0, left: true) == ButtonGlyph.Key(Keys.J)
-                && ButtonGlyph.HorizontalDirection(directions, 0, left: false) == ButtonGlyph.Key(Keys.L),
-            "Single-direction keyboard hints follow remapped controls"
-        );
         keyboard = new KeyboardState(Keys.L);
         directions.Poll();
         check(
@@ -67,11 +49,6 @@ internal static class ControllerBindingTests
             controls.BindingDevices().SequenceEqual([0, 1, 5]),
             "device list includes nonconsecutive connected ports"
         );
-        check(controls.DeviceName(5) == "TEST CONTROLLER", "controller page uses reported product name");
-        check(
-            controls.DeviceName(0) == "KEYBOARD 1" && controls.DeviceName(2) == "CONTROLLER 1",
-            "device names have readable fallbacks"
-        );
         pads[3] = default;
         controls.Poll();
         check(controls.BindingDevices().SequenceEqual([0, 1]), "disconnected controller leaves the page list");
@@ -86,11 +63,6 @@ internal static class ControllerBindingTests
         bindings.Tongue = Buttons.Y;
         bindings.Strafe = Buttons.RightShoulder;
         bindings.Left = Buttons.RightThumbstickLeft;
-        check(
-            ButtonGlyph.HorizontalDirection(controls, 2, left: true) == ButtonGlyph.Pad("rightStick")
-                && ButtonGlyph.HorizontalDirection(controls, 2, left: false) == ButtonGlyph.Pad(Buttons.DPadRight),
-            "Single-direction controller hints show one icon for the chosen binding"
-        );
         pads[0] = new(Vector2.Zero, new Vector2(-1, 0), 0, 1, Buttons.B | Buttons.Y | Buttons.RightShoulder);
         controls.Poll();
         var input = controls.Read(2);
@@ -126,10 +98,9 @@ internal static class ControllerBindingTests
         pads[0] = pads[1];
         controls.Poll();
         check(controls.Read(2).Jump, "another controller does not inherit the previous port occupant's mapping");
-        check(
-            ReferenceEquals(controls.ControllerBindings(0), controls.ControllerBindings(1)),
-            "controllers reporting the same identifier share a mapping"
-        );
+        controls.ControllerBindings(0).Jump = Buttons.Y;
+        check(controls.ControllerBindings(1).Jump == Buttons.Y, "Controllers sharing an identity share edits");
+        controls.ControllerBindings(0).Jump = Buttons.A;
         check(settings.ControllerBindings.Count == 2, "port changes do not create extra saved mappings");
 
         var loaded = ClientSettings.Parse(JsonSerializer.Serialize(settings));

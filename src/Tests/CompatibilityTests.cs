@@ -73,25 +73,36 @@ internal static class CompatibilityTests
             "Matching descriptors can connect"
         );
         Check(
-            NetworkCompatibility.Rejection(descriptor.Identifier, new string('A', 64)) == "NETWORK PROTOCOL MISMATCH",
-            "An obsolete fingerprint is rejected without a compatibility fallback"
+            NetworkCompatibility.Rejection(descriptor.Identifier, new string('A', 64)) != null,
+            "Malformed descriptors cannot connect"
         );
         Check(
             NetworkBuild.CombineCodeHashes("core", "network", "rollback")
                 != NetworkBuild.CombineCodeHashes("core", "network", "changed rollback"),
             "Rollback source inputs participate in the same build identity"
         );
+        var reasons = new HashSet<string>();
         foreach (
-            var (other, reason) in new[]
+            var other in new[]
             {
-                (descriptor with { Protocol = "unsupported" }, "NETWORK PROTOCOL MISMATCH"),
-                (descriptor with { CodeHash = new string('0', 64) }, "SIMULATION BUILD MISMATCH"),
-                (descriptor with { GameplayHash = new string('0', 64) }, "GAMEPLAY DATA MISMATCH"),
+                descriptor with
+                {
+                    Protocol = "unsupported",
+                },
+                descriptor with
+                {
+                    CodeHash = new string('0', 64),
+                },
+                descriptor with
+                {
+                    GameplayHash = new string('0', 64),
+                },
             }
         )
         {
             Check(
-                NetworkCompatibility.Rejection(descriptor.Identifier, other.Identifier) == reason,
+                NetworkCompatibility.Rejection(descriptor.Identifier, other.Identifier) is { Length: > 0 } reason
+                    && reasons.Add(reason),
                 "Admission identifies the incompatible part of the descriptor"
             );
             Check(

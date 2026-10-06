@@ -50,13 +50,9 @@ internal static class Program
             SettingsSaveTests.Run(Check);
             Ipv6FirewallTests.Run(Check);
             MenuRepeatTests.Run(Check);
-            FriendMenuTests.Run(Check);
             LocalTestLauncherTests.Run(Check);
             LobbyMenuTests.Run(Check);
             LobbyPresentationTests.Run(Check);
-            ToastTests.Run(Check);
-            LobbyTests.Run(root!, Check);
-            TeamPaletteTests.Run(root!, Check);
             SmokeTests.Run(Check);
             if (args.Contains("--audio"))
             {

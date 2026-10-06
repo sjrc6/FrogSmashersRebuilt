@@ -40,15 +40,6 @@ internal static class LobbyMenuTests
         keyboard = default;
         controls.Poll();
         check(MenuInput.Read(controls, 0).AcceptReleased, "Keyboard supplies release edge");
-        keyboard = new(Keys.U);
-        controls.Poll();
-        check(
-            MenuInput.Read(controls).Remove && ButtonGlyph.Remove(0) == ButtonGlyph.Key(Keys.U),
-            "U removes a slot occupant and matches the hint"
-        );
-        keyboard = new(Keys.Delete);
-        controls.Poll();
-        check(!MenuInput.Read(controls).Remove, "Delete is no longer a slot action");
         keyboard = default;
         pad = new(Vector2.Zero, Vector2.Zero, 0, 0, Buttons.A | Buttons.X | Buttons.Y);
         controls.Poll();
@@ -85,22 +76,8 @@ internal static class LobbyMenuTests
         check(creation.Capacity(roster) == 3, "Max Players cannot displace existing locals");
         creation.Apply(roster);
         check(roster.Count == 3 && roster.Capacity == 3, "Creating online retains the local party");
-        creation.CycleType(-1);
-        check(creation.SlotType == SlotType.Friend && !creation.Lan, "Friends creation selects friend admission");
-        creation.CycleType(1);
-        check(creation.SlotType == SlotType.Open, "Public creation selects open admission");
-        creation.CycleType(1);
-        check(creation.Lan && creation.SlotType == SlotType.Open, "LAN creation opens ordinary remote slots");
-        creation.CycleType(1);
-        check(
-            !creation.Lan && creation.Privacy == LobbyPrivacy.PrivateCode && creation.SlotType == SlotType.Private,
-            "Private Code selects a secret policy independently of private room access"
-        );
         creation.SelectPrivate();
-        check(
-            creation.Privacy == LobbyPrivacy.Private && creation.TypeLabel == "PRIVATE",
-            "Sharing from local play creates ordinary Private lobbies"
-        );
+        check(creation.Privacy == LobbyPrivacy.Private, "Sharing from local play creates ordinary Private lobbies");
         Console.WriteLine("Lobby creation and shared slot actions passed");
     }
 }

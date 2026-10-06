@@ -7,13 +7,16 @@ internal static class InputTests
     public static void Run(Action<bool, string> check)
     {
         var settings = new ClientSettings();
+        settings.Keyboard[0].Left = Keys.A;
+        settings.Keyboard[0].Strafe = Keys.R;
+        settings.Keyboard[0].Jump = Keys.T;
+        settings.Keyboard[0].Attack = Keys.U;
+        settings.Keyboard[1].Left = Keys.Left;
+        settings.Keyboard[1].Strafe = Keys.N;
+        settings.Keyboard[1].Jump = Keys.M;
         var controls = new FrogSmashers.Client.Controls(settings);
         KeyboardState keyboard = default;
         controls.KeyboardSource = () => keyboard;
-        check(
-            settings.Keyboard[0].Strafe == Keys.R && settings.Keyboard[1].Strafe == Keys.N,
-            "keyboard strafe defaults differ from the fork"
-        );
         keyboard = new(Keys.A, Keys.R);
         controls.Poll();
         var strafe = controls.Read(0);

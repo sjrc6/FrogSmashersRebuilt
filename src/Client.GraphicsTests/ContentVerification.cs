@@ -4,7 +4,7 @@ namespace FrogSmashers.Client.GraphicsTests;
 
 internal sealed partial class PresentationChecks
 {
-    public string[] VerifyContent()
+    public string[] VerifyContent(string? captureDirectory)
     {
         var textures = assets
             .Data.Sprites.Values.Select(sprite => sprite.Path)
@@ -29,6 +29,8 @@ internal sealed partial class PresentationChecks
             var world = new World(assets.Data, new GameRules(playerCount: 8, mapOrder: [index]));
             renderer.Update(1 / 60f);
             renderer.DrawWorld(world, null, 1);
+            if (captureDirectory != null)
+                SaveFrame(Path.Combine(captureDirectory, $"map-{index}.png"));
             checks.Add("map renders compiled textures, shaders and emitters: " + world.Map.Id);
         }
         renderer.Reset();

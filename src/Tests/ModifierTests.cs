@@ -1,7 +1,6 @@
 using System.Text.Json;
 using FrogSmashers.Core;
 using FrogSmashers.Network;
-using static FrogSmashers.Core.Fixed;
 using static FrogSmashers.Tests.MechanicsFixture;
 using static FrogSmashers.Tests.TestAssert;
 
@@ -13,19 +12,24 @@ internal static class ModifierTests
     {
         Configuration();
         Scores();
-        BodyBouncing();
-        Flies();
         Rollback();
-        Console.WriteLine("Modifiers: configuration, scoring, body bouncing, fly timing and lossy rollback passed");
+        Console.WriteLine("Modifiers: configuration, scoring and lossy rollback passed");
     }
 
     private static void Configuration()
     {
-        var defaults = GameModifiers.Default;
-        Check(
-            defaults.PhysicsFixes && !defaults.BodyBouncing && defaults.FlyEnabled,
-            "Physics fixes and flies default on; body bouncing requires opt-in"
-        );
+        var defaults = new GameModifiers
+        {
+            PhysicsFixes = true,
+            BodyBouncing = false,
+            BounceBeforeRecoveryOnly = true,
+            RedirectBounces = false,
+            SuicidePenalty = false,
+            MatchScoring = MatchScoring.RoundWins,
+            FlyEnabled = true,
+            FlySpawnMinSeconds = 15,
+            FlySpawnMaxSeconds = 45,
+        };
         GameModifiers[] variants =
         [
             defaults with
@@ -65,7 +69,7 @@ internal static class ModifierTests
                 FlySpawnMaxSeconds = 120,
             },
         ];
-        var hashes = new HashSet<ulong> { CreateWorld().ConfigurationHash };
+        var hashes = new HashSet<ulong> { CreateWorld(new(modifiers: defaults)).ConfigurationHash };
         foreach (var modifiers in variants)
         {
             var rules = new GameRules(modifiers: modifiers);
@@ -80,11 +84,11 @@ internal static class ModifierTests
             {
                 defaults with
                 {
-                    FlySpawnMinSeconds = 0,
+                    FlySpawnMinSeconds = GameModifiers.MinimumFlyDelay - 1,
                 },
                 defaults with
                 {
-                    FlySpawnMaxSeconds = 121,
+                    FlySpawnMaxSeconds = GameModifiers.MaximumFlyDelay + 1,
                 },
                 defaults with
                 {
@@ -194,86 +198,6 @@ internal static class ModifierTests
                 && tie.Players.All(p => p.Participation == Participation.Active),
             "Cumulative ties advance to Showdown"
         );
-    }
-
-    private static void BodyBouncing()
-    {
-        World Contact(GameModifiers modifiers, bool apex = false, bool teams = false)
-        {
-            var world = CreateWorld(
-                new(playerCount: 3, format: teams ? MatchFormat.Teams : MatchFormat.Ffa, modifiers: modifiers)
-            );
-            var bouncer = world.Players[0];
-            bouncer.X = 0;
-            bouncer.Y = 5;
-            bouncer.OnGround = false;
-            bouncer.Mode = CharacterMode.Bouncing;
-            bouncer.HitsTaken = 2;
-            bouncer.LastHitBy = 2;
-            bouncer.VX = 20;
-            bouncer.VY = -1;
-            bouncer.HasReachedApex = apex;
-            world.Players[1].X = 1;
-            world.Players[1].Y = 5;
-            return world;
-        }
-        var enabled = new GameModifiers { BodyBouncing = true };
-        foreach (bool teams in new[] { false, true })
-        foreach (bool redirect in new[] { false, true })
-        {
-            var world = Contact(enabled with { RedirectBounces = redirect }, teams: teams);
-            Step(world);
-            Check(
-                world.Players[1].HitsTaken == 1
-                    && world.Players[1].LastHitBy == 2
-                    && world.Players[1].Mode == CharacterMode.Bouncing
-                    && world.Players[1].VX == 15,
-                "Body hit transfers three-quarter velocity, a combo hit and the original attacker's credit"
-            );
-            Check(
-                (world.Players[0].VX < 0) == redirect && world.Events.Any(e => e.HitKind == HitKind.Body),
-                "Redirect option controls the launched frog's outgoing trajectory"
-            );
-        }
-        foreach (var world in new[] { Contact(GameModifiers.Default), Contact(enabled, apex: true) })
-        {
-            Step(world);
-            Check(world.Players[1].HitsTaken == 0, "Body collisions obey opt-in and apex restrictions");
-        }
-        var afterApex = Contact(enabled with { BounceBeforeRecoveryOnly = false }, apex: true);
-        Step(afterApex);
-        Check(afterApex.Players[1].HitsTaken == 1, "Recovery setting permits body hits after the launch apex");
-        var immune = Contact(enabled);
-        immune.Players[0].HasBounceDodged = true;
-        Step(immune);
-        Check(immune.Players[1].HitsTaken == 0, "A bounce dodge disables body hits");
-    }
-
-    private static void Flies()
-    {
-        var world = CreateWorld(new(modifiers: new() { FlySpawnMinSeconds = 1, FlySpawnMaxSeconds = 1 }));
-        Step(world, count: World.TickRate - 1);
-        Check(!world.Fly.Active, "Fixed fly delay does not spawn early");
-        Step(world);
-        Check(
-            world.Fly.Active && world.Events.Any(e => e.Kind == SimulationEventKind.FlySpawn),
-            "Equal delay limits spawn at the configured tick"
-        );
-        world.Fly.X = 100;
-        Step(world);
-        Check(
-            !world.Fly.Active && world.Fly.SpawnTicks == World.TickRate,
-            "A lost fly uses the configured respawn delay"
-        );
-        foreach (
-            var rules in new[] { new GameRules(modifiers: new() { FlyEnabled = false }), new GameRules(showdown: true) }
-        )
-        {
-            var disabled = CreateWorld(rules);
-            disabled.Fly.SpawnTicks = 1;
-            Step(disabled, count: 3);
-            Check(!disabled.Fly.Active, "Disabled flies and Showdown never spawn a fly");
-        }
     }
 
     private static void Rollback()

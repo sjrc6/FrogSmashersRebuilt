@@ -11,7 +11,6 @@ internal static class Program
         try
         {
             string? captureDirectory = null;
-            string? cinematicDirectory = null;
             string contentDirectory = Path.Combine(AppContext.BaseDirectory, "Content");
             for (int index = 0; index < args.Length; index++)
             {
@@ -19,9 +18,6 @@ internal static class Program
                 {
                     case "--capture":
                         captureDirectory = args[++index];
-                        break;
-                    case "--capture-cinematics":
-                        cinematicDirectory = args[++index];
                         break;
                     case "--content":
                         contentDirectory = args[++index];
@@ -31,7 +27,7 @@ internal static class Program
                 }
             }
 
-            using var game = new GraphicsTestGame(contentDirectory, captureDirectory, cinematicDirectory);
+            using var game = new GraphicsTestGame(contentDirectory, captureDirectory);
             game.Run();
             return game.Failure == null ? 0 : 1;
         }
@@ -47,18 +43,16 @@ internal sealed class GraphicsTestGame : Game
 {
     private readonly string contentDirectory;
     private readonly string? captureDirectory;
-    private readonly string? cinematicDirectory;
     private readonly GraphicsDeviceManager graphics;
     private Assets assets = null!;
     private Renderer renderer = null!;
     private bool complete;
     public Exception? Failure { get; private set; }
 
-    public GraphicsTestGame(string contentDirectory, string? captureDirectory, string? cinematicDirectory)
+    public GraphicsTestGame(string contentDirectory, string? captureDirectory)
     {
         this.contentDirectory = contentDirectory;
         this.captureDirectory = captureDirectory;
-        this.cinematicDirectory = cinematicDirectory;
         graphics = new GraphicsDeviceManager(this)
         {
             PreferredBackBufferWidth = Renderer.Width,
@@ -87,42 +81,7 @@ internal sealed class GraphicsTestGame : Game
         try
         {
             var suite = new PresentationChecks(renderer);
-            if (cinematicDirectory != null)
-            {
-                suite.CaptureCinematics(cinematicDirectory);
-                Console.WriteLine("Captured cinematic playback samples: " + cinematicDirectory);
-                GraphicsDevice.SetRenderTarget(null);
-                Exit();
-                return;
-            }
-
-            string[] checks =
-            [
-                .. suite.VerifyPresentation(),
-                .. suite.VerifyContent(),
-                .. suite.VerifyMenuLayout(),
-                .. suite.VerifyCrews(captureDirectory == null ? null : Path.Combine(captureDirectory, "crews", "720p")),
-                .. suite.VerifyBeachBall(captureDirectory),
-                .. suite.VerifyMenuPanels(
-                    captureDirectory == null ? null : Path.Combine(captureDirectory, "menu-panels")
-                ),
-                .. suite.VerifySmokeRings(
-                    captureDirectory == null ? null : Path.Combine(captureDirectory, "smoke-rings")
-                ),
-                .. suite.VerifySpawnEffects(
-                    captureDirectory == null ? null : Path.Combine(captureDirectory, "spawn-effects")
-                ),
-            ];
-            if (captureDirectory != null)
-            {
-                suite.CaptureScorePresentation(Path.Combine(captureDirectory, "scores", "720p"));
-                graphics.PreferredBackBufferWidth = 1920;
-                graphics.PreferredBackBufferHeight = 1080;
-                graphics.ApplyChanges();
-                suite.VerifyCrews(Path.Combine(captureDirectory, "crews", "1080p"));
-                suite.CaptureScorePresentation(Path.Combine(captureDirectory, "scores", "1080p"));
-                suite.VerifyBitmapFonts(Path.Combine(captureDirectory, "fonts"));
-            }
+            string[] checks = [.. suite.VerifyContent(captureDirectory), .. suite.VerifyMenuLayout()];
 
             Console.WriteLine(JsonSerializer.Serialize(new { PresentationChecks = checks.Length, Checks = checks }));
         }

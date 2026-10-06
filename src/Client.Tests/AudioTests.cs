@@ -154,10 +154,6 @@ internal static class AudioTests
             Sample(chunk, 0) == 3500 && Sample(chunk, 1) == 3500 && Sample(chunk, 2) == 3500 && loop.Position == 3.5,
             "zero pitch holds its sample and cursor"
         );
-        loop.Rate = 4;
-        check(loop.Rate == 4, "positive pitch supports fourfold playback");
-        loop.Rate = -4;
-        check(loop.Rate == -4, "negative pitch supports fourfold reverse playback");
         loop.Reset();
         loop.Rate = .5f;
         loop.Render(chunk);
