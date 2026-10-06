@@ -5,10 +5,4 @@
   <ItemGroup>
     <ProjectReference Include="../Client/FrogSmashers.Client.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <None
-      Update="Compatibility/AudioFormats.json;Compatibility/SmokeReference.json"
-      CopyToOutputDirectory="PreserveNewest"
-    />
-  </ItemGroup>
 </Project>

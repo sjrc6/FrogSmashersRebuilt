@@ -9,5 +9,5 @@
 | `src/ContentBuild` | compiled content and original audio |
 | `src/Tests` | simulation and networking tests |
 | `src/Client.Tests` | input, audio, and particle tests |
-| `src/Client.GraphicsTests` | isolated presentation/reference checks |
+| `src/Client.GraphicsTests` | rendering, presentation, and layout checks |
 | `src/Client.Automation` | scripted input, captures |

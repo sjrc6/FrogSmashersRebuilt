@@ -98,7 +98,7 @@ internal sealed class GraphicsTestGame : Game
 
             string[] checks =
             [
-                .. suite.VerifySourcePresentation(),
+                .. suite.VerifyPresentation(),
                 .. suite.VerifyContent(),
                 .. suite.VerifyMenuLayout(),
                 .. suite.VerifyCrews(captureDirectory == null ? null : Path.Combine(captureDirectory, "crews", "720p")),
@@ -115,7 +115,6 @@ internal sealed class GraphicsTestGame : Game
             ];
             if (captureDirectory != null)
             {
-                suite.CaptureNativeReferenceSamples(captureDirectory);
                 suite.CaptureScorePresentation(Path.Combine(captureDirectory, "scores", "720p"));
                 graphics.PreferredBackBufferWidth = 1920;
                 graphics.PreferredBackBufferHeight = 1080;

@@ -3,34 +3,63 @@ using FrogSmashers.Core;
 
 internal static class SmokeTests
 {
-    public static void Run(string content, Action<bool, string> check)
+    public static void Run(Action<bool, string> check)
     {
-        var emitters = GameContent
-            .Load(Path.Combine(content, "content.json"))
-            .Maps.Single(map => map.Id == "5Skyline")
-            .ParticleEmitters;
-        var foreground = emitters.Single(e => e.Name == "Particle System");
-        var a = new SmokeEmitter(foreground, 1369906688);
-        a.AdvanceTo(0);
-        check(Visible(a).Count == 375, "foreground prewarms its five-second duration");
-        var b = new SmokeEmitter(foreground, 1369906688);
+        var data = new ParticleEmitterData
+        {
+            Rate = 12,
+            Lifetime = 2,
+            Duration = 1,
+            Prewarm = true,
+            Radius = .5f,
+            Speed = 2,
+            ConeAngle = .25f,
+            LocalVelocity = [1, 0, 0],
+            NoiseStrength = .5f,
+            NoiseFrequency = .5f,
+            Size = [1, 2],
+            Growth = [.5f, 1],
+            Color = [1, .5f, 0, .75f],
+        };
+        var frameStepped = new SmokeEmitter(data, 17);
+        frameStepped.AdvanceTo(0);
+        check(Visible(frameStepped).Count == 12, "prewarm emits for the configured duration");
+        var singleAdvance = new SmokeEmitter(data, 17);
         for (int i = 0; i <= 1440; i++)
         {
-            a.AdvanceTo(i / 144.0);
+            frameStepped.AdvanceTo(i / 144.0);
         }
 
-        b.AdvanceTo(10);
-        var before = Visible(a);
-        check(before.Count == 750, "foreground retains its ten-second density");
-        check(before.SequenceEqual(Visible(b)), "smoke depends on elapsed time, not draw cadence or skipped draws");
-        a.AdvanceTo(10);
-        check(before.SequenceEqual(Visible(a)), "paused smoke must retain position, size, color and ordering");
-        check(before.Zip(before.Skip(1)).All(pair => pair.First.Id > pair.Second.Id), "older smoke draws in front");
-        var background = new SmokeEmitter(emitters.Single(e => e.Name == "Particle System (1)"), 1369906689);
-        background.AdvanceTo(0);
-        check(Visible(background).Count == 5000, "background prewarms its full fifty-second lifetime");
+        singleAdvance.AdvanceTo(10);
+        var before = Visible(frameStepped);
+        check(before.Count == 24, "expired particles leave the configured steady-state density");
         check(
-            Visible(background).All(p => Math.Abs(p.Position.Z - 8.57f) < .00001f),
+            before.SequenceEqual(Visible(singleAdvance)),
+            "smoke depends on elapsed time, not draw cadence or skipped draws"
+        );
+        frameStepped.AdvanceTo(10);
+        check(
+            before.SequenceEqual(Visible(frameStepped)),
+            "paused smoke must retain position, size, color and ordering"
+        );
+        check(before.Zip(before.Skip(1)).All(pair => pair.First.Id > pair.Second.Id), "older smoke draws in front");
+        var background = new SmokeEmitter(
+            new()
+            {
+                Rate = 8,
+                Lifetime = 2,
+                Duration = 4,
+                Prewarm = true,
+                Z = 3,
+                EmitterScale = [1, 1, 0],
+                LocalVelocity = [1, 1, 1],
+            },
+            18
+        );
+        background.AdvanceTo(0);
+        check(Visible(background).Count == 16, "prewarm longer than the lifetime discards expired particles");
+        check(
+            Visible(background).All(p => Math.Abs(p.Position.Z - 3) < .00001f),
             "background scale flattens rendered Z while retaining three-dimensional local motion"
         );
         var linear = new SmokeEmitter(

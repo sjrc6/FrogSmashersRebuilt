@@ -42,6 +42,7 @@ internal static class Program
             Check(root != null, "Content manifest missing");
             bool backend = args.Contains("--audio");
             AudioTests.Run(backend, Check);
+            AudioContentTests.Run(root!, Check);
             InputTests.Run(Check);
             ControllerBindingTests.Run(Check);
             MenuSetupTests.Run(root!, Check);
@@ -56,18 +57,13 @@ internal static class Program
             ToastTests.Run(Check);
             LobbyTests.Run(root!, Check);
             TeamPaletteTests.Run(root!, Check);
-            if (!args.Contains("--skip-compatibility"))
-            {
-                AudioCompatibility.Run(root!, Check);
-                SmokeCompatibility.Run(root!, Check);
-            }
-            SmokeTests.Run(root!, Check);
+            SmokeTests.Run(Check);
             if (args.Contains("--audio"))
             {
                 AudioBackendTests.Run(root!, Check);
             }
 
-            Console.WriteLine($"PASS: {checks} client audio/input/smoke checks");
+            Console.WriteLine($"PASS: {checks} client checks");
             return 0;
         }
         catch (Exception ex)

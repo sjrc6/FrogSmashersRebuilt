@@ -9,6 +9,7 @@ internal static class AudioTests
     {
         Spatial(check);
         SpatialStreaming(check);
+        Variations(check);
         Loops(check);
         if (backend)
         {
@@ -88,6 +89,15 @@ internal static class AudioTests
     private static void Spatial(Action<bool, string> check)
     {
         var spatializer = new AudioSpatializer();
+        var centered = spatializer.Gains(Vector3.Zero);
+        var left = spatializer.Gains(new(-20, 0, 0));
+        var right = spatializer.Gains(new(20, 0, 0));
+        check(centered.X > 0 && centered.X == centered.Y, "centered sounds have equal audible channel gains");
+        check(left.X > left.Y && right.Y > right.X, "sounds pan toward their side of the listener");
+        check(
+            Vector2.Distance(left, new(right.Y, right.X)) < .00001f,
+            "mirroring a sound across the listener swaps its channel gains"
+        );
         check(spatializer.Gains(new(0, 0, 490)) == Vector2.Zero, "linear attenuation is silent at maximum distance");
         var relative = spatializer.Gains(new(20, 3, 5), new(10, 3, -5));
         check(
@@ -98,8 +108,23 @@ internal static class AudioTests
         var mono = AudioSpatializer.SpatialPcm(new(Pcm(10000), 48000, 1), center);
         var same = AudioSpatializer.SpatialPcm(new(Pcm(10000, 10000), 48000, 2), center);
         var opposite = AudioSpatializer.SpatialPcm(new(Pcm(10000, -10000), 48000, 2), center);
-        check(Math.Abs(Sample(same, 0) - 2 * Sample(mono, 0)) <= 1, "3D stereo uses the measured channel sum");
-        check(Sample(opposite, 0) == 0 && Sample(opposite, 1) == 0, "opposite stereo channels cancel in Unity 3D");
+        check(Math.Abs(Sample(same, 0) - 2 * Sample(mono, 0)) <= 1, "positional stereo downmix sums both channels");
+        check(Sample(opposite, 0) == 0 && Sample(opposite, 1) == 0, "opposite stereo channels cancel when downmixed");
+    }
+
+    private static void Variations(Action<bool, string> check)
+    {
+        foreach (int count in new[] { 2, 3, 4, 6, 8 })
+        {
+            check(
+                Enumerable
+                    .Range(0, 256)
+                    .Select(tick => (int)(Audio.VariationKey((long)tick << 15) % (ulong)count))
+                    .Distinct()
+                    .Count() == count,
+                "reserved event-id bits must not exclude clips from a sound group"
+            );
+        }
     }
 
     private static void Loops(Action<bool, string> check)
@@ -127,12 +152,12 @@ internal static class AudioTests
         loop.Render(chunk);
         check(
             Sample(chunk, 0) == 3500 && Sample(chunk, 1) == 3500 && Sample(chunk, 2) == 3500 && loop.Position == 3.5,
-            "zero pitch holds its sample and cursor, matching measured Unity DC output"
+            "zero pitch holds its sample and cursor"
         );
         loop.Rate = 4;
-        check(loop.Rate == 4, "positive pitch retains measured Unity fourfold playback");
+        check(loop.Rate == 4, "positive pitch supports fourfold playback");
         loop.Rate = -4;
-        check(loop.Rate == -4, "negative pitch retains measured Unity fourfold reverse playback");
+        check(loop.Rate == -4, "negative pitch supports fourfold reverse playback");
         loop.Reset();
         loop.Rate = .5f;
         loop.Render(chunk);
