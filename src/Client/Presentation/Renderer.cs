@@ -34,6 +34,7 @@ public sealed partial class Renderer : IDisposable
     private float time;
     private double sceneTime;
     private string mapId = "";
+    private int mapRound;
     public bool ShakeEnabled
     {
         get => cameraController.ShakeEnabled;
@@ -158,6 +159,7 @@ public sealed partial class Renderer : IDisposable
         seen.Clear();
         eventOrder.Clear();
         scores.Reset();
+        crewLayout.Reset();
         smokeEmitters.Clear();
         mapId = "";
         activeMap = null;
@@ -180,7 +182,7 @@ public sealed partial class Renderer : IDisposable
 
     public void Consume(IEnumerable<SimulationEvent> events, World world, float age = 0)
     {
-        SetMap(world.Map);
+        SetMap(world.Map, world.Match.RoundNumber);
         foreach (var e in events)
         {
             if (!seen.Add(e.Id))
@@ -385,9 +387,9 @@ public sealed partial class Renderer : IDisposable
             _ => (Vector2.Zero, 0),
         };
 
-    private void SetMap(MapData map)
+    private void SetMap(MapData map, int round = 0)
     {
-        if (mapId == map.Id)
+        if (mapId == map.Id && mapRound == round)
         {
             return;
         }
@@ -404,6 +406,7 @@ public sealed partial class Renderer : IDisposable
         sceneTime = 0;
         activeMap = map;
         mapId = map.Id;
+        mapRound = round;
         cameraController.Reset(map);
         confettiCounter = 0;
         for (int i = 0; i < 8; i++)

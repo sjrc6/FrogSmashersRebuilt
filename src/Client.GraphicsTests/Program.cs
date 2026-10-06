@@ -101,6 +101,7 @@ internal sealed class GraphicsTestGame : Game
                 .. suite.VerifySourcePresentation(),
                 .. suite.VerifyContent(),
                 .. suite.VerifyMenuLayout(),
+                .. suite.VerifyCrews(captureDirectory == null ? null : Path.Combine(captureDirectory, "crews", "720p")),
                 .. suite.VerifyBeachBall(captureDirectory),
                 .. suite.VerifyMenuPanels(
                     captureDirectory == null ? null : Path.Combine(captureDirectory, "menu-panels")
@@ -119,6 +120,7 @@ internal sealed class GraphicsTestGame : Game
                 graphics.PreferredBackBufferWidth = 1920;
                 graphics.PreferredBackBufferHeight = 1080;
                 graphics.ApplyChanges();
+                suite.VerifyCrews(Path.Combine(captureDirectory, "crews", "1080p"));
                 suite.CaptureScorePresentation(Path.Combine(captureDirectory, "scores", "1080p"));
                 suite.VerifyBitmapFonts(Path.Combine(captureDirectory, "fonts"));
             }

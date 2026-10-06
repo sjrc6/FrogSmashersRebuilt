@@ -72,7 +72,7 @@ internal sealed partial class MenuController
                 RepeatAdjust: true,
                 Value: game.Settings.FrameLimit.ToString(),
                 ValueSample: "1000",
-                DisabledReason: game.Settings.VSync ? "VSYNC ENABLED" : null,
+                DisabledReason: game.Settings.VSync ? "TURN OFF VSYNC" : null,
                 Change: amount =>
                     game.Settings.FrameLimit = FrameRates[
                         Wrap(Array.IndexOf(FrameRates, game.Settings.FrameLimit) + amount, FrameRates.Length)

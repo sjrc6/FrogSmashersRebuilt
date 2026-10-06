@@ -121,7 +121,7 @@ public sealed partial class World
 
         events.Clear();
         for (int slot = 0; slot < inputs.Length; slot++)
-            Match.ApplySelection(Rules, slot, inputs[slot].Command);
+            Match.ApplyCommand(Rules, slot, inputs[slot].Command);
         if (Match.Phase == MatchPhase.Selecting)
         {
             if (Match.CompleteCrewSelection(Rules))
@@ -159,11 +159,9 @@ public sealed partial class World
         for (int slot = 0; slot < Players.Length; slot++)
         {
             TickPlayer(Players[slot], inputs[slot].Gameplay);
-            if (Match.Phase == MatchPhase.Selecting)
-                break;
         }
 
-        if (!Rules.Lobby && Match.Phase != MatchPhase.Selecting)
+        if (!Rules.Lobby)
         {
             UpdateFly();
         }
@@ -171,15 +169,9 @@ public sealed partial class World
             UpdateBeachBall();
         if (Match.Phase == MatchPhase.RoundFinished && --Match.PhaseTicks <= 0)
         {
-            if (Rules.ScoreScreenTicks > 0)
-            {
-                Match.Phase = MatchPhase.RoundScores;
-                Match.PhaseTicks = Rules.ScoreScreenTicks;
-            }
-            else
-            {
+            Match.EndCelebration(Rules);
+            if (Match.Phase == MatchPhase.RoundScores && Match.PhaseTicks == 0)
                 AdvanceRound();
-            }
         }
 
         TickNumber++;

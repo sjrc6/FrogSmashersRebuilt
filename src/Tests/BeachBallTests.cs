@@ -266,8 +266,8 @@ internal static class BeachBallTests
         foreach (
             var (phase, impact, retained) in new[]
             {
-                (BeachBallPhase.Flying, 10m, .65m),
-                (BeachBallPhase.Settling, 30m, .65m),
+                (BeachBallPhase.Flying, 10m, .85m),
+                (BeachBallPhase.Settling, 30m, .85m),
                 (BeachBallPhase.Settling, 29.9m, .95m),
                 (BeachBallPhase.Settling, 1.5m, .95m),
                 (BeachBallPhase.Passive, 4.9m, .4m),

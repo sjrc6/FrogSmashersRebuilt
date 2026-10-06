@@ -264,7 +264,8 @@ public class FrogGame : Game
         if (options.Rules.StartBlockedReason() is { } reason)
         {
             Menus.ShowSeats();
-            Toasts.Show(reason);
+            if (UserMessages.MatchStart(reason) is { } message)
+                Toasts.Show(message);
             return;
         }
 
@@ -278,10 +279,7 @@ public class FrogGame : Game
         if (!host && !target.StartsWith("udp:", StringComparison.Ordinal))
         {
             if (!LobbyAddress.TrySteam(target, out ulong id, out secret))
-            {
-                Toasts.Show("ENTER A VALID LOBBY CODE");
                 return;
-            }
             target = "steam:" + id;
         }
         if (
@@ -498,7 +496,7 @@ public class FrogGame : Game
             var world = Match.World;
             if (world.Match.Phase == MatchPhase.Selecting)
             {
-                Renderer.DrawCrewSelection(world, Match.FighterChoices);
+                Renderer.DrawCrewSelection(world, Match.PlayerViews, Controls);
             }
             else if (world.Match.Phase == MatchPhase.RoundScores)
             {
@@ -515,6 +513,8 @@ public class FrogGame : Game
                     Match.Interpolation,
                     showGameplayUi: !Match.IsMenuBackground
                 );
+                if (!Match.IsMenuBackground)
+                    Renderer.DrawMatchOverlay(world, Match.PlayerViews, Controls);
             }
 
             Audio.ListenerPosition = Renderer.ListenerPosition;

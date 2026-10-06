@@ -94,7 +94,7 @@ internal static partial class LobbyTests
         rig.Input = null;
         Check(host.Lobby.StartMatch(_ => "initial colors"), "Match start begins before the delayed selection arrives");
         rig.WaitFor(
-            () => host.Lobby.Notice == "PLAYERS CHANGED; START AGAIN" && rig.Ready,
+            () => host.Lobby.Notice == "LOBBY CHANGED, TRY AGAIN" && rig.Ready,
             "A pending selection must cancel an outdated frozen roster"
         );
         Check(

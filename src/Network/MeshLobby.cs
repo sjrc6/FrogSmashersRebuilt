@@ -273,7 +273,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
         }
         if (Roster.Slots.Any(slot => slot.Player is { Spawned: false }))
         {
-            Notice = "SPAWN ALL PLAYERS";
+            Notice = "WAITING FOR PLAYERS";
             return false;
         }
         string settings = createSettings(Roster);
@@ -806,7 +806,7 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
             .OrderBy(player => player.Peer)
             .ToArray();
         if (players.Length < 2 || players.Any(player => !player.Spawned))
-            throw new InvalidDataException("SPAWN ALL PLAYERS");
+            throw new InvalidDataException("WAITING FOR PLAYERS");
         InputPlayerSlots =
         [
             -1,

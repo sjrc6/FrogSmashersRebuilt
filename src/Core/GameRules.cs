@@ -99,24 +99,24 @@ public sealed class GameRules
         Modifiers.Validate();
     }
 
-    public string? StartBlockedReason()
+    public MatchStartBlock? StartBlockedReason()
     {
         if (PlayerCount < 2)
-            return "NEED TWO PLAYERS";
+            return MatchStartBlock.TooFewPlayers;
         int teamCount = Teams.Take(PlayerCount).Distinct().Count();
         if (UsesTeams && teamCount < 2)
-            return "CHOOSE TWO TEAMS";
+            return MatchStartBlock.TooFewTeams;
         if (Format == MatchFormat.Crews && teamCount != 2)
-            return "CREWS REQUIRES TWO TEAMS";
+            return MatchStartBlock.CrewTeamCount;
         if (Format == MatchFormat.Crews && CpuPlayers.Take(PlayerCount).Any(cpu => cpu))
-            return "CREWS REQUIRES HUMAN PLAYERS";
+            return MatchStartBlock.CpuInCrews;
         return null;
     }
 
     internal void ValidateWorld(IReadOnlyList<MapData> maps)
     {
         if (StartBlockedReason() is { } reason)
-            throw new ArgumentException(reason);
+            throw new ArgumentException($"Cannot start match: {reason}");
         if (maps.Count == 0 || MapOrder.Any(map => map >= maps.Count))
             throw new ArgumentException("Invalid map order");
         if (Lobby && maps.Any(map => map.Spawns.Count < PlayerCount))

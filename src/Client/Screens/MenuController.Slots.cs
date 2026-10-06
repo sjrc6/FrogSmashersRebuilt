@@ -107,9 +107,8 @@ internal sealed partial class MenuController
         if (game.Lobby.Roster.Slots[SelectedSeat].Player is not { Cpu: true })
             return;
         if (team && !game.Lobby.UsesTeams)
-            game.Toasts.Show("ENABLE TEAMS FIRST");
-        else
-            game.Lobby.ChangeCpu(SelectedSeat, team, direction);
+            return;
+        game.Lobby.ChangeCpu(SelectedSeat, team, direction);
         menuSoundPending = true;
     }
 
@@ -123,10 +122,7 @@ internal sealed partial class MenuController
     {
         var slot = game.Lobby.Roster.Slots[SelectedSeat];
         if (slot.Player is { Cpu: false })
-        {
-            game.Toasts.Show("SLOT OCCUPIED");
             return;
-        }
         SlotType[] types = game.Lobby.Online == null ? [SlotType.Local, SlotType.Cpu] : Enum.GetValues<SlotType>();
         if (Rules.Format == Core.MatchFormat.Crews)
             types = types.Where(type => type != SlotType.Cpu).ToArray();

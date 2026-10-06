@@ -42,7 +42,7 @@ internal sealed partial class LobbyController
             RosterUpdating ? "LOBBY UPDATING"
             : spectating
                 ? Roster.Spectators.Count >= LobbyRoster.MaxSpectators ? "SPECTATORS FULL"
-                    : "BACK OUT EXTRA PLAYERS FIRST"
+                    : "CANNOT SPECTATE"
             : "NO OPEN SLOTS"
         );
     }

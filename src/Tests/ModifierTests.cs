@@ -64,10 +64,6 @@ internal static class ModifierTests
             {
                 FlySpawnMaxSeconds = 120,
             },
-            defaults with
-            {
-                IncludePodium = true,
-            },
         ];
         var hashes = new HashSet<ulong> { CreateWorld().ConfigurationHash };
         foreach (var modifiers in variants)
@@ -121,16 +117,12 @@ internal static class ModifierTests
                 Role = MapRole.Showdown,
             },
             new() { Id = "a", Name = "Showdown is just a display name" },
-            new() { Id = "3Podium", Role = MapRole.ExtraArena },
+            new() { Id = "presentation", Role = MapRole.Presentation },
             new() { Id = "b" },
         ];
         Check(
-            ArenaRotation.StartingAt(maps, defaults, 3).SequenceEqual(new[] { 3, 1 }),
+            ArenaRotation.StartingAt(maps, 3).SequenceEqual(new[] { 3, 1 }),
             "Regular rotation uses roles, independent of map index or display name"
-        );
-        Check(
-            ArenaRotation.StartingAt(maps, defaults with { IncludePodium = true }, 2).SequenceEqual(new[] { 2, 3, 1 }),
-            "Extra arena can start the enabled rotation without including Showdown"
         );
         Check(
             new World(maps, new(showdown: true), 1, null).Map.Id == "tie",

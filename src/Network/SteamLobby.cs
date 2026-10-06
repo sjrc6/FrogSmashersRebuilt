@@ -359,9 +359,11 @@ public sealed class SteamLobby : GameLobby
             _ => throw new ArgumentOutOfRangeException(nameof(privacy)),
         };
 
+    public bool CanInviteFriends => hosting && Connected && !Starting && Error == null && !disposed;
+
     public bool InviteFriend(ulong steamId)
     {
-        if (!hosting || !Connected || Starting || Error != null || disposed)
+        if (!CanInviteFriends)
             return false;
         return admission!.Invite(steamId, () => SteamMatchmaking.InviteUserToLobby(lobbyId, new CSteamID(steamId)));
     }
@@ -375,12 +377,18 @@ public sealed class SteamLobby : GameLobby
         coordinator!.RevokePendingAdmissions();
     }
 
+    public bool ShareCodeChanged =>
+        Connected
+        && !disposed
+        && Privacy == LobbyPrivacy.PrivateCode
+        && !hosting
+        && admissionSecret.Length > 0
+        && !LobbyAdmissionPolicy.CanShare(admissionSecret, SteamMatchmaking.GetLobbyData(lobbyId, "code_fingerprint"));
+
     public string? ShareCodeUnavailable =>
         !Connected || Error != null || disposed ? "LOBBY NOT READY"
         : Privacy != LobbyPrivacy.PrivateCode || hosting ? null
-        : admissionSecret.Length == 0 ? "ASK HOST FOR A CODE"
-        : !LobbyAdmissionPolicy.CanShare(admissionSecret, SteamMatchmaking.GetLobbyData(lobbyId, "code_fingerprint"))
-            ? "CODE CHANGED - ASK HOST"
+        : admissionSecret.Length == 0 ? "LOBBY REQUIRES CODE"
         : null;
 
     private void PublishCodeFingerprint()
@@ -393,7 +401,7 @@ public sealed class SteamLobby : GameLobby
     }
 
     public string? ShareCode =>
-        ShareCodeUnavailable == null
+        ShareCodeUnavailable == null && !ShareCodeChanged
             ? LobbyAddress.SteamCode(
                 LobbyCode,
                 Privacy == LobbyPrivacy.PrivateCode ? admission?.Secret ?? admissionSecret : ""

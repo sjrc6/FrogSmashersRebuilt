@@ -3,7 +3,6 @@ namespace FrogSmashers.Core;
 public enum MapRole
 {
     Arena,
-    ExtraArena,
     Showdown,
     Presentation,
 }

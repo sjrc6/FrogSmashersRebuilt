@@ -113,6 +113,8 @@ public sealed class Controls
         return device;
     }
 
+    internal KeyBindings KeyboardBindings(int device) => settings.Keyboard[device];
+
     internal PadBindings ControllerBindings(int pad)
     {
         string key = Controller(pad).BindingKey;

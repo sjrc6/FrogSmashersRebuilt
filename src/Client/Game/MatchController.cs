@@ -15,6 +15,7 @@ internal sealed partial class MatchController : IDisposable
     private readonly string? recordingPath;
     private readonly JsonSerializerOptions jsonOptions = new() { WriteIndented = true };
     private LocalSeat[] seats = [];
+    public IReadOnlyList<MatchPlayerView> PlayerViews { get; private set; } = [];
     private readonly Dictionary<int, MatchCommand> commands = new();
     private InputReplay? replay;
     private string recordingSettings = "";
@@ -59,6 +60,7 @@ internal sealed partial class MatchController : IDisposable
     {
         Close();
         seats = localSeats.ToArray();
+        PlayerViews = seats.Select(seat => new MatchPlayerView(seat.Label, seat.Device)).ToArray();
         CreateWorld(options);
         replay = recordingPath != null ? InputReplay.Start(World!) : null;
         recordingSettings = JsonSerializer.Serialize(options, jsonOptions);
@@ -95,6 +97,17 @@ internal sealed partial class MatchController : IDisposable
             .Roster.Humans(lobby.LocalPeer)
             .Select(player => new LocalSeat(player.Id, player.Team, player.Color, player.Id))
             .ToArray();
+        PlayerViews = MatchSetup
+            .MatchPlayers(lobby.Roster)
+            .Select(player => new MatchPlayerView(
+                LobbyPlayerLabel.Name(
+                    player,
+                    lobby.Roster.Slots.ToList().FindIndex(slot => slot.Player == player),
+                    lobby.LocalPeer
+                ),
+                !player.Cpu && player.Peer == lobby.LocalPeer ? player.Id : -1
+            ))
+            .ToArray();
         CreateWorld(options);
         Network = new NetworkSession(
             World!,
@@ -124,6 +137,10 @@ internal sealed partial class MatchController : IDisposable
         ReplayPlayback = true;
         CreateWorld(options);
         World!.Restore(replay.InitialSnapshot);
+        PlayerViews = Enumerable
+            .Range(0, World.Players.Length)
+            .Select(slot => new MatchPlayerView($"PLAYER {slot + 1}"))
+            .ToArray();
         PreviousWorld!.Restore(replay.InitialSnapshot);
         ResetPresentation();
         return options;
@@ -142,7 +159,6 @@ internal sealed partial class MatchController : IDisposable
         audio.TitleBackground = IsMenuBackground;
         controls.ClearPendingEdges();
         commands.Clear();
-        fighterChoices.Clear();
         selectionInputs.Clear();
         accumulator = 0;
         Paused = false;
@@ -218,19 +234,6 @@ internal sealed partial class MatchController : IDisposable
         }
 
         audio.UpdateFlights(World, (float)elapsedSeconds);
-    }
-
-    public bool QueueFighterSelection(int device, int player)
-    {
-        if (
-            World?.Match.Phase != MatchPhase.Selecting
-            || player < 0
-            || player >= World.Players.Length
-            || !seats.Any(seat => seat.Device == device && seat.Device >= 0)
-        )
-            return false;
-        commands[device] = new(MatchCommandKind.SelectFighter, (byte)player);
-        return true;
     }
 
     private void AdvanceLocal()
@@ -360,6 +363,7 @@ internal sealed partial class MatchController : IDisposable
         Network?.Dispose();
         Network = null;
         World = null;
+        PlayerViews = [];
         PreviousWorld = null;
         replay = null;
         commands.Clear();

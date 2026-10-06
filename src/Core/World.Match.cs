@@ -45,7 +45,7 @@ public sealed partial class World
             return Rules.MapOrder[round % Rules.MapOrder.Length];
         }
 
-        var regular = ArenaRotation.Available(maps, Rules.Modifiers);
+        var regular = ArenaRotation.Available(maps);
         return regular.Length == 0 ? 0 : regular[round % regular.Length];
     }
 

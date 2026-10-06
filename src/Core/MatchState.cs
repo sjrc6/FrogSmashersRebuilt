@@ -24,6 +24,7 @@ public sealed class PlayerProgress
     public int TotalScore;
     public int Stocks;
     public Participation Participation;
+    public bool Ready;
 
     internal void WriteSnapshot(BinaryWriter writer)
     {
@@ -32,6 +33,7 @@ public sealed class PlayerProgress
         writer.Write(TotalScore);
         writer.Write(Stocks);
         writer.Write((int)Participation);
+        writer.Write(Ready);
     }
 
     internal static PlayerProgress ReadSnapshot(BinaryReader reader) =>
@@ -42,6 +44,7 @@ public sealed class PlayerProgress
             TotalScore = reader.ReadInt32(),
             Stocks = reader.ReadInt32(),
             Participation = (Participation)reader.ReadInt32(),
+            Ready = reader.ReadBoolean(),
         };
 }
 
@@ -80,6 +83,7 @@ public sealed class MatchState
         foreach (var player in Players)
         {
             player.Score = 0;
+            player.Ready = false;
             if (!rules.Lobby && !IsShowdown)
             {
                 player.Stocks = rules.StartingStocks;
@@ -107,10 +111,9 @@ public sealed class MatchState
             if (victim.Stocks > 0)
                 return -1;
             victim.Participation = Participation.Eliminated;
-            int winner = WinningSide(rules, RemainingPlayers());
-            if (winner < 0 && rules.Format == MatchFormat.Crews)
-                BeginCrewSelection(rules);
-            return winner;
+            return rules.Format == MatchFormat.Crews
+                ? Array.FindIndex(Players, player => player.Participation == Participation.Active)
+                : WinningSide(rules, RemainingPlayers());
         }
         if (IsShowdown)
         {
@@ -154,11 +157,27 @@ public sealed class MatchState
         Phase = MatchPhase.RoundFinished;
         Winner = slot;
         PhaseTicks = rules.RoundFinishTicks;
+        if (HasMoreCrewBouts(rules))
+            return;
         for (int index = 0; index < Players.Length; index++)
         {
             if (IsWinner(rules, index))
                 Players[index].RoundWins++;
             Players[index].TotalScore += RoundContribution(rules, index);
+        }
+    }
+
+    private bool HasMoreCrewBouts(GameRules rules) =>
+        rules.Format == MatchFormat.Crews && WinningSide(rules, RemainingPlayers()) < 0;
+
+    public void EndCelebration(GameRules rules)
+    {
+        if (HasMoreCrewBouts(rules))
+            BeginCrewSelection(rules);
+        else
+        {
+            Phase = MatchPhase.RoundScores;
+            PhaseTicks = rules.ScoreScreenTicks;
         }
     }
 
@@ -207,28 +226,50 @@ public sealed class MatchState
         return first;
     }
 
-    public void ApplySelection(GameRules rules, int source, MatchCommand command)
+    public bool CanBackOut(GameRules rules, int slot) =>
+        Phase == MatchPhase.Selecting
+        && TeamSelections[rules.Teams[slot]] == slot
+        && Players[slot].Participation == Participation.Waiting;
+
+    public void ApplyCommand(GameRules rules, int source, MatchCommand command)
     {
-        if (
-            command.Kind != MatchCommandKind.SelectFighter
-            || Phase != MatchPhase.Selecting
-            || rules.Format != MatchFormat.Crews
-        )
+        if (source < 0 || source >= Players.Length || rules.CpuPlayers[source])
             return;
-        int target = command.Player;
-        if (
-            source < 0
-            || source >= Players.Length
-            || target < 0
-            || target >= Players.Length
-            || rules.Teams[source] != rules.Teams[target]
-            || Players[target].Participation is Participation.Eliminated or Participation.Inactive
-        )
+        if (command.Kind == MatchCommandKind.SkipCelebration)
+        {
+            if (Phase == MatchPhase.RoundFinished && Winner == source)
+                PhaseTicks = 0;
             return;
-        int current = TeamSelections[rules.Teams[source]];
-        if (current >= 0 && Players[current].Participation == Participation.Active)
+        }
+        if (Phase != MatchPhase.Selecting || rules.Format != MatchFormat.Crews)
             return;
-        TeamSelections[rules.Teams[source]] = target;
+        int team = rules.Teams[source];
+        var player = Players[source];
+        switch (command.Kind)
+        {
+            case MatchCommandKind.SelectFighter:
+                if (
+                    command.Player == source
+                    && TeamSelections[team] < 0
+                    && player.Participation == Participation.Waiting
+                )
+                {
+                    TeamSelections[team] = source;
+                    player.Ready = false;
+                }
+                break;
+            case MatchCommandKind.BackOutFighter:
+                if (CanBackOut(rules, source))
+                {
+                    TeamSelections[team] = -1;
+                    player.Ready = false;
+                }
+                break;
+            case MatchCommandKind.ToggleReady:
+                if (TeamSelections[team] == source)
+                    player.Ready = !player.Ready;
+                break;
+        }
     }
 
     private int[] RemainingPlayers() =>
@@ -241,7 +282,11 @@ public sealed class MatchState
     {
         RoundNumber++;
         Phase = MatchPhase.Selecting;
+        Winner = -1;
+        PhaseTicks = 0;
         Array.Fill(TeamSelections, -1);
+        foreach (var player in Players)
+            player.Ready = false;
         foreach (int slot in RemainingPlayers())
             if (Players[slot].Participation == Participation.Active)
                 TeamSelections[rules.Teams[slot]] = slot;
@@ -252,7 +297,12 @@ public sealed class MatchState
         if (rules.Format != MatchFormat.Crews || Phase != MatchPhase.Selecting)
             return false;
         int[] remaining = RemainingPlayers();
-        if (remaining.Select(slot => rules.Teams[slot]).Distinct().Any(team => TeamSelections[team] < 0))
+        if (
+            remaining
+                .Select(slot => rules.Teams[slot])
+                .Distinct()
+                .Any(team => TeamSelections[team] < 0 || !Players[TeamSelections[team]].Ready)
+        )
             return false;
         foreach (int slot in remaining)
             Players[slot].Participation =

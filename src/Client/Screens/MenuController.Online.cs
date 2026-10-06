@@ -56,7 +56,7 @@ internal sealed partial class MenuController
         if (lobbies.Count == 0)
         {
             string status = browser?.Searching == true ? "SEARCHING..." : "NO LOBBIES FOUND";
-            browserEntries.Add(new("status", status, DisabledReason: status));
+            browserEntries.Add(new("status", status, Disabled: true));
         }
         browserEntries.Add(
             new(
@@ -103,7 +103,7 @@ internal sealed partial class MenuController
         if (LobbyAddress.TrySteam(text, out _, out _))
             game.BeginLobby(text, false);
         else
-            game.Toasts.Show("NO LOBBY CODE IN CLIPBOARD");
+            game.Toasts.Show("NO LOBBY IN CLIPBOARD");
     }
 
     private void JoinClipboardAddress()

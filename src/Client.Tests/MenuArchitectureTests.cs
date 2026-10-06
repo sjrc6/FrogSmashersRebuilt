@@ -34,6 +34,12 @@ internal static class MenuArchitectureTests
             "Disabled actions stay inactive and use the same disabled color"
         );
         var enabled = action with { DisabledReason = null };
+        var silent = enabled with { Disabled = true };
+        silent.Select();
+        check(
+            actions == 0 && silent.IsDisabled && silent.DisplayColor(true) == action.DisplayColor(true),
+            "Silent disabled actions stay grey and cannot activate without needing a toast"
+        );
         enabled.Select();
         check(
             actions == 1 && enabled.DisplayColor(false) != action.DisplayColor(false),
@@ -75,6 +81,14 @@ internal static class MenuArchitectureTests
             setup.Preferences.Format == MatchFormat.Crews && setup.Preferences.Scoring == ScoringMode.Stocks,
             "Choosing Crews enforces Stocks"
         );
+        var draft = setup.Preferences with { Format = MatchFormat.Ffa };
+        check(
+            setup.CreateOptions(preferences: draft).Rules.Format == MatchFormat.Ffa
+                && setup.Preferences.Format == MatchFormat.Crews,
+            "Previewing match settings does not change the committed lobby format"
+        );
+        setup.CommitPreferences(draft);
+        check(setup.Preferences.Format == MatchFormat.Ffa, "Closing the settings editor commits its draft");
         foreach (var definition in ModifierCatalog.All)
         {
             var modifiers = GameModifiers.Default;
@@ -84,8 +98,8 @@ internal static class MenuArchitectureTests
                 modifiers.Validate();
             }
             check(
-                definition.Help.Length > 0 && definition.Value(modifiers).Length > 0,
-                "Modifier catalog provides help and bounded changes: " + definition.Id
+                definition.Value(modifiers).Length > 0,
+                "Modifier catalog provides bounded changes: " + definition.Id
             );
         }
         var teamRules = new GameRules(format: MatchFormat.Teams);

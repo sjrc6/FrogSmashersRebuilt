@@ -5,7 +5,9 @@ namespace FrogSmashers.Client;
 internal sealed partial class MenuController
 {
     private MatchOptions? DisplayedMatchOptions() =>
-        game.Lobby.IsHost ? game.Setup.CreateOptions(game.Options.MapOrder, game.Lobby.Roster) : game.Lobby.HostOptions;
+        game.Lobby.IsHost
+            ? game.Setup.CreateOptions(game.Options.MapOrder, game.Lobby.Roster, Rules)
+            : game.Lobby.HostOptions;
 
     private string? MatchSettingsReadOnly =>
         !game.Lobby.IsHost ? "HOST ONLY"
@@ -17,7 +19,7 @@ internal sealed partial class MenuController
     {
         var options = DisplayedMatchOptions();
         if (options == null)
-            return [new("waiting", "WAITING FOR HOST", DisabledReason: "WAITING FOR HOST")];
+            return [new("waiting-for-host", "WAITING FOR HOST", Disabled: true)];
         var rules = options.Rules;
         var entries = ModifierCatalog
             .All.Select(definition => new MenuEntry(
@@ -27,6 +29,7 @@ internal sealed partial class MenuController
                 ValueSample: definition.ValueSample,
                 Help: definition.Help,
                 DisabledReason: MatchSettingsReadOnly ?? definition.DisabledReason?.Invoke(rules),
+                Disabled: definition.Disabled?.Invoke(rules) == true,
                 Change: amount => game.Setup.SetModifiers(definition.Change(Rules.Modifiers, amount)),
                 RepeatAdjust: definition.Id is "fly-min" or "fly-max"
             ))
@@ -37,8 +40,7 @@ internal sealed partial class MenuController
                 "RESET MODIFIERS",
                 () => game.Setup.SetModifiers(GameModifiers.Default),
                 Role: MenuRole.Destructive,
-                DisabledReason: MatchSettingsReadOnly,
-                Help: "RESTORE DEFAULT MODIFIERS, INCLUDING PHYSICS FIXES ON AND BODY BOUNCING OFF."
+                DisabledReason: MatchSettingsReadOnly
             )
         );
         return entries;

@@ -6,6 +6,9 @@ namespace FrogSmashers.Client;
 
 internal sealed class ScoreDisplay
 {
+    internal static Vector2 IconPixelScale(SpriteData sprite, float pixelsPerUnit) =>
+        new(10 * pixelsPerUnit / sprite.RectWidth, 10 * pixelsPerUnit / sprite.RectHeight);
+
     private readonly Assets assets;
     private readonly SpriteCanvas canvas;
     private readonly GameCamera cameraController;
@@ -194,10 +197,7 @@ internal sealed class ScoreDisplay
                     id,
                     scorePositions[p.Slot] + new Vector2(-1.08f, -2),
                     PlayerPalette.For(world, p.Slot),
-                    new Vector2(
-                        10 * sprite.PixelsPerUnit / sprite.RectWidth,
-                        10 * sprite.PixelsPerUnit / sprite.RectHeight
-                    ),
+                    IconPixelScale(sprite, sprite.PixelsPerUnit),
                     0,
                     true
                 );

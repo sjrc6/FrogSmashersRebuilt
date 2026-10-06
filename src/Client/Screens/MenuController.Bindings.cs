@@ -48,7 +48,6 @@ internal sealed partial class MenuController
     private void BeginBinding()
     {
         WaitingForBinding = true;
-        game.Toasts.Show(BindingDevice < 2 ? "PRESS A KEY" : "PRESS A BUTTON");
     }
 
     private Keys[] BindingKeys()

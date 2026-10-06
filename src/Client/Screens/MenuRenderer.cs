@@ -335,17 +335,18 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
     {
         if (menu.Screen == GameScreen.Modifiers)
         {
-            var entry = menu.Entries()[menu.Selected];
-            string help = entry.Help ?? "RETURN TO THE LOBBY MENU.";
-            if (entry.DisabledReason != null)
-                help = entry.DisabledReason + ". " + help;
-            game.Renderer.Text(
-                game.Assets.Font.Wrap(help, panel.Width - 40, 3),
-                panel.Center.X,
-                panel.Bottom - 128,
-                new Color(205, 218, 206),
-                center: true
-            );
+            var entry = menu.Entries().ElementAtOrDefault(menu.Selected);
+            string? help = entry?.Help;
+            if (entry?.DisabledReason is { } reason)
+                help = help == null ? reason : reason + ". " + help;
+            if (help != null)
+                game.Renderer.Text(
+                    game.Assets.Font.Wrap(help, panel.Width - 40, 3),
+                    panel.Center.X,
+                    panel.Bottom - 128,
+                    new Color(205, 218, 206),
+                    center: true
+                );
         }
         if (menu.Screen == GameScreen.ViewPlayers)
         {
@@ -427,13 +428,13 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
                 room.Center.X,
                 MenuLayout.SlotAction(menu.SelectedSeat, -2).Center.Y
             );
-            CenteredHint(
-                ButtonGlyph.CpuTeam(menu.HintDevice),
-                $"TEAM {cpu.Team + 1}",
-                room.Center.X,
-                MenuLayout.SlotAction(menu.SelectedSeat, -1).Center.Y,
-                game.Lobby.UsesTeams ? Color.White : new Color(135, 145, 136)
-            );
+            if (game.Lobby.UsesTeams)
+                CenteredHint(
+                    ButtonGlyph.CpuTeam(menu.HintDevice),
+                    $"TEAM {cpu.Team + 1}",
+                    room.Center.X,
+                    MenuLayout.SlotAction(menu.SelectedSeat, -1).Center.Y
+                );
         }
         if (slot.Player is not { Cpu: false })
             CenteredHint(
@@ -525,10 +526,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
                     PressHint(LobbyJoinGlyph(joinDevices[joinHint++]), rect.Center.X, rect.Bottom - 46);
                 continue;
             }
-            string label =
-                player.Cpu ? "CPU"
-                : player.Peer == game.Lobby.LocalPeer ? new LocalSeat(player.Id).Label
-                : $"PLAYER {room + 1}";
+            string label = LobbyPlayerLabel.Name(player, room, game.Lobby.LocalPeer);
             if (game.Lobby.UsesTeams)
                 label += $" / TEAM {player.Team + 1}";
             game.Renderer.CenteredText(label, rect.Center.X, rect.Top + 24, Color.Black, center: true);

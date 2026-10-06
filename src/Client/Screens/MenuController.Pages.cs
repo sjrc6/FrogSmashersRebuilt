@@ -13,7 +13,7 @@ internal sealed partial class MenuController
                 [
                     new("local", "LOCAL", () => ShowSeats()),
                     new("online", "ONLINE", OpenOnline),
-                    new("join-clipboard-lobby", "JOIN CLIPBOARD", JoinClipboardLobby, Role: MenuRole.Positive),
+                    new("join-clipboard-lobby", "JOIN CLIPBOARD", JoinClipboardLobby),
                     Link("SETTINGS", GameScreen.Settings),
                     Link("EXTRAS", GameScreen.Extras),
                     new("quit", "QUIT", game.Exit, Role: MenuRole.Destructive),
@@ -37,17 +37,7 @@ internal sealed partial class MenuController
             case GameScreen.LobbyMenu:
                 var lobbyRows = new List<MenuEntry>();
                 if (game.Lobby.IsHost)
-                {
-                    lobbyRows.Add(
-                        new(
-                            "start-match",
-                            "START MATCH",
-                            StartFromSeats,
-                            Role: MenuRole.Positive,
-                            DisabledReason: MatchStartBlockedReason()
-                        )
-                    );
-                }
+                    lobbyRows.Add(MatchStartEntry());
                 lobbyRows.Add(Link("MATCH SETTINGS", GameScreen.MatchSettings));
                 lobbyRows.Add(Link("MODIFIERS", GameScreen.Modifiers));
                 if (game.Lobby.IsHost)
@@ -57,24 +47,18 @@ internal sealed partial class MenuController
                 if (game.Online.Lobby == null || game.Online.Lobby is SteamLobby)
                 {
                     var steamLobby = game.Online.Lobby as SteamLobby;
-                    lobbyRows.Add(
-                        new(
-                            "invite-friends",
-                            "INVITE FRIENDS",
-                            InviteFriends,
-                            Role: MenuRole.Positive,
-                            DisabledReason: steamLobby is { IsHost: false } ? "HOST ONLY - SHARE A CODE" : null
-                        )
-                    );
-                    lobbyRows.Add(
-                        new(
-                            "copy-lobby-code",
-                            "COPY LOBBY CODE",
-                            CopyLobbyCode,
-                            Role: MenuRole.Positive,
-                            DisabledReason: steamLobby?.ShareCodeUnavailable
-                        )
-                    );
+                    if (steamLobby == null || steamLobby.CanInviteFriends)
+                        lobbyRows.Add(new("invite-friends", "INVITE FRIENDS", InviteFriends, Role: MenuRole.Positive));
+                    if (steamLobby?.ShareCodeChanged != true)
+                        lobbyRows.Add(
+                            new(
+                                "copy-lobby-code",
+                                "COPY LOBBY CODE",
+                                CopyLobbyCode,
+                                Role: MenuRole.Positive,
+                                DisabledReason: steamLobby?.ShareCodeUnavailable
+                            )
+                        );
                     if (steamLobby is { IsHost: true, Privacy: LobbyPrivacy.PrivateCode })
                         lobbyRows.Add(new("change-code", "CHANGE CODE", ChangeLobbyCode, Role: MenuRole.Destructive));
                 }
@@ -110,12 +94,7 @@ internal sealed partial class MenuController
                     ),
                     new("type", "TYPE", Value: Creation.TypeLabel, Change: Creation.CycleType),
                 };
-                creation.Add(
-                    Link("ADVANCED", GameScreen.CreateLobbyAdvanced) with
-                    {
-                        DisabledReason = Creation.Lan ? "STEAM LOBBIES ONLY" : null,
-                    }
-                );
+                creation.Add(Link("ADVANCED", GameScreen.CreateLobbyAdvanced) with { Disabled = Creation.Lan });
                 creation.Add(new("create-lobby", "CREATE LOBBY", CreateOnlineLobby));
                 return creation;
             case GameScreen.CreateLobbyAdvanced:

@@ -5,29 +5,30 @@ namespace FrogSmashers.Client;
 internal sealed record ModifierDefinition(
     string Id,
     string Label,
-    string Help,
+    string? Help,
     string ValueSample,
     Func<GameModifiers, string> Value,
     Func<GameModifiers, int, GameModifiers> Change,
-    Func<GameRules, string?>? DisabledReason = null
+    Func<GameRules, string?>? DisabledReason = null,
+    Func<GameRules, bool>? Disabled = null
 );
 
 internal static class ModifierCatalog
 {
     private static string OnOff(bool enabled) => enabled ? "ON" : "OFF";
 
-    private static string? BodyOnly(GameRules rules) => !rules.Modifiers.BodyBouncing ? "ENABLE BODY BOUNCING" : null;
+    private static bool BodyDisabled(GameRules rules) => !rules.Modifiers.BodyBouncing;
 
     private static string? PointsOnly(GameRules rules) => rules.Scoring != ScoringMode.Points ? "POINTS ONLY" : null;
 
-    private static string? FlyOnly(GameRules rules) => rules.Modifiers.FlyEnabled ? null : "ENABLE FLIES";
+    private static bool FliesDisabled(GameRules rules) => !rules.Modifiers.FlyEnabled;
 
     public static IReadOnlyList<ModifierDefinition> All { get; } =
         Array.AsReadOnly<ModifierDefinition>([
             new(
                 "physics-fixes",
                 "PHYSICS FIXES",
-                "FULL BODY COLLISION, RELIABLE WALL SLIDES, AND TONGUES THAT STOP AT WALLS.",
+                "COLLISION, WALL JUMP, AND TONGUE CLIPPING FIXES",
                 "OFF",
                 m => OnOff(m.PhysicsFixes),
                 (m, _) => m with { PhysicsFixes = !m.PhysicsFixes }
@@ -35,7 +36,7 @@ internal static class ModifierCatalog
             new(
                 "body-bouncing",
                 "BODY BOUNCING",
-                "LAUNCHED FROGS KNOCK INTO OPPONENTS.",
+                null,
                 "OFF",
                 m => OnOff(m.BodyBouncing),
                 (m, _) => m with { BodyBouncing = !m.BodyBouncing }
@@ -43,11 +44,11 @@ internal static class ModifierCatalog
             new(
                 "bounce-recovery",
                 "BOUNCE UNTIL",
-                "ALLOW BODY HITS ONLY BEFORE THE LAUNCH APEX, OR THROUGHOUT RECOVERY.",
+                null,
                 "RECOVERY",
                 m => m.BounceBeforeRecoveryOnly ? "APEX" : "RECOVERY",
                 (m, _) => m with { BounceBeforeRecoveryOnly = !m.BounceBeforeRecoveryOnly },
-                BodyOnly
+                Disabled: BodyDisabled
             ),
             new(
                 "redirect-bounces",
@@ -56,12 +57,12 @@ internal static class ModifierCatalog
                 "OFF",
                 m => OnOff(m.RedirectBounces),
                 (m, _) => m with { RedirectBounces = !m.RedirectBounces },
-                BodyOnly
+                Disabled: BodyDisabled
             ),
             new(
                 "suicide-penalty",
                 "SUICIDE PENALTY",
-                "LOSE ONE POINT FOR AN UNASSISTED DEATH. SCORES CAN GO BELOW ZERO.",
+                null,
                 "OFF",
                 m => OnOff(m.SuicidePenalty),
                 (m, _) => m with { SuicidePenalty = !m.SuicidePenalty },
@@ -69,10 +70,10 @@ internal static class ModifierCatalog
             ),
             new(
                 "match-scoring",
-                "MATCH SCORE",
-                "WINS COUNTS ROUND VICTORIES. POINTS ADDS EVERY ROUND'S SCORE TO THE FINAL STANDINGS.",
-                "POINTS",
-                m => m.MatchScoring == MatchScoring.RoundWins ? "WINS" : "POINTS",
+                "CUMULATIVE POINTS",
+                "MATCH SCORING USES POINTS INSTEAD OF WINS",
+                "OFF",
+                m => OnOff(m.MatchScoring == MatchScoring.CumulativePoints),
                 (m, _) =>
                     m with
                     {
@@ -86,7 +87,7 @@ internal static class ModifierCatalog
             new(
                 "flies",
                 "FLIES",
-                "ENABLE POWER FLIES DURING ROUNDS. SHOWDOWN ALWAYS HAS NO FLIES.",
+                null,
                 "OFF",
                 m => OnOff(m.FlyEnabled),
                 (m, _) => m with { FlyEnabled = !m.FlyEnabled }
@@ -94,7 +95,7 @@ internal static class ModifierCatalog
             new(
                 "fly-min",
                 "FLY DELAY MIN",
-                "MINIMUM SECONDS BEFORE A FLY SPAWNS OR RETURNS. EQUAL LIMITS GIVE A FIXED DELAY.",
+                null,
                 "120 S",
                 m => m.FlySpawnMinSeconds + " S",
                 (m, amount) =>
@@ -106,12 +107,12 @@ internal static class ModifierCatalog
                             m.FlySpawnMaxSeconds
                         ),
                     },
-                FlyOnly
+                Disabled: FliesDisabled
             ),
             new(
                 "fly-max",
                 "FLY DELAY MAX",
-                "MAXIMUM SECONDS BEFORE A FLY SPAWNS OR RETURNS. THE DELAY IS CHOSEN EACH TIME.",
+                null,
                 "120 S",
                 m => m.FlySpawnMaxSeconds + " S",
                 (m, amount) =>
@@ -123,15 +124,7 @@ internal static class ModifierCatalog
                             GameModifiers.MaximumFlyDelay
                         ),
                     },
-                FlyOnly
-            ),
-            new(
-                "podium",
-                "PODIUM ARENA",
-                "ADD PODIUM TO THE ROTATION. A FULL ROTATION GAINS ONE ROUND; CUSTOM ROUND COUNTS STAY THE SAME.",
-                "OFF",
-                m => OnOff(m.IncludePodium),
-                (m, _) => m with { IncludePodium = !m.IncludePodium }
+                Disabled: FliesDisabled
             ),
         ]);
 }

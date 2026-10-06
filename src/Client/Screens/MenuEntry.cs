@@ -20,6 +20,7 @@ internal sealed record MenuEntry(
     string? Value = null,
     string? ValueSample = null,
     string? DisabledReason = null,
+    bool Disabled = false,
     Buttons? Button = null,
     bool IsTitle = false,
     bool SeparatorBefore = false,
@@ -31,10 +32,11 @@ internal sealed record MenuEntry(
 )
 {
     public string Text => Value == null ? Label : Label + ": " + Value;
+    public bool IsDisabled => Disabled || DisabledReason != null;
 
     public Color DisplayColor(bool selected)
     {
-        if (DisabledReason != null)
+        if (IsDisabled)
             return new Color(135, 145, 136);
         var color = Role switch
         {
@@ -49,7 +51,7 @@ internal sealed record MenuEntry(
 
     public void Select()
     {
-        if (DisabledReason != null)
+        if (IsDisabled)
             return;
         if (Activate != null)
             Activate();

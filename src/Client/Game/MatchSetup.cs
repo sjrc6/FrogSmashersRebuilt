@@ -25,31 +25,23 @@ internal sealed class MatchSetup
         Preferences = DefaultPreferences();
     }
 
-    private MatchPreferences DefaultPreferences() =>
-        new()
-        {
-            FirstMap = defaultFirstMap,
-            Modifiers = GameModifiers.Default with { IncludePodium = maps[defaultFirstMap].Role == MapRole.ExtraArena },
-        };
+    private MatchPreferences DefaultPreferences() => new() { FirstMap = defaultFirstMap };
 
     public void ResetPreferences() => Preferences = DefaultPreferences();
 
-    public void ChangeFirstMap(int amount)
+    public void CommitPreferences(MatchPreferences preferences) => Preferences = preferences;
+
+    public void ChangeFirstMap(MatchPreferences preferences, int amount)
     {
-        var available = ArenaRotation.Available(maps, Preferences.Modifiers);
-        int current = Array.IndexOf(available, FirstMap);
-        FirstMap = available[(Math.Max(0, current) + amount + available.Length) % available.Length];
+        var available = ArenaRotation.Available(maps);
+        int current = Array.IndexOf(available, preferences.FirstMap);
+        preferences.FirstMap = available[(Math.Max(0, current) + amount + available.Length) % available.Length];
     }
 
     public void SetModifiers(GameModifiers modifiers)
     {
         modifiers.Validate();
-        int previousArenaCount = ArenaRotation.Available(maps, Preferences.Modifiers).Length;
-        if (Preferences.MatchRounds == previousArenaCount)
-            Preferences.MatchRounds = ArenaRotation.Available(maps, modifiers).Length;
         Preferences.Modifiers = modifiers;
-        if (maps[FirstMap].Role == MapRole.ExtraArena && !modifiers.IncludePodium)
-            FirstMap = ArenaRotation.Available(maps, modifiers)[0];
     }
 
     public static LobbyPlayer[] MatchPlayers(LobbyRoster roster) =>
@@ -59,11 +51,16 @@ internal sealed class MatchSetup
             .OrderBy(player => player.Peer)
             .ToArray();
 
-    public MatchOptions CreateOptions(int[]? customMapOrder = null, LobbyRoster? roster = null)
+    public MatchOptions CreateOptions(
+        int[]? customMapOrder = null,
+        LobbyRoster? roster = null,
+        MatchPreferences? preferences = null
+    )
     {
+        preferences ??= Preferences;
         var players = MatchPlayers(roster ?? Lobby.Roster);
-        var order = customMapOrder?.ToArray() ?? ArenaRotation.StartingAt(maps, Preferences.Modifiers, FirstMap);
-        if (customMapOrder == null && Preferences.ShuffleMaps)
+        var order = customMapOrder?.ToArray() ?? ArenaRotation.StartingAt(maps, preferences.FirstMap);
+        if (customMapOrder == null && preferences.ShuffleMaps)
             new Random((int)Seed).Shuffle(order.AsSpan(1));
 
         var rules = new GameRules(
@@ -74,15 +71,15 @@ internal sealed class MatchSetup
                 .. Enumerable.Range(0, 8).Select(index => index < players.Length ? players[index].Team : index % 2),
             ],
             colors: [.. Enumerable.Range(0, 8).Select(index => index < players.Length ? players[index].Color : index)],
-            format: Preferences.Format,
-            scoring: Preferences.Scoring,
-            winScore: Preferences.WinScore,
-            matchRounds: Preferences.MatchRounds,
-            startingStocks: Preferences.StartingStocks,
+            format: preferences.Format,
+            scoring: preferences.Scoring,
+            winScore: preferences.WinScore,
+            matchRounds: preferences.MatchRounds,
+            startingStocks: preferences.StartingStocks,
             mapOrder: [.. order],
-            modifiers: Preferences.Modifiers
+            modifiers: preferences.Modifiers
         );
-        return new MatchOptions(rules, Seed, Preferences.ShuffleMaps);
+        return new MatchOptions(rules, Seed, preferences.ShuffleMaps);
     }
 
     public static void ValidateRoster(GameRules rules, LobbyRoster roster)

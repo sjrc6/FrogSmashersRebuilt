@@ -55,12 +55,29 @@ internal static class ToastTests
             "Steam details use concise user copy"
         );
         check(
-            UserMessages.ConnectionError("Content/build fingerprint mismatch") == "GAME VERSIONS DIFFER",
+            UserMessages.ConnectionError("SIMULATION BUILD MISMATCH") == "DIFFERENT GAME VERSIONS",
             "build mismatch has one user message"
         );
         check(
             UserMessages.ConnectionError("arbitrary remote detail") == "CONNECTION LOST",
             "unknown connection details are not displayed verbatim"
+        );
+        check(
+            UserMessages.ConnectionError("LOBBY CHECKPOINT MISMATCH") == "MATCH DESYNC",
+            "Runtime checkpoint mismatches do not masquerade as different game versions"
+        );
+        check(
+            UserMessages.ConnectionError("REMOVED BY HOST") == "REMOVED FROM LOBBY",
+            "The current kick rejection maps to its player-facing message"
+        );
+        check(
+            UserMessages.ConnectionError("LOBBY UNAVAILABLE") == "LOBBY UNAVAILABLE",
+            "The current admission rejection preserves its specific explanation"
+        );
+        check(
+            UserMessages.MatchStart(FrogSmashers.Core.MatchStartBlock.TooFewPlayers) == null
+                && UserMessages.MatchStart(FrogSmashers.Core.MatchStartBlock.TooFewTeams) == null,
+            "Obvious start requirements disable the button silently"
         );
     }
 }

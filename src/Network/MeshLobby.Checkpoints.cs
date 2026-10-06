@@ -99,7 +99,7 @@ internal sealed partial class MeshLobby
         if (Now - pending.Created > 15000)
         {
             if (IsHost)
-                CancelCheckpoint("LOBBY CHANGE TIMED OUT");
+                CancelCheckpoint("LOBBY UPDATE FAILED");
             else
                 Error = "LOBBY CHANGE TIMED OUT";
             return;
@@ -237,13 +237,13 @@ internal sealed partial class MeshLobby
         if (simulation.Membership.Rooms.Any(player => player is { Spawned: false }))
         {
             simulation.Restore(pending.Previous);
-            CancelCheckpoint("SPAWN ALL PLAYERS");
+            CancelCheckpoint("WAITING FOR PLAYERS");
             return;
         }
         if (!pending.Players.SequenceEqual(simulation.Membership.Rooms))
         {
             simulation.Restore(pending.Previous);
-            CancelCheckpoint("PLAYERS CHANGED; START AGAIN");
+            CancelCheckpoint("LOBBY CHANGED, TRY AGAIN");
             return;
         }
         pending.Snapshot = simulation.Capture();

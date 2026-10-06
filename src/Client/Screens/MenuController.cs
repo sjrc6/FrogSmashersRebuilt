@@ -43,7 +43,8 @@ internal sealed partial class MenuController : IDisposable
     public bool LocalLobbyPaused => ShowingLobby && game.Online.Lobby == null && Screen != GameScreen.Seats;
     public bool LocalPresentationPaused =>
         LocalLobbyPaused || ShowingMatch && game.Match.Network == null && game.Match.Paused;
-    private MatchPreferences Rules => game.Setup.Preferences;
+    private MatchPreferences? pendingMatchSettings;
+    private MatchPreferences Rules => pendingMatchSettings ?? game.Setup.Preferences;
 
     private static string OnOff(bool value) => value ? "ON" : "OFF";
 
@@ -56,13 +57,25 @@ internal sealed partial class MenuController : IDisposable
         return entries;
     }
 
-    private string? MatchStartBlockedReason()
+    private MenuEntry MatchStartEntry()
     {
-        if (game.Lobby.RosterUpdating)
-            return "LOBBY UPDATING";
+        bool updating = game.Lobby.RosterUpdating;
         var options = game.Setup.CreateOptions(game.Options.MapOrder, game.Lobby.Roster);
-        return options.Rules.StartBlockedReason()
-            ?? (MatchSetup.MatchPlayers(game.Lobby.Roster).Any(player => !player.Spawned) ? "SPAWN ALL PLAYERS" : null);
+        var reason = options.Rules.StartBlockedReason();
+        bool waiting = MatchSetup.MatchPlayers(game.Lobby.Roster).Any(player => !player.Spawned);
+        string? message =
+            updating ? "LOBBY UPDATING"
+            : reason != null ? UserMessages.MatchStart(reason.Value)
+            : waiting ? "WAITING FOR PLAYERS"
+            : null;
+        return new(
+            "start-match",
+            "START MATCH",
+            StartFromSeats,
+            Role: MenuRole.Positive,
+            Disabled: updating || reason != null || waiting,
+            DisabledReason: message
+        );
     }
 
     public MenuController(FrogGame game)
@@ -132,7 +145,7 @@ internal sealed partial class MenuController : IDisposable
             case GameScreen.Playing:
                 if (!game.Match.Paused)
                 {
-                    if (game.Controls.MenuDevice() is int device)
+                    if (game.Controls.MenuDevice() is int device && !game.Match.TrySkipCelebration(device))
                     {
                         HintDevice = device;
                         game.Match.Paused = true;
@@ -251,11 +264,7 @@ internal sealed partial class MenuController : IDisposable
             adjustRepeat.Reset();
         repeatTarget = target;
         var entry = Entries().ElementAtOrDefault(Selected);
-        if (
-            input.Vertical != 0
-            || game.Controls.MouseMoved
-            || entry is not { RepeatAdjust: true, DisabledReason: null }
-        )
+        if (input.Vertical != 0 || game.Controls.MouseMoved || entry is not { RepeatAdjust: true, IsDisabled: false })
         {
             adjustRepeat.Reset();
             return input;
@@ -309,9 +318,9 @@ internal sealed partial class MenuController : IDisposable
     {
         if (entry.DisabledReason is { } reason)
             game.Toasts.Show(reason);
-        else
+        else if (!entry.IsDisabled)
             entry.Select();
-        if (Screen is (GameScreen.MatchSettings or GameScreen.Modifiers) && game.Lobby.IsHost)
+        if (Screen == GameScreen.Modifiers && game.Lobby.IsHost)
             game.PublishMatchSettings();
         menuSoundPending = true;
     }
@@ -320,9 +329,9 @@ internal sealed partial class MenuController : IDisposable
     {
         if (entry.DisabledReason is { } reason)
             game.Toasts.Show(reason);
-        else
+        else if (!entry.IsDisabled)
             entry.Change?.Invoke(amount);
-        if (Screen is (GameScreen.MatchSettings or GameScreen.Modifiers) && game.Lobby.IsHost)
+        if (Screen == GameScreen.Modifiers && game.Lobby.IsHost)
             game.PublishMatchSettings();
         menuSoundPending = true;
     }
@@ -437,9 +446,11 @@ internal sealed partial class MenuController : IDisposable
 
     private void StartFromSeats()
     {
-        if (MatchStartBlockedReason() is { } reason)
+        var entry = MatchStartEntry();
+        if (entry.IsDisabled)
         {
-            game.Toasts.Show(reason);
+            if (entry.DisabledReason is { } reason)
+                game.Toasts.Show(reason);
             return;
         }
         if (game.Online.Lobby is { } online)
@@ -504,6 +515,8 @@ internal sealed partial class MenuController : IDisposable
 
     private void Open(GameScreen screen)
     {
+        if (screen == GameScreen.MatchSettings && game.Lobby.IsHost)
+            pendingMatchSettings = game.Setup.Preferences with { };
         if (screen == GameScreen.CreateLobby)
             Creation.Reset(game.Lobby.Roster);
         if (screen == GameScreen.SlotEditor)
@@ -528,6 +541,13 @@ internal sealed partial class MenuController : IDisposable
 
     private void Back()
     {
+        if (Screen == GameScreen.MatchSettings && pendingMatchSettings is { } settings)
+        {
+            game.Setup.CommitPreferences(settings);
+            pendingMatchSettings = null;
+            if (settings.Format == MatchFormat.Crews)
+                game.Lobby.RemoveCpus();
+        }
         menuSoundPending |= Screen is GameScreen.Playing or GameScreen.Connecting || history.Count > 0;
         EditingAddress = WaitingForBinding = false;
         if (
@@ -567,6 +587,7 @@ internal sealed partial class MenuController : IDisposable
 
     private void Reset(GameScreen screen)
     {
+        pendingMatchSettings = null;
         game.Online.StopBrowsing();
         context = Screen = screen;
         history.Clear();

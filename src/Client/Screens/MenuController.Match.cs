@@ -8,7 +8,7 @@ internal sealed partial class MenuController
     {
         var options = DisplayedMatchOptions();
         if (options == null)
-            return [new("waiting", "WAITING FOR HOST", DisabledReason: "WAITING FOR HOST")];
+            return [new("waiting-for-host", "WAITING FOR HOST", Disabled: true)];
         var rules = options.Rules;
         string? readOnly = MatchSettingsReadOnly;
         var entries = new List<MenuEntry>
@@ -28,7 +28,8 @@ internal sealed partial class MenuController
                 ValueSample: "POINTS",
                 Change: _ =>
                     Rules.Scoring = Rules.Scoring == ScoringMode.Points ? ScoringMode.Stocks : ScoringMode.Points,
-                DisabledReason: readOnly ?? (rules.Format == MatchFormat.Crews ? "CREWS REQUIRES STOCKS" : null)
+                DisabledReason: readOnly,
+                Disabled: rules.Format == MatchFormat.Crews
             ),
             new(
                 "target",
@@ -54,14 +55,15 @@ internal sealed partial class MenuController
                 ValueSample: "20",
                 RepeatAdjust: true,
                 Change: amount => Rules.MatchRounds = Math.Clamp(Rules.MatchRounds + amount, 1, 20),
-                DisabledReason: readOnly ?? (rules.Format == MatchFormat.Crews ? "CREWS USES ONE LIFE POOL" : null)
+                DisabledReason: readOnly,
+                Disabled: rules.Format == MatchFormat.Crews
             ),
             new(
                 "first-arena",
                 "FIRST ARENA",
                 Value: game.Assets.Data.Maps[rules.MapOrder[0]].Name,
                 ValueSample: LongestArenaName(),
-                Change: game.Setup.ChangeFirstMap,
+                Change: amount => game.Setup.ChangeFirstMap(Rules, amount),
                 DisabledReason: readOnly
             ),
             new(

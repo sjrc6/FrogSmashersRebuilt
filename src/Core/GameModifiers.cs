@@ -24,7 +24,6 @@ public sealed record GameModifiers
     public bool FlyEnabled { get; init; } = true;
     public int FlySpawnMinSeconds { get; init; } = 15;
     public int FlySpawnMaxSeconds { get; init; } = 45;
-    public bool IncludePodium { get; init; }
 
     public void Validate()
     {
@@ -49,6 +48,5 @@ public sealed record GameModifiers
         writer.Write(FlyEnabled);
         writer.Write(FlySpawnMinSeconds);
         writer.Write(FlySpawnMaxSeconds);
-        writer.Write(IncludePodium);
     }
 }

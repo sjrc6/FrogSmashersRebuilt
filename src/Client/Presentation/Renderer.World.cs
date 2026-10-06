@@ -195,7 +195,11 @@ public sealed partial class Renderer
         {
             AddCommand(0, 0, "SelectiveColorReplace", 0, DrawKind.BeachBall, ballPosition);
         }
-        if (showGameplayUi && (!world.Match.IsShowdown || world.Rules.Scoring == ScoringMode.Stocks))
+        if (
+            showGameplayUi
+            && world.Rules.Format != MatchFormat.Crews
+            && (!world.Match.IsShowdown || world.Rules.Scoring == ScoringMode.Stocks)
+        )
         {
             AddCommand(0, 0, "", 2.78f, DrawKind.ScoreText);
             AddCommand(0, 0, "SelectiveColorReplace", 2.78f, DrawKind.ScoreIcons);
@@ -358,7 +362,7 @@ public sealed partial class Renderer
 
     public void DrawWorld(World world, World? previous, float alpha, bool showGameplayUi = true)
     {
-        SetMap(world.Map);
+        SetMap(world.Map, world.Match.RoundNumber);
         float dt = time == lastPresentedTime ? 0 : frameSeconds;
         lastPresentedTime = time;
         if (dt > 0)

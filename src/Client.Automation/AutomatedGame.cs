@@ -116,7 +116,15 @@ internal sealed class AutomatedGame : FrogGame
 
         var buffer = GraphicsDevice.PresentationParameters;
         var entries = Menus.Entries();
-        var layout = entries.Count > 0 || Menus.Screen == GameScreen.ViewPlayers ? MenuRenderer.Measure(entries) : null;
+        var layout =
+            entries.Count > 0
+            || Menus.Screen
+                is GameScreen.ViewPlayers
+                    or GameScreen.InviteFriends
+                    or GameScreen.MatchSettings
+                    or GameScreen.Modifiers
+                ? MenuRenderer.Measure(entries)
+                : null;
         var playerActions = Menus.Screen == GameScreen.ViewPlayers ? Menus.PlayerActions() : default;
         var buttons = new Dictionary<string, Rectangle>();
         if (layout != null)
@@ -140,6 +148,7 @@ internal sealed class AutomatedGame : FrogGame
             Menus.Selected,
             Menus.SelectedSeat,
             MenuItems = entries.Select(entry => entry.Text).ToArray(),
+            Toast = Toasts.Current,
             MenuPanel = layout == null
                 ? null
                 : new
@@ -156,6 +165,7 @@ internal sealed class AutomatedGame : FrogGame
                         {
                             entries[index].Id,
                             entries[index].DisabledReason,
+                            entries[index].IsDisabled,
                             Role = entries[index].Role.ToString(),
                             row.Bounds.X,
                             row.Bounds.Y,
@@ -227,10 +237,12 @@ internal sealed class AutomatedGame : FrogGame
                 .World?.Match.Players.Select(player => new
                 {
                     player.Stocks,
+                    player.Ready,
                     Participation = player.Participation.ToString(),
                 })
                 .ToArray(),
             FighterSelections = Match.World?.Match.TeamSelections,
+            MatchPlayers = Match.PlayerViews,
             LobbyBall = Menus.ShowingLobby && Lobby.World != null
                 ? new
                 {

@@ -4,6 +4,9 @@ public enum MatchCommandKind : byte
 {
     None,
     SelectFighter,
+    BackOutFighter,
+    ToggleReady,
+    SkipCelebration,
 }
 
 public readonly record struct MatchCommand(MatchCommandKind Kind, byte Player = 0)
@@ -11,7 +14,10 @@ public readonly record struct MatchCommand(MatchCommandKind Kind, byte Player = 
     public bool IsValid =>
         Kind switch
         {
-            MatchCommandKind.None => Player == 0,
+            MatchCommandKind.None
+            or MatchCommandKind.BackOutFighter
+            or MatchCommandKind.ToggleReady
+            or MatchCommandKind.SkipCelebration => Player == 0,
             MatchCommandKind.SelectFighter => Player < 8,
             _ => false,
         };

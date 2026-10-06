@@ -198,11 +198,15 @@ internal sealed partial class LobbyController(FrogGame game)
     public bool Edit(int room, SlotType type)
     {
         if (type == SlotType.Cpu && game.Setup.Preferences.Format == MatchFormat.Crews)
-        {
-            game.Toasts.Show("CREWS REQUIRES HUMAN PLAYERS");
             return false;
-        }
         return Online != null ? Online.EditSlot(room, type) : EditLocal(roster => roster.Edit(room, type));
+    }
+
+    public void RemoveCpus()
+    {
+        for (int room = 0; room < LobbyRoster.MaxPlayers; room++)
+            if (GetSlotType(room) == SlotType.Cpu || Roster.Slots[room].Player is { Cpu: true })
+                Edit(room, Online == null ? SlotType.Local : SlotType.Open);
     }
 
     public void ChangeCpu(int room, bool team, int direction = 1)
@@ -225,17 +229,14 @@ internal sealed partial class LobbyController(FrogGame game)
                 UpdatePresentation();
             }
         }
-        if (!changed)
-            game.Toasts.Show(team ? "CANNOT CHANGE CPU TEAM" : "NO OTHER COLORS AVAILABLE");
+        if (!changed && !team && Roster.Slots.Select(slot => slot.Player?.Color).OfType<int>().Distinct().Count() == 8)
+            game.Toasts.Show("ALL COLORS USED");
     }
 
     public void ApplySlotType(SlotType type)
     {
         if (type == SlotType.Cpu && game.Setup.Preferences.Format == MatchFormat.Crews)
-        {
-            game.Toasts.Show("CREWS REQUIRES HUMAN PLAYERS");
             return;
-        }
         if (Online != null)
             Online.ApplySlotType(type);
         else

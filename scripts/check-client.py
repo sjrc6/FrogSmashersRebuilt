@@ -576,7 +576,7 @@ def verify_menu_navigation_and_disabled_rows():
     lan = run("advanced-lan-disabled", ["--no-intro", "--input-script", str(script), "--frames", "15"])
     assert public["MenuPanel"] == lan["MenuPanel"] and lan["Page"] == "CreateLobby", (public, lan)
     advanced = next(row for row in lan["MenuRows"] if row["Id"] == "page-CreateLobbyAdvanced")
-    assert advanced["DisabledReason"] == "STEAM LOBBIES ONLY", lan
+    assert advanced["IsDisabled"] and advanced["DisabledReason"] is None, lan
     print("PASS: fast keyboard/controller navigation and stable, disabled LAN Advanced row.")
 
 
@@ -593,7 +593,7 @@ def verify_match_configuration():
                                         "--capture", str(out / "match-configuration.png")])
     assert value["Page"] == "MatchSettings" and "FORMAT: CREWS" in value["MenuItems"], value
     assert "SCORING: STOCKS" in value["MenuItems"], value
-    assert next(row for row in value["MenuRows"] if row["Id"] == "scoring")["DisabledReason"] == "CREWS REQUIRES STOCKS", value
+    assert next(row for row in value["MenuRows"] if row["Id"] == "scoring")["IsDisabled"], value
     script.write_text(json.dumps(rows + [key(27, "Escape"), key(29, "Up"), key(31, "Enter")]))
     selecting = run("crew-selection", ["--no-intro", "--input-script", str(script), "--frames", "40",
                                         "--capture", str(out / "crew-selection.png")])
@@ -601,7 +601,7 @@ def verify_match_configuration():
     assert selecting["ActiveFormat"] == "Crews" and selecting["ActiveScoring"] == "Stocks", selecting
     # Both keyboard profiles retain independent controls during selection.
     script.write_text(json.dumps(rows + [key(27, "Escape"), key(29, "Up"), key(31, "Enter"),
-                                          key(45, "T"), key(49, "M")]))
+                                          key(43, "U"), key(45, "OemPeriod"), key(49, "T"), key(53, "M")]))
     playing = run("crew-playing", ["--no-intro", "--input-script", str(script), "--frames", "150",
                                     "--capture", str(out / "crew-playing.png")])
     assert playing["Phase"] == "Playing" and all(p["Participation"] == "Active" for p in playing["Progress"]), playing
@@ -621,15 +621,15 @@ def verify_modifiers():
             (5, "Down"), (7, "Down"), (9, "Enter")]]
     defaults = capture("modifiers-default", rows, 12)
     assert defaults["Page"] == "Modifiers" and "PHYSICS FIXES: ON" in defaults["MenuItems"], defaults
-    assert next(r for r in defaults["MenuRows"] if r["Id"] == "redirect-bounces")["DisabledReason"] == "ENABLE BODY BOUNCING", defaults
+    assert next(r for r in defaults["MenuRows"] if r["Id"] == "redirect-bounces")["IsDisabled"], defaults
     rows += [key(15, "Right"), key(17, "Down"), key(19, "Right")]
     enabled = capture("modifiers-enabled", rows, 22)
     assert "PHYSICS FIXES: OFF" in enabled["MenuItems"] and "BODY BOUNCING: ON" in enabled["MenuItems"], enabled
     assert enabled["MenuPanel"] == defaults["MenuPanel"], (defaults, enabled)
-    rows += [key(frame, "Down") for frame in range(25, 41, 2)] + [key(43, "Right")]
-    podium = capture("modifiers-podium", rows, 46)
-    assert podium["MatchSettings"]["Modifiers"]["IncludePodium"] and podium["MenuPages"] >= 1, podium
-    x, y = menu_center(podium, "reset-modifiers")
+    rows += [key(frame, "Down") for frame in range(25, 41, 2)]
+    last = capture("modifiers-last", rows, 46)
+    assert "PODIUM ARENA" not in " ".join(last["MenuItems"]) and last["MenuPages"] >= 1, last
+    x, y = menu_center(last, "reset-modifiers")
     rows += [dict(From=49, To=50, MouseX=x, MouseY=y, MouseDown=True)]
     reset = capture("modifiers-reset", rows, 52)
     assert reset["MatchSettings"]["Modifiers"] == defaults["MatchSettings"]["Modifiers"], reset
@@ -644,7 +644,7 @@ def verify_guest_match_settings(modifiers=False):
         reserve.bind(("127.0.0.1", 0))
         port = reserve.getsockname()[1]
     host_rows = [key(160, "Escape"), key(162, "Down"), key(164, "Enter"), key(166, "Right"),
-                 key(168, "Down"), key(170, "Down"), key(172, "Right")]
+                 key(168, "Down"), key(170, "Down"), key(172, "Right"), key(174, "Escape"), key(176, "Enter")]
     guest_rows = [key(210, "Escape"), key(212, "Enter"), key(214, "Right"),
                   key(216, "Down"), key(218, "Down"), key(220, "Right")]
     if modifiers:
@@ -755,8 +755,8 @@ def verify_modes_network():
         guest_rows = []
         if crews:
             guest_rows = [key(220, "U"), key(240, "Y"), key(260, "U")]
-            host_rows += [key(frame, "T") for frame in (800, 1000, 1200)]
-            guest_rows += [key(frame, "T") for frame in (800, 1000, 1200)]
+            host_rows += [key(800, "U"), key(820, "T")]
+            guest_rows += [key(800, "U"), key(820, "T")]
         processes = []
         common = ["--local-players", "1", "--port", str(port), "--ticks", "480"]
         for name, target, rows in [(mode + "-host", ["--host", "udp"], host_rows),

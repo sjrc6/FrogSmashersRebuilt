@@ -76,7 +76,8 @@ internal sealed partial class MenuController
         string? code = lobby.ShareCode;
         if (code == null)
         {
-            game.Toasts.Show(lobby.ShareCodeUnavailable ?? "CODE UNAVAILABLE");
+            if (lobby.ShareCodeUnavailable is { } reason)
+                game.Toasts.Show(reason);
             return;
         }
         try
@@ -126,7 +127,7 @@ internal sealed partial class MenuController
             ))
             .ToList();
         if (rows.Count == 0)
-            rows.Add(new("no-friends", "NO FRIENDS FOUND", DisabledReason: "NO FRIENDS FOUND"));
+            rows.Add(new("no-friends", "NO FRIENDS FOUND", Disabled: true));
         return rows;
     }
 
@@ -158,7 +159,6 @@ internal sealed partial class MenuController
             friends = (game.Online.Lobby as SteamLobby)?.Friends(invitedFriends) ?? [];
             avatarRefresh = 0;
             menuSoundPending = true;
-            game.Toasts.Show("FRIENDS REFRESHED");
             return;
         }
         if (input.Horizontal != 0 && layout.Paginated)
@@ -175,7 +175,8 @@ internal sealed partial class MenuController
         bool sent = game.Online.Lobby is SteamLobby lobby && lobby.InviteFriend(friend);
         if (sent)
             invitedFriends.Add(friend);
-        game.Toasts.Show(sent ? "INVITATION SENT" : "INVITATION FAILED");
+        else
+            game.Toasts.Show("INVITATION FAILED");
     }
 
     private void ChangeLobbyCode()
@@ -184,6 +185,5 @@ internal sealed partial class MenuController
             return;
         lobby.RotateAdmissionSecret();
         invitedFriends.Clear();
-        game.Toasts.Show("CODE CHANGED - COPY TO SHARE AGAIN");
     }
 }
