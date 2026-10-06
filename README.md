@@ -6,6 +6,17 @@ A MonoGame port of Frog Smashers for Windows and Linux. Up to eight players with
 
 Spiritually related to [DGR](https://github.com/TheFlyingFoool/DuckGameRebuilt)
 
+<table>
+  <tr>
+    <td><img src="docs/images/menu-screenshot.png" alt="Main menu" width="480"></td>
+    <td><img src="docs/images/lobby-screenshot.png" alt="Multiplayer lobby" width="480"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/8player-screenshot.png" alt="Eight-player gameplay" width="480"></td>
+    <td><img src="docs/images/crews-screenshot.png" alt="Crew battle" width="480"></td>
+  </tr>
+</table>
+
 ## Docs
 
 Controls: [controls.md](docs/controls.md) \
