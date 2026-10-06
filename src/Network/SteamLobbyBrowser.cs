@@ -41,16 +41,6 @@ public sealed class SteamLobbyBrowser : ILobbyBrowser
             SteamLobby.GameTag,
             ELobbyComparison.k_ELobbyComparisonEqual
         );
-        SteamMatchmaking.AddRequestLobbyListStringFilter(
-            "protocol",
-            NetworkBuild.Protocol,
-            ELobbyComparison.k_ELobbyComparisonEqual
-        );
-        SteamMatchmaking.AddRequestLobbyListStringFilter(
-            "compatibility",
-            fingerprint,
-            ELobbyComparison.k_ELobbyComparisonEqual
-        );
         SteamMatchmaking.AddRequestLobbyListStringFilter("state", "forming", ELobbyComparison.k_ELobbyComparisonEqual);
         SteamMatchmaking.AddRequestLobbyListDistanceFilter(ELobbyDistanceFilter.k_ELobbyDistanceFilterWorldwide);
         SteamMatchmaking.AddRequestLobbyListFilterSlotsAvailable(1);
@@ -122,12 +112,7 @@ public sealed class SteamLobbyBrowser : ILobbyBrowser
         int partySize
     )
     {
-        if (
-            read("game") != SteamLobby.GameTag
-            || read("protocol") != NetworkBuild.Protocol
-            || NetworkCompatibility.Rejection(fingerprint, read("compatibility")) != null
-            || read("state") != "forming"
-        )
+        if (read("game") != SteamLobby.GameTag || read("state") != "forming")
             return null;
         if (
             !int.TryParse(read("capacity"), out int capacity)
@@ -152,7 +137,9 @@ public sealed class SteamLobbyBrowser : ILobbyBrowser
             LobbyListing.DisplayName(read("name"), "STEAM LOBBY"),
             players,
             capacity,
-            available
+            available,
+            read("protocol") == NetworkBuild.Protocol
+                && NetworkCompatibility.Rejection(fingerprint, read("compatibility")) == null
         );
     }
 

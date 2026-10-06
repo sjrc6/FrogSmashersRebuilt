@@ -8,4 +8,6 @@
   <Project Path="src/Client.Tests/FrogSmashers.Client.Tests.csproj" />
   <Project Path="src/Client.GraphicsTests/FrogSmashers.Client.GraphicsTests.csproj" />
   <Project Path="src/Client.Automation/FrogSmashers.Client.Automation.csproj" />
+  <Project Path="src/Updater/FrogSmashers.Updater.csproj" />
+  <Project Path="src/Updater.Tests/FrogSmashers.Updater.Tests.csproj" />
 </Solution>

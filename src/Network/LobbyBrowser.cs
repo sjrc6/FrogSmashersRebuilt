@@ -1,6 +1,14 @@
 namespace FrogSmashers.Network;
 
-public sealed record LobbyListing(string Id, string Target, string Name, int Players, int Capacity, int AvailableSlots)
+public sealed record LobbyListing(
+    string Id,
+    string Target,
+    string Name,
+    int Players,
+    int Capacity,
+    int AvailableSlots,
+    bool Compatible
+)
 {
     public static string DisplayName(string name, string fallback)
     {

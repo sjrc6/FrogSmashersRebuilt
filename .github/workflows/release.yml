@@ -61,4 +61,5 @@ jobs:
             .build/release/windows/FrogSmashersRebuilt-windows.zip \
             .build/release/linux/FrogSmashersRebuilt-linux.tar.gz \
             --repo "$GITHUB_REPOSITORY" --target "$BUILD_COMMIT" \
-            --title "$RELEASE_TAG" --generate-notes
+            --title "$RELEASE_TAG" --generate-notes --draft
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest

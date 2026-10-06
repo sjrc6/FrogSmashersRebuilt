@@ -105,11 +105,18 @@ internal static class LobbyDiscoveryTests
             "Friend slots require host friendship and fit the entire local party"
         );
         Check(Read(true, 4) == null, "Private slots do not count as browser admission");
-        foreach (string key in new[] { "game", "protocol", "compatibility", "state" })
+        foreach (string key in new[] { "protocol", "compatibility" })
         {
             string original = data[key];
             data[key] = "different";
-            Check(Read(true, 1) == null, "Browser excludes other Spacewar games, builds and started matches");
+            Check(Read(true, 1) is { Compatible: false }, "Incompatible Steam lobbies remain visible");
+            data[key] = original;
+        }
+        foreach (string key in new[] { "game", "state" })
+        {
+            string original = data[key];
+            data[key] = "different";
+            Check(Read(true, 1) == null, "Browser excludes other Spacewar games and started matches");
             data[key] = original;
         }
         data["open_slots"] = "999";
@@ -125,16 +132,13 @@ internal static class LobbyDiscoveryTests
         roster.Edit(3, SlotType.Private);
         Guid id = Guid.NewGuid();
         var source = new IPEndPoint(IPAddress.Parse("192.168.5.7"), LanDiscovery.Port);
-        byte[] query = LanDiscovery.Query(71, "build");
-        Check(
-            LanDiscovery.ReadQuery(query, "build", out ulong nonce) && nonce == 71,
-            "Discovery request retains its nonce"
-        );
-        Check(!LanDiscovery.ReadQuery(query, "other", out _), "Hosts ignore incompatible discovery requests");
+        byte[] query = LanDiscovery.Query(71);
+        Check(LanDiscovery.ReadQuery(query, out ulong nonce) && nonce == 71, "Discovery request retains its nonce");
         byte[] reply = LanDiscovery.Reply(71, "build", id, 30000, "Test host", roster, true);
         var listing = LanDiscovery.ReadReply(reply, source, "build", 71);
         Check(
-            listing is { Target: "udp:192.168.5.7:30000", Players: 1, Capacity: 4, AvailableSlots: 1 },
+            listing
+                is { Target: "udp:192.168.5.7:30000", Players: 1, Capacity: 4, AvailableSlots: 1, Compatible: true },
             "LAN replies use the observed address, advertised game port and remotely joinable slots"
         );
         Check(
@@ -143,8 +147,8 @@ internal static class LobbyDiscoveryTests
         );
         Check(
             LanDiscovery.ReadReply(reply, source, "build", 72) == null
-                && LanDiscovery.ReadReply(reply, source, "other", 71) == null,
-            "Stale refreshes and other builds cannot inject listings"
+                && LanDiscovery.ReadReply(reply, source, "other", 71) is { Compatible: false },
+            "Stale refreshes are ignored while incompatible lobbies remain visible"
         );
         byte[] started = LanDiscovery.Reply(71, "build", id, 30000, "Test host", roster, false);
         Check(
@@ -180,10 +184,10 @@ internal static class LobbyDiscoveryTests
             party.Poll();
             incompatible.Poll();
         }
-        Wait(() => single.Results.Count == 1 && party.Results.Count == 1, Poll);
+        Wait(() => single.Results.Count == 1 && party.Results.Count == 1 && incompatible.Results.Count == 1, Poll);
         Check(
-            single.Results[0].AvailableSlots == 2 && incompatible.Results.Count == 0,
-            "Real LAN queries return one compatible host to concurrent browsers"
+            single.Results[0] is { AvailableSlots: 2, Compatible: true } && !incompatible.Results[0].Compatible,
+            "Real LAN queries expose version mismatches to concurrent browsers"
         );
         Check(
             LobbyAddress.TryUdp(single.Results[0].Target, 1, out _, out int port)

@@ -19,7 +19,7 @@ Spiritually related to [DGR](https://github.com/TheFlyingFoool/DuckGameRebuilt)
 
 ## Docs
 
-Controls: [controls.md](docs/controls.md) \
+Controls: [controls.txt](docs/controls.txt) \
 Source layout: [layout.md](docs/layout.md) \
 Assets/Content: [Content readme](src/Content/README.md)
 ## Build

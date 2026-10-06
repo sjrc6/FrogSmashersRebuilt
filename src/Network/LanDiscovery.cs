@@ -11,7 +11,7 @@ internal static class LanDiscovery
     public const int MaximumPacket = 512;
     private const uint Magic = 0x31525346;
 
-    public static byte[] Query(ulong nonce, string fingerprint) => Packet(1, nonce, fingerprint, null);
+    public static byte[] Query(ulong nonce) => Packet(1, nonce, null, null);
 
     public static byte[] Reply(
         ulong nonce,
@@ -40,19 +40,20 @@ internal static class LanDiscovery
         );
     }
 
-    private static byte[] Packet(byte kind, ulong nonce, string fingerprint, Action<BinaryWriter>? payload)
+    private static byte[] Packet(byte kind, ulong nonce, string? fingerprint, Action<BinaryWriter>? payload)
     {
         using var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream, Encoding.UTF8);
         writer.Write(Magic);
         writer.Write(kind);
         writer.Write(nonce);
-        writer.Write(fingerprint);
+        if (fingerprint != null)
+            writer.Write(fingerprint);
         payload?.Invoke(writer);
         return stream.ToArray();
     }
 
-    public static bool ReadQuery(byte[] packet, string fingerprint, out ulong nonce)
+    public static bool ReadQuery(byte[] packet, out ulong nonce)
     {
         nonce = 0;
         try
@@ -61,8 +62,7 @@ internal static class LanDiscovery
             if (reader == null || reader.ReadUInt32() != Magic || reader.ReadByte() != 1)
                 return false;
             nonce = reader.ReadUInt64();
-            return NetworkCompatibility.Rejection(fingerprint, reader.ReadString()) == null
-                && reader.BaseStream.Position == packet.Length;
+            return reader.BaseStream.Position == packet.Length;
         }
         catch (Exception ex) when (ex is IOException or FormatException or ArgumentException)
         {
@@ -80,8 +80,10 @@ internal static class LanDiscovery
                 || reader.ReadUInt32() != Magic
                 || reader.ReadByte() != 2
                 || reader.ReadUInt64() != nonce
-                || NetworkCompatibility.Rejection(fingerprint, reader.ReadString()) != null
             )
+                return null;
+            string advertised = reader.ReadString();
+            if (advertised.Length is 0 or > NetworkCompatibility.MaximumLength)
                 return null;
             string id = new Guid(reader.ReadBytes(16)).ToString("N");
             int port = reader.ReadUInt16();
@@ -104,7 +106,8 @@ internal static class LanDiscovery
                 LobbyListing.DisplayName(name, "LAN LOBBY"),
                 players,
                 capacity,
-                available
+                available,
+                NetworkCompatibility.Rejection(fingerprint, advertised) == null
             );
         }
         catch (Exception ex) when (ex is IOException or FormatException or ArgumentException)
@@ -114,7 +117,7 @@ internal static class LanDiscovery
     }
 
     private static BinaryReader? Reader(byte[] data) =>
-        data.Length is >= 14 and <= MaximumPacket ? new(new MemoryStream(data, false), Encoding.UTF8) : null;
+        data.Length is >= 13 and <= MaximumPacket ? new(new MemoryStream(data, false), Encoding.UTF8) : null;
 
     public static IPAddress Broadcast(IPAddress address, IPAddress mask)
     {
@@ -209,7 +212,7 @@ internal sealed class LanDiscoveryHost : IDisposable
                     break;
                 IPEndPoint source = new(IPAddress.Any, 0);
                 var query = socket.Receive(ref source);
-                if (!LanDiscovery.ReadQuery(query, fingerprint, out ulong nonce))
+                if (!LanDiscovery.ReadQuery(query, out ulong nonce))
                     continue;
                 byte[] reply = LanDiscovery.Reply(nonce, fingerprint, id, gamePort, name, roster, joinable);
                 socket.Send(reply, reply.Length, source);

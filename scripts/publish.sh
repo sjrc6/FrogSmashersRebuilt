@@ -15,6 +15,11 @@ for rid in "${targets[@]}"; do
     -p:PublishTrimmed=false -p:PublishSingleFile=true \
     -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true \
     -p:DebugType=embedded -o "$out_dir"
+  dotnet publish src/Updater/FrogSmashers.Updater.csproj -c Release -r "$rid" \
+    --self-contained true -m:1 -nr:false -p:RuntimeFrameworkVersion=10.0.10 \
+    -p:PublishTrimmed=false -p:PublishSingleFile=true \
+    -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true \
+    -p:DebugType=embedded -o "$out_dir"
   if [[ "$rid" == linux-x64 ]]; then
     rm -rf -- "$out_dir/runtimes/win-x64"
   else
@@ -24,6 +29,7 @@ for rid in "${targets[@]}"; do
   mkdir -p "$out_dir/licenses"
   cp src/Notices/* "$out_dir/licenses/"
   cp LICENSE.md "$out_dir/"
+  cp docs/updating.txt "$out_dir/docs/"
   build_dir="$repo_dir/.build/bin/FrogSmashers.Client/release_$rid"
   dotnet .build/bin/FrogSmashers.Tests/release/FrogSmashers.Tests.dll --describe-build "$build_dir" > "$build_dir/BuildInfo.json"
 done

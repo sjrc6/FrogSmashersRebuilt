@@ -62,7 +62,7 @@ public sealed class LanLobbyBrowser : ILobbyBrowser
         bool changed = false;
         if (now >= nextQuery)
         {
-            byte[] query = LanDiscovery.Query(nonce, fingerprint);
+            byte[] query = LanDiscovery.Query(nonce);
             foreach (var (socket, target) in probes)
             {
                 try

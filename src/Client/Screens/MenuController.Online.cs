@@ -50,7 +50,9 @@ internal sealed partial class MenuController
                     lobby.Name,
                     () => game.BeginLobby(lobby.Target, false),
                     Value: $"{lobby.Players}/{lobby.Capacity}",
-                    ValueSample: "8/8"
+                    ValueSample: "8/8",
+                    Disabled: !lobby.Compatible,
+                    Detail: lobby.Compatible ? null : "DIFFERENT VERSION"
                 )
             );
         if (lobbies.Count == 0)

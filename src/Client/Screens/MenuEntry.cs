@@ -27,7 +27,8 @@ internal sealed record MenuEntry(
     bool RepeatAdjust = false,
     ulong? Avatar = null,
     Color? LabelColor = null,
-    Color? ValueColor = null
+    Color? ValueColor = null,
+    string? Detail = null
 )
 {
     public string Text => Value == null ? Label : Label + ": " + Value;

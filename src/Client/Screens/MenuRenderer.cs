@@ -174,6 +174,14 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
         }
         float right = panel.Right - 32;
         float width = right - left;
+        if (text.Detail is { } detail)
+        {
+            float mainHeight = text.Height - font.Measure(detail).Y - 6;
+            float top = row.Center.Y - text.Height / 2;
+            game.Renderer.Text(detail, left, top + mainHeight + 6, color);
+            row = new Rectangle(row.X, (int)top, row.Width, (int)mainHeight);
+            text = text with { Height = mainHeight };
+        }
         if (entry.Key != null || entry.Button != null)
         {
             ButtonGlyph[] glyphs = entry.Key is { } key

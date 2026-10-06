@@ -5,6 +5,7 @@ import gzip
 import hashlib
 import json
 import os
+import subprocess
 import sys
 import tarfile
 import time
@@ -23,6 +24,7 @@ DEVELOPMENT_EXECUTABLES = (
     "FrogSmashers.Client.Tests*",
     "FrogSmashers.Client.GraphicsTests*",
     "FrogSmashers.Client.Automation*",
+    "FrogSmashers.Updater.Tests*",
 )
 PROTOCOL_FIELDS = (
     "Protocol",
@@ -39,8 +41,11 @@ def validate_packages(targets):
         executable = "FrogSmashersRebuilt.exe" if target.startswith("win") else "FrogSmashersRebuilt"
         if not (folder / executable).is_file():
             raise SystemExit(f"{target}: game executable is missing")
+        updater = "FrogSmashersUpdater.exe" if target.startswith("win") else "FrogSmashersUpdater"
+        if not (folder / updater).is_file():
+            raise SystemExit(f"{target}: updater executable is missing")
         docs = folder / "docs"
-        expected_docs = {"controls.txt"}
+        expected_docs = {"controls.txt", "updating.txt"}
         if target.startswith("win"):
             expected_docs.add("IPv6-issues.txt")
         if not docs.is_dir() or {path.name for path in docs.iterdir()} != expected_docs:
@@ -120,6 +125,25 @@ def create_tar(folder, files, package_name, epoch):
 
 def package(target, epoch):
     folder = RELEASES / f"FrogSmashersRebuilt-{target}"
+    manifest = folder / "installation.json"
+    commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    owned = sorted(path for path in folder.rglob("*") if path.is_file() and path != manifest)
+    for path in owned:
+        relative = path.relative_to(folder)
+        if path.is_symlink() or relative.parts[0] == "crashlogs" or any(part.startswith(".update-") for part in relative.parts):
+            raise SystemExit(f"{target}: runtime files or symbolic links must not be packaged: {relative}")
+    manifest.write_text(json.dumps({
+        "Platform": target,
+        "Commit": commit,
+        "Files": {
+            path.relative_to(folder).as_posix(): {
+                "Sha256": hashlib.sha256(path.read_bytes()).hexdigest().upper(),
+                "Size": path.stat().st_size,
+                "Executable": not target.startswith("win") and os.access(path, os.X_OK),
+            }
+            for path in owned
+        },
+    }, indent=2) + "\n", encoding="utf-8")
     files = sorted(path for path in folder.rglob("*") if path.is_file())
     package_name = PACKAGE_NAMES[target]
     if target.startswith("win"):

@@ -4,7 +4,7 @@ namespace FrogSmashers.Client;
 
 internal static class CrashLog
 {
-    public static string DirectoryPath => Path.Combine(Path.GetDirectoryName(ClientSettings.FilePath)!, "crashlogs");
+    public static string DirectoryPath => Path.Combine(AppContext.BaseDirectory, "crashlogs");
 
     public static void Register()
     {

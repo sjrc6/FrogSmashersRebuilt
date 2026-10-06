@@ -55,6 +55,11 @@ internal static class MenuLayout
         {
             var entry = entries[index];
             var text = Text(entry, width, font, accessorySize);
+            if (entry.Detail is { } detail)
+            {
+                detail = font.Wrap(detail, width - 64, 2);
+                text = text with { Detail = detail, Height = text.Height + 6 + font.Measure(detail).Y };
+            }
             if (entry.IsTitle)
             {
                 rows[index] = new(new Rectangle(12, 12, width - 24, 72), text);
@@ -142,7 +147,13 @@ internal static class MenuLayout
         return new(label, value, true, font.Measure(label).Y + 6 + reservedHeight);
     }
 
-    public readonly record struct MenuText(string Label, string? Value, bool Stacked, float Height);
+    public readonly record struct MenuText(
+        string Label,
+        string? Value,
+        bool Stacked,
+        float Height,
+        string? Detail = null
+    );
 
     private static int RowsOffset(GameScreen screen) =>
         screen switch

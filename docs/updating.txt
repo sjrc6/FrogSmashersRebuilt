@@ -1,0 +1,10 @@
+FSR Updater
+
+Windows: run FrogSmashersUpdater.exe
+Linux: run ./FrogSmashersUpdater
+
+--check to check without installing
+--no-launch to update without starting
+--help for options
+
+Releases: https://github.com/sjrc6/FrogSmashersRebuilt/releases

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>FrogSmashersUpdater</AssemblyName>
+    <ApplicationIcon>../Client/Icons/FrogSmashersRebuilt.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="FrogSmashers.Updater.Tests" />
+  </ItemGroup>
+</Project>

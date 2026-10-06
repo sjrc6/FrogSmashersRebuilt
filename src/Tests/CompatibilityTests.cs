@@ -105,16 +105,12 @@ internal static class CompatibilityTests
                     && reasons.Add(reason),
                 "Admission identifies the incompatible part of the descriptor"
             );
-            Check(
-                !LanDiscovery.ReadQuery(LanDiscovery.Query(7, other.Identifier), descriptor.Identifier, out _),
-                "LAN queries use the same compatibility descriptor"
-            );
             var roster = new LobbyRoster();
             byte[] reply = LanDiscovery.Reply(7, other.Identifier, Guid.NewGuid(), 24802, "TEST", roster, true);
             Check(
                 LanDiscovery.ReadReply(reply, new IPEndPoint(IPAddress.Loopback, 24802), descriptor.Identifier, 7)
-                    == null,
-                "LAN replies use the same compatibility descriptor"
+                    is { Compatible: false },
+                "LAN replies flag incompatible builds"
             );
             var metadata = new Dictionary<string, string>
             {
@@ -135,8 +131,9 @@ internal static class CompatibilityTests
                     descriptor.Identifier,
                     false,
                     1
-                ) == null,
-                "Steam discovery uses the same compatibility descriptor"
+                )
+                    is { Compatible: false },
+                "Steam discovery flags incompatible builds"
             );
         }
         Console.WriteLine("Generated code identity, gameplay-only hashing and discovery compatibility passed");
