@@ -4,6 +4,8 @@
 
 A MonoGame port of Frog Smashers for Windows and Linux. Up to eight players with local and online (rollback) multiplayer. 
 
+Spiritually related to [DGR](https://github.com/TheFlyingFoool/DuckGameRebuilt)
+
 ## Docs
 
 Controls: [controls.md](docs/controls.md) \
