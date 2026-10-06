@@ -1,5 +1,6 @@
 using FrogSmashers.Client;
 
+CrashLog.Register();
 try
 {
     var options = LaunchOptions.Parse(args);
@@ -16,6 +17,7 @@ try
 }
 catch (Exception exception)
 {
+    CrashLog.Write(exception);
     Console.Error.WriteLine(exception);
     Environment.ExitCode = 1;
 }

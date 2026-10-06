@@ -514,7 +514,7 @@ public class FrogGame : Game
                     showGameplayUi: !Match.IsMenuBackground
                 );
                 if (!Match.IsMenuBackground)
-                    Renderer.DrawMatchOverlay(world, Match.PlayerViews, Controls);
+                    Renderer.DrawMatchOverlay(world, Match.PlayerViews, Controls, Match.CelebrationSkipDevice);
             }
 
             Audio.ListenerPosition = Renderer.ListenerPosition;

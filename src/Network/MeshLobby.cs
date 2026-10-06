@@ -96,6 +96,8 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
     private long Now => wire.TimeMilliseconds;
     public long TimeMilliseconds => Now;
 
+    internal string? PeerAddressFor(int peer) => peerAddresses.GetValueOrDefault(peer);
+
     public MeshLobby(
         IWire wire,
         string? host,

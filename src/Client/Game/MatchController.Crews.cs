@@ -6,17 +6,20 @@ internal sealed partial class MatchController
 {
     private readonly Dictionary<int, InputFrame> selectionInputs = new();
 
+    public int CelebrationSkipDevice =>
+        !ReplayPlayback && World?.Match.Phase == MatchPhase.RoundFinished
+            ? PlayerViews.ElementAtOrDefault(World.Match.Winner)?.Device ?? -1
+            : -1;
+
     public bool TrySkipCelebration(int device)
     {
-        if (ReplayPlayback || World?.Match.Phase != MatchPhase.RoundFinished)
+        int winnerDevice = CelebrationSkipDevice;
+        if (winnerDevice < 0)
             return false;
-        var winner = PlayerViews.ElementAtOrDefault(World.Match.Winner);
-        if (winner == null || winner.Device < 0)
-            return false;
-        bool matchingDevice = winner.Device == device || winner.Device < 2 && device < 2;
+        bool matchingDevice = winnerDevice == device || winnerDevice < 2 && device is >= 0 and < 2;
         if (!matchingDevice)
             return false;
-        commands[winner.Device] = new(MatchCommandKind.SkipCelebration);
+        commands[winnerDevice] = new(MatchCommandKind.SkipCelebration);
         return true;
     }
 

@@ -483,14 +483,13 @@ internal sealed class EffectSystem
             )
         )
         {
-            animator.Flight.TrailFaderCounter -= dt;
-            if (animator.Flight.TrailFaderCounter <= 0)
+            int frames = AdvanceFlash(ref animator.PowerFlashCounter, dt, delay * 7);
+            if (frames > 0)
             {
-                animator.Flight.TrailNumber++;
-                animator.Flight.TrailFaderCounter += delay * 7;
+                animator.PowerFlashFrame = (animator.PowerFlashFrame + frames) % 3;
                 animator.Color =
-                    animator.Flight.TrailNumber % 3 == 0 ? Color.White
-                    : animator.Flight.TrailNumber % 3 == 1 ? Color.Black
+                    animator.PowerFlashFrame == 0 ? Color.White
+                    : animator.PowerFlashFrame == 1 ? Color.Black
                     : colorFor(world, player.Slot);
             }
         }
@@ -498,6 +497,18 @@ internal sealed class EffectSystem
         {
             animator.Color = colorFor(world, player.Slot);
         }
+    }
+
+    private static int AdvanceFlash(ref float counter, float dt, float interval)
+    {
+        if (dt <= 0)
+            return 0;
+        counter -= dt;
+        if (counter > 0)
+            return 0;
+        int frames = 1 + (int)(-counter / interval);
+        counter += frames * interval;
+        return frames;
     }
 
     private void UpdateFlight(FlightVisual visual, FlightPresentation trail, float dt, float localDt)
@@ -534,11 +545,10 @@ internal sealed class EffectSystem
 
         if (visual.Silhouette && visual.AttackerColor != null)
         {
-            trail.TrailFaderCounter -= dt;
-            if (trail.TrailFaderCounter <= 0)
+            int frames = AdvanceFlash(ref trail.TrailFaderCounter, dt, delay * 2);
+            if (frames > 0)
             {
-                trail.TrailNumber++;
-                trail.TrailFaderCounter += delay * 2;
+                trail.TrailNumber = (trail.TrailNumber + frames) % 10;
                 var tint = Color.Lerp(
                     visual.AttackerColor!.Value,
                     Color.White,

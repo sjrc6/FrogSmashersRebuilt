@@ -39,6 +39,7 @@ public sealed partial class Renderer
             var topLeft = CrewFrogTopLeft(slot, size, pixels, selecting: true);
             float x = topLeft.X + size.X / 2;
             string name = view?.Name ?? $"PLAYER {slot + 1}";
+            name = assets.ScoreFont.Wrap(name, 184 / 1.4f, 1);
             float nameHeight = assets.ScoreFont.Measure(name, 1.4f).Y;
             DrawCrewLabel(name, new Vector2(x, topLeft.Y - 6 - nameHeight / 2), 1.4f);
             if (world.Match.CrewTeams[slot] < 0)

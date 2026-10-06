@@ -103,7 +103,8 @@ internal sealed partial class MatchController : IDisposable
                 LobbyPlayerLabel.Name(
                     player,
                     lobby.Roster.Slots.ToList().FindIndex(slot => slot.Player == player),
-                    lobby.LocalPeer
+                    lobby.LocalPeer,
+                    lobby
                 ),
                 !player.Cpu && player.Peer == lobby.LocalPeer ? player.Id : -1
             ))

@@ -18,7 +18,7 @@ internal static class UserMessages
             || error.Contains("DOES NOT MATCH")
             || error.Contains("ANOTHER GAME")
         )
-            return "DIFFERENT GAME VERSIONS";
+            return "DIFFERENT VERSION";
         if (error.Contains("TIMED OUT") || error.Contains("STOPPED ACKNOWLEDGING"))
             return "CONNECTION TIMED OUT";
         if (error.Contains("BANNED"))

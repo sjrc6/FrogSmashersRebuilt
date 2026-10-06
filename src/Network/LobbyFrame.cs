@@ -82,8 +82,6 @@ public readonly record struct LobbyRosterCommand(int Revision, ulong Rooms, ulon
                 return Rooms == 0 && Details == 0 && Spectators == 0;
             Span<ushort> devices = stackalloc ushort[LobbyRoster.MaxPeers];
             devices.Clear();
-            Span<int> teams = stackalloc int[LobbyRoster.MaxPlayers];
-            teams.Clear();
             for (int room = 0; room < LobbyRoster.MaxPlayers; room++)
             {
                 int owner = (byte)(Rooms >> (room * 8));
@@ -92,8 +90,6 @@ public readonly record struct LobbyRosterCommand(int Revision, ulong Rooms, ulon
                     return false;
                 if (owner == 0xff)
                     continue;
-                if (++teams[(detail >> 3) & 7] > LobbyRoster.MaxTeamPlayers)
-                    return false;
                 if (owner == 0xfe)
                     continue;
                 int peer = owner >> 4,

@@ -428,12 +428,20 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
                 room.Center.X,
                 MenuLayout.SlotAction(menu.SelectedSeat, 0).Center.Y
             );
+        else
+            CenteredHint(
+                ButtonGlyph.Accept(menu.HintDevice),
+                game.Lobby.BackOutLabel(slot.Player),
+                room.Center.X,
+                MenuLayout.SlotAction(menu.SelectedSeat, 0).Center.Y
+            );
         if (slot.Player is { } player)
             CenteredHint(
                 ButtonGlyph.Remove(menu.HintDevice),
-                game.Lobby.RemoveLabel(player),
+                "KICK",
                 room.Center.X,
-                MenuLayout.SlotAction(menu.SelectedSeat, 1).Center.Y
+                MenuLayout.SlotAction(menu.SelectedSeat, 1).Center.Y,
+                game.Lobby.CanKick(player) ? Color.White : Color.Gray
             );
         CenteredHint(
             ButtonGlyph.ApplyAll(menu.HintDevice),
@@ -511,9 +519,9 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
                     PressHint(LobbyJoinGlyph(joinDevices[joinHint++]), rect.Center.X, rect.Bottom - 46);
                 continue;
             }
-            string label = LobbyPlayerLabel.Name(player, room, game.Lobby.LocalPeer);
-            if (game.Lobby.UsesTeams)
-                label += $" / TEAM {player.Team + 1}";
+            string label = LobbyPlayerLabel.Name(player, room, game.Lobby.LocalPeer, game.Lobby.Online);
+            string team = game.Lobby.UsesTeams ? $" / TEAM {player.Team + 1}" : "";
+            label = game.Assets.Font.Wrap(label, rect.Width - 24 - game.Assets.Font.Measure(team).X, 1) + team;
             game.Renderer.CenteredText(label, rect.Center.X, rect.Top + 24, Color.Black, center: true);
             if (player.Cpu || menu.Screen != GameScreen.Seats || player.Peer != game.Lobby.LocalPeer)
                 continue;

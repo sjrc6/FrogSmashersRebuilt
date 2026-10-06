@@ -57,6 +57,10 @@ internal static class PlayerPalette
             1 => Color.Lerp(Team(team), Color.Black, .28f),
             2 => Color.Lerp(Team(team), Color.White, .25f),
             3 => Color.Lerp(Team(team), Color.Black, .5f),
+            4 => Color.Lerp(Team(team), Color.White, .45f),
+            5 => Color.Lerp(Team(team), Color.Black, .65f),
+            6 => Color.Lerp(Team(team), Color.White, .6f),
+            7 => Color.Lerp(Team(team), Color.Black, .78f),
             _ => Team(team),
         };
 }

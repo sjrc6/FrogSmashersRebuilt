@@ -220,7 +220,7 @@ internal sealed class ScoreDisplay
             if (individualStocks)
             {
                 var participation = world.Match.Players[p.Slot].Participation;
-                text = $"P{p.Slot + 1} " + (participation == Participation.Eliminated ? "OUT" : text);
+                text = participation == Participation.Eliminated ? "OUT" : text;
                 if (participation is Participation.Waiting or Participation.Eliminated)
                     color *= .5f;
             }

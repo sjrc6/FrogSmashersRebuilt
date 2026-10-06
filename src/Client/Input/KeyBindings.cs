@@ -13,6 +13,55 @@ public sealed class KeyBindings
     public Keys Tongue { get; set; } = Keys.Y;
     public Keys Strafe { get; set; } = Keys.R;
 
+    internal Keys this[int action]
+    {
+        get =>
+            action switch
+            {
+                0 => Left,
+                1 => Right,
+                2 => Up,
+                3 => Down,
+                4 => Jump,
+                5 => Attack,
+                6 => Tongue,
+                7 => Strafe,
+                _ => throw new ArgumentOutOfRangeException(nameof(action)),
+            };
+        set
+        {
+            switch (action)
+            {
+                case 0:
+                    Left = value;
+                    break;
+                case 1:
+                    Right = value;
+                    break;
+                case 2:
+                    Up = value;
+                    break;
+                case 3:
+                    Down = value;
+                    break;
+                case 4:
+                    Jump = value;
+                    break;
+                case 5:
+                    Attack = value;
+                    break;
+                case 6:
+                    Tongue = value;
+                    break;
+                case 7:
+                    Strafe = value;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(action));
+            }
+        }
+    }
+
     internal void RemoveMenuKey(KeyBindings defaults)
     {
         if (Left == Keys.Escape)

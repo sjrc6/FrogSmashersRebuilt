@@ -19,12 +19,10 @@ internal sealed partial class MenuController
 
     private string PlayerLabel(LobbyPlayer player)
     {
-        if (!player.Cpu && player.Peer == game.Lobby.LocalPeer)
-            return new LocalSeat(player.Id).Label;
         int room = game.Lobby.Roster.Slots.ToList().FindIndex(slot => slot.Player == player);
-        return player.Cpu ? $"CPU {room + 1}"
-            : room >= 0 ? $"PLAYER {room + 1}"
-            : $"GUEST {player.Peer}";
+        return player.Cpu
+            ? $"CPU {room + 1}"
+            : LobbyPlayerLabel.Name(player, room, game.Lobby.LocalPeer, game.Lobby.Online);
     }
 
     private string? PlayerActionDisabledReason(LobbyPlayer player) =>
@@ -53,7 +51,9 @@ internal sealed partial class MenuController
                 firstSpectator = false;
         }
         foreach (int peer in UnseatedPeers())
-            rows.Add(new($"connection-{peer}", peer == 0 ? "HOST" : $"GUEST {peer}", Value: "NOT JOINED"));
+            rows.Add(
+                new($"connection-{peer}", LobbyPlayerLabel.PeerName(peer, game.Lobby.Online), Value: "NOT JOINED")
+            );
         return rows;
     }
 
@@ -93,18 +93,13 @@ internal sealed partial class MenuController
             return (null, Action("KICK", () => game.Lobby.Remove(player.Peer, player.Id)));
 
         bool spectator = game.Lobby.Roster.Spectator(player.Peer) == player;
-        bool multiple = game.Lobby.Roster.Humans(player.Peer).Length > 1;
-        bool remote = player.Peer != game.Lobby.LocalPeer;
-        MenuEntry accept =
-            spectator ? Action("UNSPECTATE", () => game.Lobby.Spectate(player.Peer, false))
-            : game.Lobby.Online == null || multiple
-                ? Action("BACK OUT", () => game.Lobby.Remove(player.Peer, player.Id))
-            : Action("SPECTATE", () => game.Lobby.Spectate(player.Peer, true));
-        MenuEntry? remove = null;
-        if (remote && game.Lobby.IsHost)
-            remove = Action("KICK", () => game.Online.Lobby!.Kick(player.Peer, false));
-        else if (!spectator && !multiple && game.Lobby.Online != null)
-            remove = Action("BACK OUT", () => game.Lobby.Remove(player.Peer, player.Id));
+        MenuEntry accept = spectator
+            ? Action("UNSPECTATE", () => game.Lobby.Spectate(player.Peer, false))
+            : Action(game.Lobby.BackOutLabel(player), () => game.Lobby.BackOut(player));
+        MenuEntry remove = Action("KICK", () => game.Lobby.Kick(player)) with
+        {
+            Disabled = !game.Lobby.CanKick(player),
+        };
         return (accept, remove);
     }
 

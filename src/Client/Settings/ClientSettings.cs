@@ -97,6 +97,23 @@ public sealed class ClientSettings
 
     public void Save() => Save(FilePath);
 
+    internal bool BindKey(int keyboard, int action, Keys key)
+    {
+        if (keyboard is < 0 or > 1 || key is Keys.None or Keys.Escape || !Enum.IsDefined(key))
+            throw new ArgumentOutOfRangeException(nameof(key));
+        Keyboard[keyboard][action] = key;
+        bool displaced = false;
+        var other = Keyboard[1 - keyboard];
+        for (int index = 0; index < 8; index++)
+        {
+            if (other[index] != key)
+                continue;
+            other[index] = Keys.None;
+            displaced = true;
+        }
+        return displaced;
+    }
+
     internal void Save(string path)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);

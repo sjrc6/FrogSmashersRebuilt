@@ -28,7 +28,8 @@ internal sealed class ConnectionOverlay(FrogGame game)
                     continue;
                 int handle = player.Cpu ? -1 : Array.IndexOf(lobby.InputRooms.ToArray(), room);
                 var color = PlayerPalette.Lobby(lobby.Membership.Rooms, room, game.Lobby.UsesTeams);
-                players.Add(Row(handle, room, player.Peer, color, player.Cpu, session));
+                string name = LobbyPlayerLabel.Name(player, room, game.Lobby.LocalPeer, game.Lobby.Online);
+                players.Add(Row(handle, room, player.Peer, color, player.Cpu, session, name));
             }
         }
         else if (game.Match.World is { } world)
@@ -38,13 +39,22 @@ internal sealed class ConnectionOverlay(FrogGame game)
                 bool cpu = world.Rules.CpuPlayers[slot];
                 int handle = cpu ? -1 : session?.InputHandle(slot) ?? slot;
                 int peer = handle >= 0 ? session?.PlayerPeer(handle) ?? 0 : 0;
-                players.Add(Row(handle, slot, peer, PlayerPalette.For(world, slot), cpu, session));
+                string name = game.Match.PlayerViews.ElementAtOrDefault(slot)?.Name ?? $"PLAYER {slot + 1}";
+                players.Add(Row(handle, slot, peer, PlayerPalette.For(world, slot), cpu, session, name));
             }
         }
         return players;
     }
 
-    private PlayerRow Row(int handle, int slot, int peer, Color color, bool cpu, IRollbackSession? session)
+    private PlayerRow Row(
+        int handle,
+        int slot,
+        int peer,
+        Color color,
+        bool cpu,
+        IRollbackSession? session,
+        string label
+    )
     {
         if (cpu)
             return new(-1, $"CPU {slot + 1}", color, null, 0, 0);
@@ -61,7 +71,6 @@ internal sealed class ConnectionOverlay(FrogGame game)
             session == null ? 0
             : local ? session.RollbackSettings.Donation
             : stats?.DonationFrames ?? game.Online.Lobby?.PeerRollbackSettings.GetValueOrDefault(peer)?.Donation ?? 0;
-        string label = $"PLAYER {slot + 1}";
         if (local && !game.Match.ReplayPlayback)
             label += " (YOU)";
         return new(handle, label, color, ping, session?.PredictionForPlayer(handle) ?? 0, donation);
@@ -76,7 +85,9 @@ internal sealed class ConnectionOverlay(FrogGame game)
             return null;
         var waiting = session.WaitingForInputPlayers;
         if (waiting.Count == 0)
-            return session.WaitingForHostInputs ? "WAITING FOR INPUTS:\nHOST" : null;
+            return session.WaitingForHostInputs
+                ? "WAITING FOR INPUTS:\n" + LobbyPlayerLabel.PeerName(0, game.Lobby.Online)
+                : null;
         var rows = Rows();
         var players = rows.Where(row => waiting.Contains(row.Handle)).Select(row => row.Label).ToList();
         if (
@@ -84,10 +95,12 @@ internal sealed class ConnectionOverlay(FrogGame game)
             && waiting.Contains(session.HostCommandHandle)
             && !rows.Any(row => row.Handle >= 0 && session.PlayerPeer(row.Handle) == 0 && waiting.Contains(row.Handle))
         )
-            players.Add("HOST");
+            players.Add(LobbyPlayerLabel.PeerName(0, game.Lobby.Online));
         if (players.Count > 0)
             return "WAITING FOR INPUTS:\n" + string.Join(", ", players);
-        return session.WaitingForHostInputs ? "WAITING FOR INPUTS:\nHOST" : null;
+        return session.WaitingForHostInputs
+            ? "WAITING FOR INPUTS:\n" + LobbyPlayerLabel.PeerName(0, game.Lobby.Online)
+            : null;
     }
 
     public void DrawInputWait()
@@ -127,8 +140,9 @@ internal sealed class ConnectionOverlay(FrogGame game)
         foreach (var row in rows)
         {
             game.Renderer.Panel(new(left, y, 12, line), row.Color);
-            game.Renderer.Text(row.Label, left + 22, y);
             string ping = row.Ping is { } milliseconds ? $"{milliseconds} MS" : "-- MS";
+            string label = font.Wrap(row.Label, right - left - 38 - font.Measure(ping).X, 1);
+            game.Renderer.Text(label, left + 22, y);
             game.Renderer.Text(ping, right - font.Measure(ping).X, y, PingColor(row.Ping));
             game.Renderer.Text($"PRED: {row.Prediction}", left + 22, y + line + 6);
             string donation = $"DONATION: {row.Donation}";

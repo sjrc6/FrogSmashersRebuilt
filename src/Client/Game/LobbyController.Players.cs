@@ -7,9 +7,35 @@ internal sealed partial class LobbyController
     public bool CanManage(LobbyPlayer player) =>
         Online?.Starting != true && (IsHost || !player.Cpu && player.Peer == LocalPeer);
 
-    public bool CanRemove(LobbyPlayer player) => CanManage(player);
+    public bool CanKick(LobbyPlayer player) => CanManage(player) && (player.Cpu || player.Peer != LocalPeer);
 
-    public string RemoveLabel(LobbyPlayer player) => player.Cpu || player.Peer != LocalPeer ? "KICK" : "BACK OUT";
+    public bool BackOutSpectates(LobbyPlayer player) =>
+        Online != null
+        && !player.Cpu
+        && (!IsHost || player.Peer != LocalPeer)
+        && Roster.Humans(player.Peer).Length == 1;
+
+    public string BackOutLabel(LobbyPlayer player) => BackOutSpectates(player) ? "SPECTATE" : "BACK OUT";
+
+    public void BackOut(LobbyPlayer player)
+    {
+        if (!CanManage(player) || player.Cpu)
+            return;
+        if (BackOutSpectates(player))
+            Spectate(player.Peer, true);
+        else
+            Remove(player.Peer, player.Id);
+    }
+
+    public void Kick(LobbyPlayer player)
+    {
+        if (!CanKick(player))
+            return;
+        if (player.Cpu)
+            Remove(player.Peer, player.Id);
+        else
+            Online!.Kick(player.Peer, false);
+    }
 
     public void Remove(int peer, int id)
     {

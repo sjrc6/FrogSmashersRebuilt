@@ -30,6 +30,8 @@ internal sealed class CharacterPresentation
     public bool Transitioning;
     public Color Color;
     public readonly FlightPresentation Flight = new();
+    public float PowerFlashCounter;
+    public int PowerFlashFrame;
     public float LastSkidX;
     public readonly SpriteAnimation TipClock = new();
     public bool TongueVisible;

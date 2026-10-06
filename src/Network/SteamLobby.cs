@@ -34,6 +34,17 @@ public sealed class SteamLobby : GameLobby
     public override string Status => coordinator?.Status ?? status;
     public override string? Error => error ?? coordinator?.Error;
 
+    public string? PeerName(int peer)
+    {
+        if (!initialized || coordinator == null || !ulong.TryParse(coordinator.PeerAddressFor(peer), out ulong id))
+            return null;
+        string name =
+            id == SteamUser.GetSteamID().m_SteamID
+                ? SteamFriends.GetPersonaName()
+                : SteamFriends.GetFriendPersonaName(new CSteamID(id));
+        return LobbyListing.DisplayName(name, "STEAM PLAYER");
+    }
+
     public static SteamLobby Host(
         int capacity,
         LobbyPlayer[] players,

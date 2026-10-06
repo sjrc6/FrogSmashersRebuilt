@@ -20,14 +20,18 @@ public sealed partial class Renderer
         EndUi();
     }
 
-    internal void DrawMatchOverlay(World world, IReadOnlyList<MatchPlayerView> players, Controls controls)
+    internal void DrawMatchOverlay(
+        World world,
+        IReadOnlyList<MatchPlayerView> players,
+        Controls controls,
+        int skipDevice
+    )
     {
         if (world.Rules.Format == MatchFormat.Crews)
             DrawCrewRoster(world, players, controls, selecting: false);
-        if (world.Match.Phase == MatchPhase.RoundFinished)
+        if (skipDevice >= 0)
         {
-            int device = players.ElementAtOrDefault(world.Match.Winner)?.Device ?? -1;
-            var glyph = device < 0 ? ButtonGlyph.Pad(Buttons.Start) : ButtonGlyph.Menu(device);
+            var glyph = ButtonGlyph.Menu(skipDevice);
             BeginUi();
             DrawMatchHint([glyph], "TO SKIP", new Vector2(Width / 2, Height - 40), prefix: "PRESS");
             EndUi();
@@ -89,6 +93,7 @@ public sealed partial class Renderer
             if (selecting || active)
             {
                 string name = view?.Name ?? $"PLAYER {slot + 1}";
+                name = assets.ScoreFont.Wrap(name, (selecting ? 240 : 148) / labelScale, 1);
                 float nameHeight = assets.ScoreFont.Measure(name, labelScale).Y;
                 DrawCrewLabel(name, new Vector2(position.X, topLeft.Y - nameGap - nameHeight / 2), labelScale);
             }

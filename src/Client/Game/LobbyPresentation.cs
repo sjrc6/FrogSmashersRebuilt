@@ -62,10 +62,6 @@ internal sealed class LobbyPresentation
                     Color = used.Contains(joining.Color)
                         ? Enumerable.Range(0, LobbyRoster.MaxPlayers).First(color => !used.Contains(color))
                         : joining.Color,
-                    Team = LobbyRoster.AvailableTeam(
-                        joining.Team,
-                        slots.Where((_, index) => index != room).Select(slot => slot.Player)
-                    ),
                 },
             };
         }

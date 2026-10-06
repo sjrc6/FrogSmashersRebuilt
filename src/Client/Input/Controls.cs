@@ -76,13 +76,15 @@ public sealed class Controls
         }
     }
 
-    public bool Press(Keys key) => KeysNow.IsKeyDown(key) && KeysBefore.IsKeyUp(key);
+    private bool KeyDown(Keys key) => key != Keys.None && KeysNow.IsKeyDown(key);
+
+    public bool Press(Keys key) => KeyDown(key) && KeysBefore.IsKeyUp(key);
 
     public bool PadPress(int i, Buttons button) => Pads[i].IsButtonDown(button) && beforePads[i].IsButtonUp(button);
 
     public bool PadRelease(int i, Buttons button) => Pads[i].IsButtonUp(button) && beforePads[i].IsButtonDown(button);
 
-    public bool Release(Keys key) => KeysNow.IsKeyUp(key) && KeysBefore.IsKeyDown(key);
+    public bool Release(Keys key) => key != Keys.None && KeysNow.IsKeyUp(key) && KeysBefore.IsKeyDown(key);
 
     internal bool BindingPress(int pad, Buttons binding) =>
         PadBindings.IsDown(Pads[pad], binding) && !PadBindings.IsDown(beforePads[pad], binding);
@@ -228,12 +230,12 @@ public sealed class Controls
         if (device < KeyboardCount)
         {
             var k = settings.Keyboard[device];
-            up = KeysNow.IsKeyDown(k.Up);
-            down = KeysNow.IsKeyDown(k.Down);
-            jump = KeysNow.IsKeyDown(k.Jump);
-            attack = KeysNow.IsKeyDown(k.Attack);
-            tongue = KeysNow.IsKeyDown(k.Tongue);
-            strafe = KeysNow.IsKeyDown(k.Strafe);
+            up = KeyDown(k.Up);
+            down = KeyDown(k.Down);
+            jump = KeyDown(k.Jump);
+            attack = KeyDown(k.Attack);
+            tongue = KeyDown(k.Tongue);
+            strafe = KeyDown(k.Strafe);
         }
         else
         {
@@ -264,7 +266,7 @@ public sealed class Controls
         if (device < KeyboardCount)
         {
             var bindings = settings.Keyboard[device];
-            return (KeysNow.IsKeyDown(bindings.Left), KeysNow.IsKeyDown(bindings.Right));
+            return (KeyDown(bindings.Left), KeyDown(bindings.Right));
         }
         var pad = Pads[device - KeyboardCount];
         if (!pad.IsConnected)

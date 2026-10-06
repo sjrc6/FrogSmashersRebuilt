@@ -29,7 +29,15 @@ internal sealed partial class MenuController
             Back();
             return;
         }
-        int change = slotGesture.Update(input);
+        bool human = game.Lobby.Roster.Slots[SelectedSeat].Player is { Cpu: false };
+        if (human && input.Accept)
+        {
+            ManageSelectedPlayer(kick: false);
+            return;
+        }
+        int change = human ? 0 : slotGesture.Update(input);
+        if (human)
+            slotGesture.Reset();
         if (change != 0)
             CycleSlot(change, preview: input.AcceptHeld);
         if (input.AcceptReleased && slotPreview is { } type)
@@ -60,7 +68,10 @@ internal sealed partial class MenuController
         if (input.CpuTeam)
             ChangeSelectedCpu(true);
         if (input.Remove)
-            RemoveSelectedPlayer();
+        {
+            ManageSelectedPlayer(kick: true);
+            return;
+        }
         if (input.ApplyAll)
             ApplySelectedType();
         if (Pointer() is not Point point)
@@ -85,7 +96,12 @@ internal sealed partial class MenuController
         }
         if (game.Controls.MousePressed && MenuLayout.SlotAction(SelectedSeat, 1).Contains(point))
         {
-            RemoveSelectedPlayer();
+            ManageSelectedPlayer(kick: true);
+            return;
+        }
+        if (human && game.Controls.MousePressed && MenuLayout.SlotAction(SelectedSeat, 0).Contains(point))
+        {
+            ManageSelectedPlayer(kick: false);
             return;
         }
         if (!game.Controls.MouseMoved && !clicked)
@@ -143,7 +159,7 @@ internal sealed partial class MenuController
         menuSoundPending = true;
     }
 
-    private void RemoveSelectedPlayer()
+    private void ManageSelectedPlayer(bool kick)
     {
         if (game.Lobby.RosterUpdating)
         {
@@ -152,10 +168,10 @@ internal sealed partial class MenuController
         }
         if (game.Lobby.Roster.Slots[SelectedSeat].Player is not { } player)
             return;
-        if (player.Peer != game.Lobby.LocalPeer)
-            game.Online.Lobby!.Kick(player.Peer, false);
+        if (kick)
+            game.Lobby.Kick(player);
         else
-            game.Lobby.Remove(player.Peer, player.Id);
+            game.Lobby.BackOut(player);
         menuSoundPending = true;
     }
 }

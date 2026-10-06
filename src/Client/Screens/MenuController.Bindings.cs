@@ -35,14 +35,19 @@ internal sealed partial class MenuController
     {
         if (WaitingForBinding && Selected == action + 1)
             return new("binding-" + action, name, Value: "...");
-        return BindingDevice < 2
-            ? new("binding-" + action, name, BeginBinding, Key: BindingKeys()[action])
-            : new(
-                "binding-" + action,
-                name,
-                BeginBinding,
-                Button: game.Controls.ControllerBindings(BindingDevice - 2)[action]
-            );
+        if (BindingDevice < 2)
+        {
+            var key = game.Settings.Keyboard[BindingDevice][action];
+            return key == Keys.None
+                ? new("binding-" + action, name, BeginBinding, Value: "UNBOUND")
+                : new("binding-" + action, name, BeginBinding, Key: key);
+        }
+        return new(
+            "binding-" + action,
+            name,
+            BeginBinding,
+            Button: game.Controls.ControllerBindings(BindingDevice - 2)[action]
+        );
     }
 
     private void BeginBinding()
@@ -50,16 +55,17 @@ internal sealed partial class MenuController
         WaitingForBinding = true;
     }
 
-    private Keys[] BindingKeys()
-    {
-        var keys = game.Settings.Keyboard[BindingDevice];
-        return [keys.Left, keys.Right, keys.Up, keys.Down, keys.Jump, keys.Attack, keys.Tongue, keys.Strafe];
-    }
-
     private void ResetBindings()
     {
         if (BindingDevice < 2)
-            game.Settings.Keyboard[BindingDevice] = new ClientSettings().Keyboard[BindingDevice];
+        {
+            var defaults = new ClientSettings().Keyboard[BindingDevice];
+            bool displaced = false;
+            for (int action = 0; action < 8; action++)
+                displaced |= game.Settings.BindKey(BindingDevice, action, defaults[action]);
+            if (displaced)
+                ShowDisplacedBinding();
+        }
         else
             game.Controls.ResetControllerBindings(BindingDevice - 2);
         game.Controls.ClearPendingEdges();
@@ -93,36 +99,12 @@ internal sealed partial class MenuController
             FinishBinding();
             return;
         }
-        var keys = game.Settings.Keyboard[BindingDevice];
-        switch (Selected - 1)
-        {
-            case 0:
-                keys.Left = key;
-                break;
-            case 1:
-                keys.Right = key;
-                break;
-            case 2:
-                keys.Up = key;
-                break;
-            case 3:
-                keys.Down = key;
-                break;
-            case 4:
-                keys.Jump = key;
-                break;
-            case 5:
-                keys.Attack = key;
-                break;
-            case 6:
-                keys.Tongue = key;
-                break;
-            case 7:
-                keys.Strafe = key;
-                break;
-        }
+        if (game.Settings.BindKey(BindingDevice, Selected - 1, key))
+            ShowDisplacedBinding();
         FinishBinding();
     }
+
+    private void ShowDisplacedBinding() => game.Toasts.Show($"KEY REMOVED FROM KEYBOARD {2 - BindingDevice}");
 
     private void FinishBinding()
     {
