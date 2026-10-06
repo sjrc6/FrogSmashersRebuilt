@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: Build run ID
+        required: true
+        type: string
+      tag:
+        description: Tag to create
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BUILD_RUN_ID: ${{ inputs.build_run_id }}
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Validate source build and tag
+        id: source
+        run: |
+          commit=$(python3 scripts/validate-release.py "$BUILD_RUN_ID" "$RELEASE_TAG")
+          printf 'commit=%s\n' "$commit" >> "$GITHUB_OUTPUT"
+
+      - name: Download Windows and Linux archives
+        env:
+          BUILD_COMMIT: ${{ steps.source.outputs.commit }}
+        run: |
+          gh run download "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --name "FrogSmashersRebuilt-windows-$BUILD_COMMIT" --dir .build/release/windows
+          gh run download "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --name "FrogSmashersRebuilt-linux-$BUILD_COMMIT" --dir .build/release/linux
+          test -s .build/release/windows/FrogSmashersRebuilt-windows.zip
+          test -s .build/release/linux/FrogSmashersRebuilt-linux.tar.gz
+
+      - name: Create tag and release from the selected build
+        env:
+          BUILD_COMMIT: ${{ steps.source.outputs.commit }}
+        run: |
+          gh release create "$RELEASE_TAG" \
+            .build/release/windows/FrogSmashersRebuilt-windows.zip \
+            .build/release/linux/FrogSmashersRebuilt-linux.tar.gz \
+            --repo "$GITHUB_REPOSITORY" --target "$BUILD_COMMIT" \
+            --title "$RELEASE_TAG" --generate-notes

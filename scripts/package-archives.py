@@ -14,6 +14,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RELEASES = ROOT / ".build/releases"
 TARGETS = ("linux-x64", "win-x64")
+PACKAGE_NAMES = {
+    "linux-x64": "FrogSmashersRebuilt-linux",
+    "win-x64": "FrogSmashersRebuilt-windows",
+}
 DEVELOPMENT_EXECUTABLES = (
     "FrogSmashers.Tests*",
     "FrogSmashers.Client.Tests*",
@@ -74,11 +78,11 @@ def validate_packages(targets):
                 )
 
 
-def create_zip(folder, files, epoch):
-    archive = RELEASES / f"{folder.name}.zip"
+def create_zip(folder, files, package_name, epoch):
+    archive = RELEASES / f"{package_name}.zip"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as output:
         for path in files:
-            name = f"{folder.name}/{path.relative_to(folder).as_posix()}"
+            name = f"{package_name}/{path.relative_to(folder).as_posix()}"
             entry = zipfile.ZipInfo.from_file(path, name)
             if epoch is not None:
                 entry.date_time = time.gmtime(max(epoch, 315532800))[:6]
@@ -88,14 +92,14 @@ def create_zip(folder, files, epoch):
     return archive
 
 
-def create_tar(folder, files, epoch):
-    archive = RELEASES / f"{folder.name}.tar.gz"
+def create_tar(folder, files, package_name, epoch):
+    archive = RELEASES / f"{package_name}.tar.gz"
     with archive.open("wb") as raw, gzip.GzipFile(
         filename="", mode="wb", fileobj=raw, mtime=epoch, compresslevel=9
     ) as zipped:
         with tarfile.open(fileobj=zipped, mode="w") as output:
             for path in files:
-                name = f"{folder.name}/{path.relative_to(folder).as_posix()}"
+                name = f"{package_name}/{path.relative_to(folder).as_posix()}"
                 entry = output.gettarinfo(str(path), name)
                 if epoch is not None:
                     entry.mtime = epoch
@@ -110,13 +114,13 @@ def create_tar(folder, files, epoch):
 def package(target, epoch):
     folder = RELEASES / f"FrogSmashersRebuilt-{target}"
     files = sorted(path for path in folder.rglob("*") if path.is_file())
-    archive = create_zip(folder, files, epoch) if target.startswith("win") else create_tar(folder, files, epoch)
-    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
-    archive.with_name(archive.name + ".sha256").write_text(
-        f"{digest}  {archive.name}\n", encoding="utf-8", newline="\n"
-    )
+    package_name = PACKAGE_NAMES[target]
+    if target.startswith("win"):
+        archive = create_zip(folder, files, package_name, epoch)
+    else:
+        archive = create_tar(folder, files, package_name, epoch)
     size = archive.stat().st_size / 1048576
-    print(f"{archive.relative_to(ROOT)} ({size:.1f} MiB) SHA256 {digest}")
+    print(f"{archive.relative_to(ROOT)} ({size:.1f} MiB)")
 
 
 def main():
