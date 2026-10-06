@@ -156,7 +156,6 @@ internal static class MenuLayout
         screen switch
         {
             GameScreen.ViewPlayers or GameScreen.InviteFriends => 82,
-            GameScreen.Modifiers => 140,
             _ => 50,
         };
 

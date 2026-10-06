@@ -159,8 +159,7 @@ internal sealed partial class PresentationChecks
                         definition.Id,
                         definition.Label,
                         Value: definition.Value(GameModifiers.Default),
-                        ValueSample: definition.ValueSample,
-                        Help: definition.Help
+                        ValueSample: definition.ValueSample
                     ))
                     .ToArray();
                 Rectangle? modifierPanel = null;
@@ -171,15 +170,6 @@ internal sealed partial class PresentationChecks
                     Check(
                         layout.Panel == modifierPanel && !layout.Rows[selected].Bounds.IsEmpty,
                         $"Every modifier stays visible within a stable panel at {size}"
-                    );
-                    string help = assets.Font.Wrap(
-                        "ENABLE BODY BOUNCING. " + modifiers[selected].Help,
-                        layout.Panel.Width - 40,
-                        3
-                    );
-                    Check(
-                        assets.Font.Measure(help).Y <= 90 && assets.Font.Measure(help).X <= layout.Panel.Width - 40,
-                        $"Modifier help fits above the footer buttons at {size}"
                     );
                 }
             }

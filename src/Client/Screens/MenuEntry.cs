@@ -25,7 +25,6 @@ internal sealed record MenuEntry(
     bool IsTitle = false,
     bool SeparatorBefore = false,
     bool RepeatAdjust = false,
-    string? Help = null,
     ulong? Avatar = null,
     Color? LabelColor = null,
     Color? ValueColor = null

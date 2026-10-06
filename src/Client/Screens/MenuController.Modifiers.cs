@@ -27,7 +27,6 @@ internal sealed partial class MenuController
                 definition.Label,
                 Value: definition.Value(rules.Modifiers),
                 ValueSample: definition.ValueSample,
-                Help: definition.Help,
                 DisabledReason: MatchSettingsReadOnly ?? definition.DisabledReason?.Invoke(rules),
                 Disabled: definition.Disabled?.Invoke(rules) == true,
                 Change: amount => game.Setup.SetModifiers(definition.Change(Rules.Modifiers, amount)),

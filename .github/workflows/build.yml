@@ -1,0 +1,94 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_CLI_HOME: ${{ github.workspace }}/.build/dotnet
+      NUGET_PACKAGES: ${{ github.workspace }}/.build/nuget
+      LIBGL_ALWAYS_SOFTWARE: '1'
+      ALSOFT_DRIVERS: 'null'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          global-json-file: global.json
+
+      - name: Install graphics check dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            xvfb xauth x11-utils python3-pil libgl1-mesa-dri libglx-mesa0 libopengl0
+
+      - name: Check formatting and content
+        run: |
+          dotnet tool restore
+          bash scripts/format.sh check
+          python3 src/tools/build_content.py --verify
+
+      - name: Build and run simulation, network and client tests
+        run: bash scripts/test.sh
+
+      - name: Check graphics and menu layouts
+        run: |
+          xvfb-run -a -s '-screen 0 1920x1080x24' \
+            dotnet .build/bin/FrogSmashers.Client.GraphicsTests/release/FrogSmashers.Client.GraphicsTests.dll \
+            --capture .build/checks/graphics
+
+      - name: Package Windows and Linux builds
+        run: |
+          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
+          bash scripts/publish.sh all
+
+      - name: Launch the packaged Linux game
+        run: |
+          xvfb-run -a -s '-screen 0 1920x1080x24' \
+            python3 scripts/check-package.py linux-x64
+
+      - name: Upload release archives and checksums
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: FrogSmashersRebuilt-${{ github.sha }}
+          path: |
+            .build/releases/*.zip
+            .build/releases/*.tar.gz
+            .build/releases/*.sha256
+          include-hidden-files: true
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload graphics check captures
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: graphics-checks-${{ github.sha }}
+          path: |
+            .build/checks/graphics
+            .build/checks/published-window/linux-x64/game.png
+            .build/checks/published-window/linux-x64/launch.log
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 14

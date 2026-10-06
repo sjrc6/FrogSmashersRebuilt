@@ -333,21 +333,6 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
 
     private void DrawFooter(Rectangle panel)
     {
-        if (menu.Screen == GameScreen.Modifiers)
-        {
-            var entry = menu.Entries().ElementAtOrDefault(menu.Selected);
-            string? help = entry?.Help;
-            if (entry?.DisabledReason is { } reason)
-                help = help == null ? reason : reason + ". " + help;
-            if (help != null)
-                game.Renderer.Text(
-                    game.Assets.Font.Wrap(help, panel.Width - 40, 3),
-                    panel.Center.X,
-                    panel.Bottom - 128,
-                    new Color(205, 218, 206),
-                    center: true
-                );
-        }
         if (menu.Screen == GameScreen.ViewPlayers)
         {
             DrawPlayerActions(panel);
