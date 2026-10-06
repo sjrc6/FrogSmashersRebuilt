@@ -1,3 +1,5 @@
+![Frog Smashers Rebuilt logo](docs/images/logo-4x.png)
+
 # Frog Smashers Rebuilt
 
 A MonoGame port of Frog Smashers for Windows and Linux. Up to eight players with local and online (rollback) multiplayer. 
