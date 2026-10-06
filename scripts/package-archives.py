@@ -68,6 +68,13 @@ def validate_packages(targets):
         manifest_hash = hashlib.sha256((folder / "Content/content.json").read_bytes()).hexdigest().upper()
         if manifest_hash != builds[target]["ContentManifestSha256"]:
             raise SystemExit(f"{target}: published content does not match the build identity")
+        manifest = json.loads((folder / "Content/content.json").read_text(encoding="utf-8"))
+        for asset, expected in manifest["AssetHashes"].items():
+            path = folder / "Content" / asset
+            if not path.is_file():
+                raise SystemExit(f"{target}: missing content file: {asset}")
+            if hashlib.sha256(path.read_bytes()).hexdigest() != expected.lower():
+                raise SystemExit(f"{target}: content file does not match its manifest: {asset}")
 
     reference = next(iter(builds.values()))
     for target, build in builds.items():

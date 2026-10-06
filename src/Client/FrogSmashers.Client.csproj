@@ -32,6 +32,8 @@
       Include="../ContentBuild/**/*"
       Link="Content/%(RecursiveDir)%(Filename)%(Extension)"
       CopyToOutputDirectory="PreserveNewest"
+      CopyToPublishDirectory="PreserveNewest"
+      ExcludeFromSingleFile="true"
     />
     <EmbeddedResource Include="Icons/Icon.bmp" LogicalName="Icon.bmp" />
     <EmbeddedResource Include="Icons/FrogSmashersRebuilt.ico" LogicalName="Window.ico" />

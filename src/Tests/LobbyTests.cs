@@ -19,6 +19,7 @@ internal static partial class LobbyTests
         MeshFailureCancelsAdmission();
         LeavingKeepsPeerIdentityStable();
         MatchStartAndReturn();
+        RejoinAfterMatchDeparture();
         MatchSettingsFreezeBeforeCheckpoint();
         MatchSettingsUseRefreshedRoster();
         PendingSelectionsCancelFrozenStart();
@@ -518,6 +519,31 @@ internal static partial class LobbyTests
                 rig.Steps(8);
         }
         rig.WaitFor(() => rig.Ready, "Returned lobby did not create a new rollback session");
+        rig.Steps(80);
+        rig.AssertConfirmedStates();
+    }
+
+    private static void RejoinAfterMatchDeparture()
+    {
+        using var rig = new Rig { Delay = 40, Jitter = 10 };
+        var host = rig.Add("host", [new(0, Spawned: true)]);
+        var guest = rig.Add("guest", [new(0, Spawned: true)]);
+        rig.WaitFor(() => rig.Ready, "Rejoin fixture did not synchronize");
+        Check(host.Lobby.StartMatch(_ => "{}"), "Rejoin fixture could not start");
+        rig.WaitFor(() => host.Lobby.Ready && guest.Lobby.Ready, "Rejoin fixture did not enter the match");
+        guest.Active = false;
+        rig.WaitFor(() => !host.Lobby.Starting, "Crashed guest did not return the host to the lobby");
+        host.Simulation = new LobbySimulation(
+            new World(TestFixtures.Map(), new GameRules(lobby: true, playerCount: 8), 13),
+            host.Lobby.Roster
+        );
+        host.Lobby.AttachSimulation(host.Simulation);
+        rig.WaitFor(() => rig.Ready, "Host did not settle after the crash");
+        var returning = rig.Add("guest", []);
+        rig.WaitFor(() => rig.Ready, "Restarted guest could not synchronize with the returned lobby");
+        Check(returning.Lobby.Generation == host.Lobby.Generation, "Restarted guest retained its initial generation");
+        Check(returning.Lobby.SetPlayers([new(1, Spawned: true)]), "Restarted guest could not join a frog");
+        rig.WaitFor(() => rig.Ready, "Restarted guest's frog did not synchronize");
         rig.Steps(80);
         rig.AssertConfirmedStates();
     }

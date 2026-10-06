@@ -637,7 +637,8 @@ internal sealed partial class MeshLobby : IGameLobby, IPeerTransport
             Generation = control.Generation;
             SessionId = control.Session;
             phase = LobbyPhase.AwaitingSimulation;
-            simulation = null;
+            if (Connected)
+                simulation = null;
             checkpoint = null;
             LobbySession?.Dispose();
             LobbySession = null;
