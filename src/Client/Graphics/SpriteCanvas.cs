@@ -40,6 +40,7 @@ internal sealed class SpriteCanvas : IDisposable
     public void Begin(float mode)
     {
         assets.SpriteEffect.Parameters["Mode"].SetValue(mode);
+        assets.SpriteEffect.Parameters["SpriteOpacity"].SetValue(1f);
         batch.Begin(
             SpriteSortMode.Immediate,
             mode < 0 ? BlendState.NonPremultiplied : BlendState.AlphaBlend,

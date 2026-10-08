@@ -16,7 +16,6 @@ public sealed class PadBindings
         Buttons.RightTrigger,
         Buttons.LeftStick,
         Buttons.RightStick,
-        Buttons.Back,
         Buttons.DPadLeft,
         Buttons.DPadRight,
         Buttons.DPadUp,

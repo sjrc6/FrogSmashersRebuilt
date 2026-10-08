@@ -7,6 +7,12 @@ internal static class ControllerBindingTests
 {
     public static void Run(Action<bool, string> check)
     {
+        var reserved = new PadBindings { Jump = Buttons.Back, Attack = Buttons.Start };
+        reserved.Normalize();
+        check(
+            reserved.Jump == Buttons.A && reserved.Attack == Buttons.X,
+            "Select and Start are reserved and cannot remain bound to gameplay"
+        );
         var directionSettings = new ClientSettings();
         var keyboard = new KeyboardState();
         var directions = new Controls(directionSettings)

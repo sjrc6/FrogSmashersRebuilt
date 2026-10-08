@@ -7,6 +7,7 @@ public sealed class EffectData
     public int Order { get; set; }
     public int SortingLayer { get; set; }
     public string[] Frames { get; set; } = [];
+    public string[] Layers { get; set; } = [];
     public float FrameSeconds { get; set; } = .04f;
     public float ScaleX { get; set; } = 1;
     public float ScaleY { get; set; } = 1;

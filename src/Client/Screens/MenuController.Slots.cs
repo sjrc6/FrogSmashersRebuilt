@@ -82,13 +82,15 @@ internal sealed partial class MenuController
             Back();
             return;
         }
-        if (game.Lobby.Roster.Slots[SelectedSeat].Player is { Cpu: true } && clicked)
-            for (int action = -2; action <= -1; action++)
-                if (MenuLayout.SlotAction(SelectedSeat, action).Contains(point))
-                {
-                    ChangeSelectedCpu(action == -1, game.Controls.MouseRightPressed ? -1 : 1);
-                    return;
-                }
+        if (
+            game.Lobby.Roster.Slots[SelectedSeat].Player is { Cpu: true }
+            && clicked
+            && MenuLayout.SlotAction(SelectedSeat, -1).Contains(point)
+        )
+        {
+            ChangeSelectedCpu(game.Lobby.UsesTeams, game.Controls.MouseRightPressed ? -1 : 1);
+            return;
+        }
         if (game.Controls.MousePressed && MenuLayout.SlotAction(SelectedSeat, 2).Contains(point))
         {
             ApplySelectedType();
@@ -122,7 +124,7 @@ internal sealed partial class MenuController
     {
         if (game.Lobby.Roster.Slots[SelectedSeat].Player is not { Cpu: true })
             return;
-        if (team && !game.Lobby.UsesTeams)
+        if (team != game.Lobby.UsesTeams)
             return;
         game.Lobby.ChangeCpu(SelectedSeat, team, direction);
         menuSoundPending = true;

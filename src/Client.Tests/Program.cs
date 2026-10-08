@@ -54,6 +54,8 @@ internal static class Program
             LobbyMenuTests.Run(Check);
             LobbyPresentationTests.Run(Check);
             SmokeTests.Run(Check);
+            BunkerEffectsTests.Run(root!, Check);
+            CameraTests.Run(Check);
             if (args.Contains("--audio"))
             {
                 AudioBackendTests.Run(root!, Check);

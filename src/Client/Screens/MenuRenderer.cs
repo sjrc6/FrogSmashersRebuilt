@@ -43,12 +43,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
             DrawLobby();
         if (menu.Screen == GameScreen.Outro)
         {
-            if (game.Online.Lobby is { IsHost: false })
-            {
-                game.Renderer.CenteredText("WAITING FOR HOST", 640, 660, Color.White, center: true);
-                CenteredHint(ButtonGlyph.Back(menu.HintDevice), "QUIT GAME", 640, 692);
-            }
-            else
+            if (game.Online.Lobby is not { IsHost: false })
                 CenteredHint(ButtonGlyph.Accept(menu.HintDevice), "RETURN TO LOBBY", 640, 692);
             return;
         }
@@ -415,19 +410,13 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
         );
         if (slot.Player is { Cpu: true } cpu)
         {
+            bool teams = game.Lobby.UsesTeams;
             CenteredHint(
-                ButtonGlyph.CpuColor(menu.HintDevice),
-                $"COLOR {cpu.Color + 1}",
+                teams ? ButtonGlyph.CpuTeam(menu.HintDevice) : ButtonGlyph.CpuColor(menu.HintDevice),
+                teams ? $"TEAM {cpu.Team + 1}" : $"COLOR {cpu.Color + 1}",
                 room.Center.X,
-                MenuLayout.SlotAction(menu.SelectedSeat, -2).Center.Y
+                MenuLayout.SlotAction(menu.SelectedSeat, -1).Center.Y
             );
-            if (game.Lobby.UsesTeams)
-                CenteredHint(
-                    ButtonGlyph.CpuTeam(menu.HintDevice),
-                    $"TEAM {cpu.Team + 1}",
-                    room.Center.X,
-                    MenuLayout.SlotAction(menu.SelectedSeat, -1).Center.Y
-                );
         }
         if (slot.Player is not { Cpu: false })
             CenteredHint(

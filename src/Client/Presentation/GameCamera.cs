@@ -95,15 +95,10 @@ internal sealed class GameCamera
         }
         else if (world.Match.Phase == MatchPhase.RoundFinished && world.Match.Winner >= 0)
         {
-            var player = world.Players[world.Match.Winner];
-            if (player.Alive)
+            if (TryFrameWinners(world, out var center, out float halfHeight))
             {
-                Position = Vector2.Lerp(
-                    Position,
-                    new(player.Center.X.ToFloat(), player.Center.Y.ToFloat()),
-                    Math.Clamp(dt * 5, 0, 1)
-                );
-                HalfHeight = MathHelper.Lerp(HalfHeight, 7.5f, Math.Clamp(dt * 2, 0, 1));
+                Position = Vector2.Lerp(Position, center, Math.Clamp(dt * 5, 0, 1));
+                HalfHeight = MathHelper.Lerp(HalfHeight, halfHeight, Math.Clamp(dt * 2, 0, 1));
                 float extent = HalfHeight * Width / Height;
                 Position.Y = Math.Clamp(Position.Y, -(18 - HalfHeight), 18 - HalfHeight);
                 Position.X = Math.Clamp(Position.X, -(32 - extent), 32 - extent);
@@ -114,5 +109,26 @@ internal sealed class GameCamera
                 Position = Vector2.Lerp(Position, Vector2.Zero, Math.Clamp(dt, 0, 1));
             }
         }
+    }
+
+    private static bool TryFrameWinners(World world, out Vector2 center, out float halfHeight)
+    {
+        var minimum = new Vector2(float.MaxValue);
+        var maximum = new Vector2(float.MinValue);
+        bool found = false;
+        foreach (var player in world.Players)
+        {
+            if (!player.Alive || !world.Match.IsWinner(world.Rules, player.Slot))
+                continue;
+            var position = new Vector2(player.Center.X.ToFloat(), player.Center.Y.ToFloat());
+            minimum = Vector2.Min(minimum, position);
+            maximum = Vector2.Max(maximum, position);
+            found = true;
+        }
+
+        center = found ? (minimum + maximum) / 2 : Vector2.Zero;
+        var extent = found ? (maximum - minimum) / 2 + new Vector2(3) : Vector2.Zero;
+        halfHeight = Math.Clamp(Math.Max(extent.Y, extent.X * Height / Width), 7.5f, 18);
+        return found;
     }
 }

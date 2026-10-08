@@ -29,10 +29,18 @@ public sealed class MapData
     public List<SceneNodeData> Nodes { get; set; } = new();
     public List<SceneAnimatorData> Animators { get; set; } = new();
     public List<ParticleEmitterData> ParticleEmitters { get; set; } = new();
+    public BunkerEffectsData? BunkerEffects { get; set; }
     public Dictionary<string, float> PresentationParameters { get; set; } = new();
     public List<TimelineKeyData> CameraPanCurve { get; set; } = new();
     public string[] IntroParticleEffects { get; set; } = [];
     public string[] ParallaxFrogEffects { get; set; } = [];
+}
+
+public sealed class BunkerEffectsData
+{
+    public long LightSourceId { get; set; }
+    public float[] ExplosionDelay { get; set; } = [1, 5];
+    public ParticleEmitterData Dust { get; set; } = new();
 }
 
 public sealed class BoundsData

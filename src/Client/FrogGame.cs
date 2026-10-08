@@ -92,6 +92,7 @@ public class FrogGame : Game
         Setup = new MatchSetup(Options.Seed, Assets.Data.Maps, ResolveFirstMap());
         Renderer = new Renderer(GraphicsDevice, Assets) { ShakeEnabled = Settings.ScreenShake };
         Audio = new Audio(Assets, !Options.NoAudio) { Volume = Settings.Volume, TitleVolume = Settings.TitleVolume };
+        Renderer.BackgroundExplosion += Audio.PlayBackgroundExplosion;
         Cinematics = new CinematicPlayer(GraphicsDevice, Assets, Audio) { ShakeEnabled = Settings.ScreenShake };
         Match = new MatchController(Assets.Data, Renderer, Audio, Controls, Options.Record);
         Online = new OnlineController(Options, Assets.Data.ComputeGameplayHash());
@@ -195,6 +196,9 @@ public class FrogGame : Game
             }
         }
 
+        var stageWorld =
+            !Menus.ShowingCinematic && (Menus.ShowingMatch || Menus.ShowingMenuBackground) ? Match.World : null;
+        Renderer.UpdateStageEffects(stageWorld, Menus.LocalPresentationPaused ? 0 : (float)elapsedSeconds);
         CheckInvitations();
         base.Update(gameTime);
     }
@@ -498,7 +502,7 @@ public class FrogGame : Game
             {
                 Renderer.DrawCrewSelection(world, Match.PlayerViews, Controls);
             }
-            else if (world.Match.Phase == MatchPhase.RoundScores)
+            else if (world.Match.Phase is MatchPhase.RoundScores or MatchPhase.MatchFinished)
             {
                 Renderer.DrawRoundScores(
                     world,

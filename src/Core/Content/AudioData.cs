@@ -13,6 +13,7 @@ public sealed class SceneAudioData
     public float Volume { get; set; } = 1;
     public float Pitch { get; set; } = 1;
     public bool Loop { get; set; }
+    public bool Music { get; set; }
     public bool PlayOnAwake { get; set; }
     public bool Active { get; set; }
     public float SpatialBlend { get; set; }

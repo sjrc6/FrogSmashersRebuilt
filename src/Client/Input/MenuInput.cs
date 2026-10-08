@@ -23,7 +23,7 @@ internal readonly record struct MenuInput(
         bool Pad(Buttons button) =>
             source == null ? controls.AnyPad(button) : source >= 2 && controls.PadPress(source.Value - 2, button);
         bool accept = Key(Keys.Enter) || Pad(Buttons.A);
-        bool back = Key(Keys.Escape) || Pad(Buttons.B) || Pad(Buttons.Back) || Pad(Buttons.Start);
+        bool back = Key(Keys.Escape) || Pad(Buttons.B) || Pad(Buttons.Start);
         int vertical = 0,
             horizontal = 0;
         bool leftHeld =

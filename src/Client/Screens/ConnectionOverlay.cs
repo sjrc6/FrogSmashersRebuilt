@@ -1,7 +1,6 @@
 using FrogSmashers.Network;
 using GGCS;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Input;
 
 namespace FrogSmashers.Client;
 
@@ -11,7 +10,8 @@ internal sealed class ConnectionOverlay(FrogGame game)
     private const int Padding = 28;
     public bool Visible =>
         (game.IsActive || game.Options.Offscreen)
-        && game.Controls.KeysNow.IsKeyDown(Keys.Tab)
+        && Session != null
+        && game.Controls.ConnectionsHeld
         && (game.Menus.Screen == GameScreen.Seats || game.Menus.Screen == GameScreen.Playing && !game.Match.Paused);
 
     private IRollbackSession? Session => game.Menus.ShowingLobby ? game.Lobby.Network : game.Match.Network;

@@ -10,6 +10,11 @@ internal sealed partial class PresentationChecks
             .Data.Sprites.Values.Select(sprite => sprite.Path)
             .Concat(assets.Data.Materials.Values.SelectMany(material => material.Textures.Values))
             .Concat(assets.Data.Maps.SelectMany(map => map.ParticleEmitters).Select(emitter => emitter.TexturePath))
+            .Concat(
+                assets
+                    .Data.Maps.Where(map => map.BunkerEffects != null)
+                    .Select(map => map.BunkerEffects!.Dust.TexturePath)
+            )
             .Where(path => path.Length > 0)
             .Distinct();
         int loaded = 0;

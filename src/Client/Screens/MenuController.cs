@@ -211,13 +211,13 @@ internal sealed partial class MenuController : IDisposable
             )
             {
                 game.Match.SaveReplay();
+                game.Audio.Reset();
                 game.Cinematics.StartOutro(
                     game.Match.World.Match.Winner >= 0
                         ? game.Renderer.ColorFor(game.Match.World, game.Match.World.Match.Winner)
                         : Color.White
                 );
                 Screen = GameScreen.Outro;
-                game.Audio.Reset();
             }
         }
 

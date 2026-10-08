@@ -67,6 +67,22 @@ internal static class LobbyMenuTests
         controls.Poll();
         check(MenuInput.Read(controls).AcceptReleased, "Shared action releases once every device has let go");
 
+        pad = new(Vector2.Zero, Vector2.Zero, 0, 0, Buttons.Back);
+        controls.Poll();
+        check(controls.ConnectionsHeld, "Select opens the connections overlay");
+        check(!MenuInput.Read(controls).Back && controls.MenuDevice() == null, "Select neither backs out nor pauses");
+        controls.Poll();
+        check(controls.ConnectionsHeld, "Connections remain open while Select is held");
+        pad = default;
+        controls.Poll();
+        check(!controls.ConnectionsHeld, "Disconnecting the controller releases the overlay");
+        keyboard = new(Keys.Tab);
+        controls.Poll();
+        check(controls.ConnectionsHeld, "Tab retains the keyboard connections shortcut");
+        keyboard = default;
+        controls.Poll();
+        check(!controls.ConnectionsHeld, "Releasing Tab closes the overlay");
+
         var creation = new LobbyCreation();
         var roster = new LobbyRoster();
         roster.SetPlayers(0, [new(0), new(1), new(2)]);

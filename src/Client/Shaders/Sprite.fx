@@ -1,5 +1,6 @@
 float4x4 MatrixTransform;
 float Mode;
+float SpriteOpacity = 1;
 float2 PaletteReplace;
 Texture2D SpriteTexture;
 
@@ -65,6 +66,7 @@ float4 PixelMain(VertexOutput input) : COLOR0
         return float4(color.rgb * input.Color.a, input.Color.a);
     }
     color *= input.Color;
+    color.a *= SpriteOpacity;
     color.rgb *= color.a;
     return color;
 }

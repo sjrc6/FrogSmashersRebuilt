@@ -11,6 +11,7 @@ internal static class Program
         try
         {
             string? captureDirectory = null;
+            bool matchPresentation = false;
             string contentDirectory = Path.Combine(AppContext.BaseDirectory, "Content");
             for (int index = 0; index < args.Length; index++)
             {
@@ -22,11 +23,20 @@ internal static class Program
                     case "--content":
                         contentDirectory = args[++index];
                         break;
+                    case "--match-presentation":
+                        matchPresentation = true;
+                        break;
                     default:
                         throw new ArgumentException("Unknown option: " + args[index]);
                 }
             }
 
+            if (matchPresentation)
+            {
+                using var flow = new MatchPresentationGame(contentDirectory);
+                flow.Run();
+                return flow.Failure == null ? 0 : 1;
+            }
             using var game = new GraphicsTestGame(contentDirectory, captureDirectory);
             game.Run();
             return game.Failure == null ? 0 : 1;
@@ -81,7 +91,13 @@ internal sealed class GraphicsTestGame : Game
         try
         {
             var suite = new PresentationChecks(renderer);
-            string[] checks = [.. suite.VerifyContent(captureDirectory), .. suite.VerifyMenuLayout()];
+            string[] checks =
+            [
+                .. suite.VerifyContent(captureDirectory),
+                .. suite.VerifyFinale(captureDirectory),
+                .. suite.VerifyBunker(captureDirectory),
+                .. suite.VerifyMenuLayout(),
+            ];
 
             Console.WriteLine(JsonSerializer.Serialize(new { PresentationChecks = checks.Length, Checks = checks }));
         }

@@ -70,6 +70,10 @@ def verify_manifest(data=None):
         textures.update(material["Textures"].values())
     for scene in data["Maps"] + list(data["PresentationScenes"].values()):
         textures.update(emitter["TexturePath"] for emitter in scene["ParticleEmitters"])
+        if bunker := scene.get("BunkerEffects"):
+            textures.add(bunker["Dust"]["TexturePath"])
+            if not any(sprite["SourceId"] == bunker["LightSourceId"] for sprite in scene["Sprites"]):
+                raise ValueError(f'Missing bunker light sprite: {scene["Id"]}')
     for texture in textures:
         if texture + ".xnb" not in hashes:
             raise ValueError(f"Missing compiled texture: {texture}")
@@ -77,6 +81,10 @@ def verify_manifest(data=None):
         for clip in clips:
             if clip and clip not in hashes:
                 raise ValueError(f"Missing sound: {clip}")
+    for name, effect in data["Effects"].items():
+        for layer in effect.get("Layers", []):
+            if layer not in data["Effects"]:
+                raise ValueError(f"Missing effect layer: {name} -> {layer}")
 
 
 def main():

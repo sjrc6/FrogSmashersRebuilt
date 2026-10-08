@@ -35,6 +35,8 @@ public sealed partial class Renderer : IDisposable
     private double sceneTime;
     private string mapId = "";
     private int mapRound;
+    private BunkerEffects? bunkerEffects;
+    public event Action? BackgroundExplosion;
     public bool ShakeEnabled
     {
         get => cameraController.ShakeEnabled;
@@ -99,6 +101,11 @@ public sealed partial class Renderer : IDisposable
             piece.Position += piece.Velocity * dt;
             var data = assets.Data.Effects[piece.Name];
             piece.Clock.Step(dt, data.FrameSeconds, data.Frames.Length, data.PlayOnce);
+            for (int layer = 0; layer < data.Layers.Length; layer++)
+            {
+                var sprite = assets.Data.Effects[data.Layers[layer]];
+                piece.LayerClocks[layer].Step(dt, sprite.FrameSeconds, sprite.Frames.Length, sprite.PlayOnce);
+            }
         }
 
         foreach (
@@ -161,9 +168,32 @@ public sealed partial class Renderer : IDisposable
         scores.Reset();
         crewLayout.Reset();
         smokeEmitters.Clear();
+        bunkerEffects = null;
         mapId = "";
         activeMap = null;
         cameraController.Reset();
+    }
+
+    public void UpdateStageEffects(World? world, float dt)
+    {
+        if (
+            world?.Map.BunkerEffects == null
+            || world.Match.Phase is not (MatchPhase.Playing or MatchPhase.RoundFinished)
+        )
+        {
+            bunkerEffects = null;
+            return;
+        }
+
+        SetMap(world);
+        bunkerEffects ??= new(world.Map.BunkerEffects, (uint)cosmetics.Next());
+        bunkerEffects.Update(dt, ShakeBunker);
+    }
+
+    private void ShakeBunker(Vector2 direction, float intensity)
+    {
+        cameraController.Shake(direction, intensity);
+        BackgroundExplosion?.Invoke();
     }
 
     public void Rewind(long fromTick)
@@ -402,6 +432,7 @@ public sealed partial class Renderer : IDisposable
         parallax.Clear();
         sceneClocks.Clear();
         smokeEmitters.Clear();
+        bunkerEffects = null;
         flyClock = new();
         flyWasActive = false;
         parallaxDelay = 0;
@@ -533,6 +564,7 @@ public sealed partial class Renderer : IDisposable
                         : new Vector2(MathHelper.Lerp(.5f, 1.1f, m)),
                     FollowCamera = piece.ParentToCamera,
                     DropFrog = piece.DropFrog,
+                    LayerClocks = data.Layers.Select(_ => new SpriteAnimation()).ToArray(),
                 }
             );
             return true;
@@ -541,7 +573,7 @@ public sealed partial class Renderer : IDisposable
         return false;
     }
 
-    private readonly Dictionary<ParticleEmitterData, SmokeEmitter> smokeEmitters = new();
+    private readonly Dictionary<ParticleEmitterData, ParticleEmitter> smokeEmitters = new();
 
     private void DrawEmitter(ParticleEmitterData data)
     {
@@ -552,6 +584,12 @@ public sealed partial class Renderer : IDisposable
         }
 
         emitter.AdvanceTo(sceneTime);
+        DrawParticles(emitter);
+    }
+
+    private void DrawParticles(ParticleEmitter emitter)
+    {
+        var data = emitter.Data;
         var texture = assets.Texture(data.TexturePath);
         assets.SpriteEffect.Parameters["Mode"].SetValue(-1f);
         Batch.Begin(
@@ -757,7 +795,11 @@ public sealed partial class Renderer : IDisposable
             s.Frames.Length == 0 || clock == null || clock.Frame < 0
                 ? s.SpriteId
                 : s.Frames[clock.Frame % s.Frames.Length];
-        canvas.DrawSprite(sprite, new(s.X, s.Y), EffectSystem.ToColor(s.Color), new(s.ScaleX, s.ScaleY), s.Rotation);
+        var color = EffectSystem.ToColor(s.Color);
+        if (bunkerEffects != null && s.SourceId == activeMap?.BunkerEffects?.LightSourceId)
+            assets.SpriteEffect.Parameters["SpriteOpacity"].SetValue(bunkerEffects.LightAlpha);
+        canvas.DrawSprite(sprite, new(s.X, s.Y), color, new(s.ScaleX, s.ScaleY), s.Rotation);
+        assets.SpriteEffect.Parameters["SpriteOpacity"].SetValue(1f);
     }
 
     private void PostProcess()
@@ -804,6 +846,7 @@ public sealed partial class Renderer : IDisposable
         public bool FollowCamera;
         public bool DropFrog;
         public SpriteAnimation Clock = new();
+        public SpriteAnimation[] LayerClocks = [];
     }
 
     private sealed class Impact

@@ -11,6 +11,8 @@ public sealed class Controls
     public KeyboardState KeysNow { get; private set; }
     public KeyboardState KeysBefore { get; private set; }
     public GamePadState[] Pads { get; } = new GamePadState[ControllerCount];
+    public bool ConnectionsHeld =>
+        KeysNow.IsKeyDown(Keys.Tab) || Pads.Any(pad => pad.IsConnected && pad.IsButtonDown(Buttons.Back));
 
     private readonly GamePadState[] beforePads = new GamePadState[ControllerCount];
     private readonly ControllerDevice?[] controllerDevices = new ControllerDevice?[ControllerCount];

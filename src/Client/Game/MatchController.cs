@@ -19,7 +19,6 @@ internal sealed partial class MatchController : IDisposable
     private readonly Dictionary<int, MatchCommand> commands = new();
     private InputReplay? replay;
     private string recordingSettings = "";
-    private string ambientMap = "";
     private bool recordingSaved;
     private double accumulator;
     private long rollbackCount;
@@ -164,7 +163,6 @@ internal sealed partial class MatchController : IDisposable
         accumulator = 0;
         Paused = false;
         Error = null;
-        ambientMap = "";
         rollbackCount = 0;
         lastAudioTick = -1;
         lastVisualTick = -1;
@@ -226,12 +224,6 @@ internal sealed partial class MatchController : IDisposable
             }
 
             accumulator -= tickDuration;
-        }
-
-        if (ambientMap != World.Map.Id)
-        {
-            ambientMap = World.Map.Id;
-            audio.Ambient(World.Map);
         }
 
         audio.UpdateFlights(World, (float)elapsedSeconds);

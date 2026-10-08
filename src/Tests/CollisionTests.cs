@@ -11,6 +11,7 @@ internal static class CollisionTests
     {
         BodySweeps();
         Platforms();
+        PartialPlatformDrops();
         TongueSweeps();
         Console.WriteLine("Swept collision, one-way terrain, friendly filtering and restoration passed");
     }
@@ -200,6 +201,71 @@ internal static class CollisionTests
         spike.Players[0].WasHitDownwards = true;
         Step(spike);
         Check(spike.Players[0].Y < 0, "Downward bat knockback still bypasses one-way platforms");
+    }
+
+    private static void PartialPlatformDrops()
+    {
+        foreach (bool fixes in new[] { false, true })
+        foreach (bool lobby in new[] { false, true })
+        {
+            var map = new MapData
+            {
+                Id = "partial-drop",
+                Spawns = [new() { X = 0, Y = 1 }, new() { X = 20, Y = 1 }],
+                Collision =
+                [
+                    new()
+                    {
+                        Width = 12,
+                        Height = 2,
+                        OneWay = true,
+                    },
+                ],
+            };
+            var world = CreateWorld(new GameRules(lobby: lobby, modifiers: new() { PhysicsFixes = fixes }), map);
+            if (lobby)
+            {
+                world.SetLobbySlot(0, true, 0);
+                Step(world);
+                world.BeachBall.Active = false;
+            }
+            var player = world.Players[0];
+            player.Y = 1;
+            player.VY = 0;
+            Step(world, new(0, -1, InputButtons.Jump), 2);
+            var embeddedY = player.Y;
+            Check(embeddedY < 1 && embeddedY > -1, "A short drop enters the platform without clearing its bottom");
+            var beforeRelease = world.Capture();
+            Step(world, count: 20);
+            Check(
+                fixes ? !player.OnGround && player.Y < -1 : player.OnGround && player.Y == embeddedY,
+                $"Physics Fixes controls partial platform embedding: fixes={fixes}, lobby={lobby}"
+            );
+            var released = world.Capture();
+            world.Restore(beforeRelease);
+            Step(world, count: 20);
+            Check(
+                world.Capture().SequenceEqual(released),
+                "Releasing a partial drop survives rollback in both physics settings"
+            );
+            if (fixes)
+                continue;
+
+            var snapshot = world.Capture();
+            Step(world, new(0, -1, InputButtons.Jump), 60);
+            Check(
+                world.Players[0].Y < -1 && !world.Players[0].OnGround,
+                "Holding drop again exits an embedded platform"
+            );
+            var dropped = world.Capture();
+            world.Restore(snapshot);
+            Step(world, new(0, -1, InputButtons.Jump), 60);
+            Check(world.Capture().SequenceEqual(dropped), "Partial platform drops survive rollback and replay");
+
+            world.Restore(snapshot);
+            Step(world, new(0, 0, InputButtons.Jump));
+            Check(world.Players[0].VY > 0, "An embedded frog can jump back out of the platform");
+        }
     }
 
     private static World TongueWorld(bool fixes, MapData map, int speed = 60, bool teams = false, bool lobby = false)

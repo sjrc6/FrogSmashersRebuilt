@@ -13,12 +13,13 @@ public sealed class Audio : IDisposable
     private readonly HashSet<long> played = new();
     private readonly Queue<long> order = new();
     private readonly List<Shot> shots = new();
-    private readonly List<(SoundEffectInstance Instance, float BaseVolume)> ambient = new();
+    private readonly List<(SoundEffectInstance Instance, float BaseVolume, bool Music)> ambient = new();
     private readonly DynamicFlightLoop?[] flight = new DynamicFlightLoop?[8];
     private readonly int[] flightLevel = Enumerable.Repeat(-1, 8).ToArray();
     private readonly float[] flightOrigin = new float[8];
     private readonly float[] flightVolume = new float[8];
     private string mapId = "";
+    private bool musicStopped;
     private float volume = .65f;
     private float titleVolume = 1;
     private SoundEffectInstance? titleMusic;
@@ -27,6 +28,7 @@ public sealed class Audio : IDisposable
     private readonly List<SoundEffectInstance> menuSounds = new();
     private long? lastMenuSoundTime;
     private long menuSoundNumber;
+    private long backgroundSoundNumber;
     public Vector3 ListenerPosition { get; set; } = new(0, 0, -10);
     public bool Enabled { get; private set; } = true;
     public bool TitleBackground { get; set; }
@@ -89,6 +91,8 @@ public sealed class Audio : IDisposable
     }
 
     public void Play(string group, long eventId, float volume = 1) => PlaySource(group, eventId, volume, null);
+
+    public void PlayBackgroundExplosion() => Play("BackgroundExplosion", --backgroundSoundNumber, .5f);
 
     public void PlayAt(string group, long eventId, float volume, Vector3 position) =>
         PlaySource(group, eventId, volume, position);
@@ -436,9 +440,10 @@ public sealed class Audio : IDisposable
         return result * 0.65f;
     }
 
-    public void Ambient(MapData map)
+    private void Ambient(MapData map)
     {
         mapId = map.Id;
+        musicStopped = false;
         foreach (var sound in ambient)
         {
             sound.Instance.Dispose();
@@ -465,7 +470,7 @@ public sealed class Audio : IDisposable
                     instance.Pause();
                 }
 
-                ambient.Add((instance, source.Volume));
+                ambient.Add((instance, source.Volume, source.Music));
             }
             catch (Exception ex) when (IsAudioFailure(ex))
             {
@@ -512,9 +517,17 @@ public sealed class Audio : IDisposable
             return;
         }
 
-        if (mapId != world.Map.Id)
+        if (mapId != world.Map.Id || musicStopped && world.Match.Phase == MatchPhase.Playing)
         {
             Ambient(world.Map);
+        }
+
+        if (world.Match.Phase == MatchPhase.RoundFinished && !musicStopped)
+        {
+            foreach (var sound in ambient.Where(sound => sound.Music))
+                sound.Instance.Dispose();
+            ambient.RemoveAll(sound => sound.Music);
+            musicStopped = true;
         }
 
         if (!assets.Data.Sounds.TryGetValue("flight", out var clips))

@@ -6,6 +6,7 @@
       "Loop": true,
       "MaxDistance": 500,
       "MinDistance": 1,
+      "Music": true,
       "ObjectPath": "SoundController",
       "Pan": 0,
       "Path": "Audio/Sound/Music/High Action SuperEdit.ogg",
@@ -195,38 +196,6 @@
         1
       ],
       "ObjectPath": "InControl",
-      "ParentPath": ""
-    },
-    {
-      "Active": true,
-      "LocalPosition": [
-        0,
-        0,
-        -3
-      ],
-      "LocalRotation": 0.0,
-      "LocalScale": [
-        1,
-        1,
-        1
-      ],
-      "ObjectPath": "Fly/GameObject",
-      "ParentPath": "Fly"
-    },
-    {
-      "Active": true,
-      "LocalPosition": [
-        -11.561016,
-        8.660126,
-        0
-      ],
-      "LocalRotation": 0.0,
-      "LocalScale": [
-        1,
-        1,
-        1
-      ],
-      "ObjectPath": "Fly",
       "ParentPath": ""
     },
     {
@@ -1289,36 +1258,6 @@
       "X": 58.9,
       "Y": 3.4,
       "Z": 0
-    },
-    {
-      "Active": true,
-      "Color": [
-        1,
-        1,
-        1,
-        1
-      ],
-      "FrameSeconds": 0.05,
-      "Frames": [
-        "5c16e5610919a604f8778e6816f9a17a:21300000",
-        "8e95665d50c28bb4f94cd5d41bf34630:21300000"
-      ],
-      "Layer": 14,
-      "Material": "Sprites-Default",
-      "Name": "GameObject",
-      "ObjectPath": "Fly/GameObject",
-      "Order": 0,
-      "PlayOnce": false,
-      "Rotation": 0.0,
-      "ScaleX": 1,
-      "ScaleY": 1,
-      "SortingLayer": 0,
-      "SourceId": -9,
-      "SpriteId": "8e95665d50c28bb4f94cd5d41bf34630:21300000",
-      "Visible": true,
-      "X": -11.561016,
-      "Y": 8.660126,
-      "Z": -3
     },
     {
       "Active": true,

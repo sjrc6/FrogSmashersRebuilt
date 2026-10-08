@@ -1,0 +1,91 @@
+Stage effects audit — 7 October 2026
+
+Compared the seven original arena scenes, their referenced prefabs, stage
+scripts, materials and particle modules with the rebuilt content and renderer.
+Original source root: Originals/official/HohimBrueh/Assets/.
+
+Result: one wholly missing stage system, with four linked behaviors, in the
+Showdown bunker. All four are now restored. No other wholly missing stage
+effect system was found in the other six scenes. The separate Finale fixes
+from the New issues list are also included in this working tree.
+
+Stage inventory
+
+1BusStop
+  Static scenery and Intro_Ambience_01 loop. Present. The original scene has
+  no additional stage particle emitter or stage animation script.
+
+2DownSmash
+  Waterfall: six frames at 0.1 seconds; river: three at 0.15; fire: four at
+  0.06; wheel: three at 0.175; water churn: six at 0.05. Present, with the
+  original frame lists and Intro_Ambience_02 loop.
+
+3Moon
+  ShimmerWater reflection region and Ambience_Moon loop. Present.
+
+4FinalFrogstination
+  Static scenery and ambient loop. Present. The original scene has no
+  additional stage particle emitter or stage animation script.
+
+5Skyline
+  Two-frame fire at 0.1 seconds, ShimmerSkyline heat distortion, far and near
+  smoke emitters, ambient loop. Present. Smoke uses the original emission
+  rates (100 and 75 per second), lifetimes (50 and 10 seconds), prewarm,
+  colors, size growth, cone angles, velocities and noise strengths.
+  Neither source smoke emitter has time-scrolling noise or lifetime fade.
+
+6Finale
+  Shimmer, animated fireball, seven parallax groups, escape ships with
+  independently animated frog/flame layers, dropped background frogs,
+  ambient flight loop and music. Present. The earlier New issues fixes
+  restore ship layering and the muted frog palette, remove the decorative
+  ghost fly, and stop stage music on victory while retaining ambience.
+
+7Showdown (bunker tiebreaker)
+  Elevator ambience was present. RandomLightFlicker had not been ported;
+  its light was drawn at constant opacity and RoofDustParticle was an
+  empty sprite-effect entry. Restored:
+    - Light flashes, rapid flickering and decay to 0.2 opacity.
+    - BackgroundExplosion clips at the original 0.5 source volume,
+      multiplied by the sound group's existing volume and user volume.
+    - Random camera impulses at each explosion, respecting Screen Shake.
+    - Ceiling dust after strong explosions, on either side of the bunker.
+
+Bunker source and tuning
+
+  Scripts/Effects/RandomLightFlicker.cs
+  Scenes/7Showdown.unity
+  Prefabs/Effects/RoofDustParticle.prefab
+  Sprites/Dust.mat and Sprites/white.png
+
+  Explosions start immediately, then recur every 1–5 seconds. Intensity is
+  0.3–1.3, with dust above 1.0. Ceiling positions use x = +/-9–21, y = 10.1.
+  Each burst has 20–50 particles, size 0.1, lifetime 7.5 seconds, speed 7.5,
+  a downward 10-degree cone of radius 0.1 and length 1.53, direction
+  randomization 0.15, speed limit 2 with damping 0.15, and fading alpha.
+  Noise strength/frequency are 0.5/0.5, with scrolling speed 1.
+  The light shader preserves flash opacity above 1 instead of clipping it
+  to the byte range used for sprite colors. Existing compiled textures and
+  explosion clips are reused; the empty dust sprite-effect entry is removed.
+
+Presentation behavior and verification
+
+  Bunker timing and particles run on a cosmetic clock, outside simulation
+  snapshots and rollback. Local pause freezes their clock and pauses sound.
+  Score screens, scene exits and round changes clear stage presentation.
+  Screen Shake only controls camera movement; light, dust and sound remain.
+
+  Automated checks cover update cadence, explosion intervals and intensity,
+  dust emission/expiry/fading, pause, bounded storage, rendered light and
+  particle pixels, native audio playback, the shake toggle, rollback,
+  round/scene changes and the actual FrogGame update path.
+
+  Verification passed: Release build; 3,101 client checks with the audio
+  backend; 115,128 core checks; all seven stage renders; bunker/Finale
+  graphics and audio checks; 5,382 menu layout checks; match presentation
+  flow checks; compiled-content hashes and asset references.
+
+  This is a source/content audit plus rebuilt-engine verification, not a
+  frame-by-frame comparison against a running Unity build. Particle noise
+  and damping use the rebuilt emitter's approximation of Unity motion;
+  the authored parameters and effect behaviors are retained.

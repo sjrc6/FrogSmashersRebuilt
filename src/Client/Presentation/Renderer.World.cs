@@ -22,6 +22,7 @@ public sealed partial class Renderer
         Parallax,
         Shimmer,
         Smoke,
+        Dust,
         Effect,
         Tongue,
         Character,
@@ -92,6 +93,12 @@ public sealed partial class Renderer
         foreach (var emitter in world.Map.ParticleEmitters)
         {
             AddCommand(0, emitter.Order, "", emitter.Z, DrawKind.Smoke, emitter);
+        }
+
+        if (bunkerEffects != null)
+        {
+            foreach (var emitter in bunkerEffects.Dust)
+                AddCommand(0, emitter.Data.Order, "", emitter.Data.Z, DrawKind.Dust, emitter);
         }
 
         foreach (var effect in effects.Active.Where(e => !e.Dead))
@@ -266,6 +273,9 @@ public sealed partial class Renderer
             case DrawKind.Smoke:
                 DrawEmitter((ParticleEmitterData)command.Item!);
                 break;
+            case DrawKind.Dust:
+                DrawParticles((ParticleEmitter)command.Item!);
+                break;
             case DrawKind.Effect:
                 DrawEffect((EffectSystem.VisualEffect)command.Item!);
                 break;
@@ -318,11 +328,21 @@ public sealed partial class Renderer
     private void DrawParallax(ParallaxPiece piece)
     {
         var data = assets.Data.Effects[piece.Name];
-        string sprite =
-            piece.Clock.Frame < 0 ? data.InitialSpriteId : data.Frames[piece.Clock.Frame % data.Frames.Length];
         var position = piece.Position + (piece.FollowCamera ? cameraController.Position : Vector2.Zero);
+        DrawParallaxSprite(data, piece.Clock, position, piece.Scale);
+        for (int layer = 0; layer < data.Layers.Length; layer++)
+        {
+            var sprite = assets.Data.Effects[data.Layers[layer]];
+            var scale = piece.Scale * new Vector2(sprite.ScaleX, sprite.ScaleY);
+            DrawParallaxSprite(sprite, piece.LayerClocks[layer], position, scale);
+        }
+    }
+
+    private void DrawParallaxSprite(EffectData data, SpriteAnimation clock, Vector2 position, Vector2 scale)
+    {
+        string sprite = clock.Frame < 0 ? data.InitialSpriteId : data.Frames[clock.Frame % data.Frames.Length];
         canvas.Begin(effects.ModeFor(data));
-        canvas.DrawSprite(sprite, position, EffectSystem.ToColor(data.Color), piece.Scale, 0);
+        canvas.DrawSprite(sprite, position, EffectSystem.ToColor(data.Color), scale, 0);
         canvas.End();
     }
 

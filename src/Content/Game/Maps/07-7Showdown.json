@@ -22,6 +22,63 @@
     0,
     0
   ],
+  "BunkerEffects": {
+    "Dust": {
+      "BurstCount": [
+        20,
+        50
+      ],
+      "Color": [
+        1,
+        1,
+        1,
+        0.49803922
+      ],
+      "ConeAngle": 0.17453292519943295,
+      "ConeLength": 1.53,
+      "Duration": 7.5,
+      "FadeOut": true,
+      "Forward": [
+        0,
+        -1,
+        0
+      ],
+      "Lifetime": 7.5,
+      "Name": "RoofDustParticle",
+      "NoiseDamping": true,
+      "NoiseFrequency": 0.5,
+      "NoiseScrollSpeed": 1,
+      "NoiseStrength": 0.5,
+      "Order": 0,
+      "Radius": 0.1,
+      "RandomDirection": 0.15,
+      "Rate": 0,
+      "Right": [
+        -1,
+        0,
+        0
+      ],
+      "Size": [
+        0.1,
+        0.1
+      ],
+      "Speed": 7.5,
+      "SpeedDamping": 0.15,
+      "SpeedLimit": 2,
+      "TexturePath": "Textures/Sprites/white",
+      "Up": [
+        0,
+        0,
+        -1
+      ],
+      "Z": 0
+    },
+    "ExplosionDelay": [
+      1,
+      5
+    ],
+    "LightSourceId": 987782420
+  },
   "CameraX": 0.0,
   "CameraY": 0.0,
   "Collision": [

@@ -21,9 +21,9 @@ internal static class SmokeTests
             Growth = [.5f, 1],
             Color = [1, .5f, 0, .75f],
         };
-        var frameStepped = new SmokeEmitter(data, 17);
+        var frameStepped = new ParticleEmitter(data, 17);
         frameStepped.AdvanceTo(0);
-        var singleAdvance = new SmokeEmitter(data, 17);
+        var singleAdvance = new ParticleEmitter(data, 17);
         for (int i = 0; i <= 1440; i++)
         {
             frameStepped.AdvanceTo(i / 144.0);
@@ -49,9 +49,9 @@ internal static class SmokeTests
         Console.WriteLine("Particle cadence, pause and bounded storage passed");
     }
 
-    private static List<SmokeEmitter.Sample> Visible(SmokeEmitter emitter)
+    private static List<ParticleEmitter.Sample> Visible(ParticleEmitter emitter)
     {
-        var result = new List<SmokeEmitter.Sample>();
+        var result = new List<ParticleEmitter.Sample>();
         for (int i = 0; i < emitter.Count; i++)
         {
             if (emitter.TrySample(i, out var sample))

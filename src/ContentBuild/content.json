@@ -518,7 +518,7 @@
     "Audio/Sound/intro/Intro_PullOutBat.ogg": "5cab59628088ab7291ecb7438784a83ae476911ed606e862f65b93e5b6fdb5c9",
     "Audio/Sound/intro/Intro_surprise7.ogg": "b7e64a96a336baa9dea9ce367e288853e6b8903f6ef197cadb00f911ddcb9d5e",
     "Effects/Distortion.xnb": "84f916fa5bc957fa5303cffd86a83b6fce9d95aa68f472bcfc0a16286917fff7",
-    "Effects/Sprite.xnb": "27d882779eb1fb60485f01de3ad9caab268e3b2863ebca2318a1c8acade1e64e",
+    "Effects/Sprite.xnb": "da327f0f08ccb4f008611df4177f5993f2cf20f546f151df0237b3127f6e0d7c",
     "Textures/Materials/RadialGradient.xnb": "3c14e52a4b195d833bf797e93002ecbe25df2b1c98d3c0b7712ac4037eb23f0b",
     "Textures/Materials/water/1160-normal.xnb": "f8e18d63b669446721f43039030ca7f6b6ddd90302ea8c8a5ea8550a7e3b6af8",
     "Textures/Materials/water/6055-normal.xnb": "46c77c204fac51f57622fe5f4d1276de8abd18572a44f1b0f717d147a7c10683",
@@ -1106,9 +1106,45 @@
     "smokeRingDistance": 7.5,
     "trailDelay": 0.01
   },
-  "ContentHash": "d5cd7b11f0e8e969bb24c97225c3b9b521894ff00d2559a1776e61a264eb55a8",
+  "ContentHash": "55cc255ecc68de947516c901f1e6fcf44e946a9ee85cbf4f5a46f5371e30ed16",
   "Effects": {
-    "BackgroundEscapeShip": {
+    "BackgroundEscapeFlames": {
+      "Animations": {
+        "frames": [
+          "aaec5df6bbf3e434ca6ff56098c2c6ea:21300000",
+          "52f4f80269c3f0e4ca55bd029c57e0ba:21300000",
+          "3e4b85b609e9be4419222ac51ded7d30:21300000",
+          "5631322aabafc9e4e923f0c75bcf68f7:21300000"
+        ]
+      },
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.05,
+      "Frames": [
+        "aaec5df6bbf3e434ca6ff56098c2c6ea:21300000",
+        "52f4f80269c3f0e4ca55bd029c57e0ba:21300000",
+        "3e4b85b609e9be4419222ac51ded7d30:21300000",
+        "5631322aabafc9e4e923f0c75bcf68f7:21300000"
+      ],
+      "InitialSpriteId": "5631322aabafc9e4e923f0c75bcf68f7:21300000",
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {
+        "animSpeed": 0.05,
+        "playOnce": 0
+      },
+      "PlayOnce": false,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "BackgroundEscapeFrogs": {
       "Animations": {
         "frames": [
           "3b15071d9aa2ee947a1143e8a7f8c9cc:21300000",
@@ -1144,7 +1180,7 @@
       "SortingLayer": 0,
       "Z": 0
     },
-    "BackgroundEscapeShip (1)": {
+    "BackgroundEscapeFrogsMirrored": {
       "Animations": {
         "frames": [
           "3b15071d9aa2ee947a1143e8a7f8c9cc:21300000",
@@ -1167,7 +1203,7 @@
         "d2c0cedc72b7dcf4c8c0232ecc87b77a:21300000",
         "fa77df1fb0d61cb48979bf3e4f50bde2:21300000"
       ],
-      "InitialSpriteId": "a60620ab9a3c34448bbe9f8a11aabd7a:21300000",
+      "InitialSpriteId": "fa77df1fb0d61cb48979bf3e4f50bde2:21300000",
       "Material": "Sprites-Default",
       "Order": 0,
       "Parameters": {
@@ -1175,20 +1211,13 @@
         "playOnce": 0
       },
       "PlayOnce": false,
-      "ScaleX": 1,
+      "ScaleX": -1,
       "ScaleY": 1,
       "SortingLayer": 0,
       "Z": 0
     },
-    "BackgroundEscapeShip (2)": {
-      "Animations": {
-        "frames": [
-          "3b15071d9aa2ee947a1143e8a7f8c9cc:21300000",
-          "51c6b33273668bb4daf57735458e7d61:21300000",
-          "d2c0cedc72b7dcf4c8c0232ecc87b77a:21300000",
-          "fa77df1fb0d61cb48979bf3e4f50bde2:21300000"
-        ]
-      },
+    "BackgroundEscapeShip": {
+      "Animations": {},
       "Color": [
         1,
         1,
@@ -1198,18 +1227,71 @@
       "Colors": [],
       "FrameSeconds": 0.1,
       "Frames": [
-        "3b15071d9aa2ee947a1143e8a7f8c9cc:21300000",
-        "51c6b33273668bb4daf57735458e7d61:21300000",
-        "d2c0cedc72b7dcf4c8c0232ecc87b77a:21300000",
-        "fa77df1fb0d61cb48979bf3e4f50bde2:21300000"
+        "a60620ab9a3c34448bbe9f8a11aabd7a:21300000"
       ],
       "InitialSpriteId": "a60620ab9a3c34448bbe9f8a11aabd7a:21300000",
+      "Layers": [
+        "BackgroundEscapeFlames",
+        "BackgroundEscapeFrogs"
+      ],
       "Material": "Sprites-Default",
       "Order": 0,
-      "Parameters": {
-        "animSpeed": 0.1,
-        "playOnce": 0
-      },
+      "Parameters": {},
+      "PlayOnce": false,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "BackgroundEscapeShip (1)": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.1,
+      "Frames": [
+        "a60620ab9a3c34448bbe9f8a11aabd7a:21300000"
+      ],
+      "InitialSpriteId": "a60620ab9a3c34448bbe9f8a11aabd7a:21300000",
+      "Layers": [
+        "BackgroundEscapeFlames",
+        "BackgroundEscapeFrogsMirrored"
+      ],
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {},
+      "PlayOnce": false,
+      "ScaleX": 1,
+      "ScaleY": 1,
+      "SortingLayer": 0,
+      "Z": 0
+    },
+    "BackgroundEscapeShip (2)": {
+      "Animations": {},
+      "Color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "Colors": [],
+      "FrameSeconds": 0.1,
+      "Frames": [
+        "a60620ab9a3c34448bbe9f8a11aabd7a:21300000"
+      ],
+      "InitialSpriteId": "a60620ab9a3c34448bbe9f8a11aabd7a:21300000",
+      "Layers": [
+        "BackgroundEscapeFlames",
+        "BackgroundEscapeFrogs",
+        "BackgroundEscapeFrogsMirrored"
+      ],
+      "Material": "Sprites-Default",
+      "Order": 0,
+      "Parameters": {},
       "PlayOnce": false,
       "ScaleX": 1,
       "ScaleY": 1,
@@ -1960,27 +2042,6 @@
       "PlayOnce": true,
       "ScaleX": 10,
       "ScaleY": 10,
-      "SortingLayer": 0,
-      "Z": 0
-    },
-    "RoofDustParticle": {
-      "Animations": {},
-      "Color": [
-        1,
-        1,
-        1,
-        1
-      ],
-      "Colors": [],
-      "FrameSeconds": 0.04,
-      "Frames": [],
-      "InitialSpriteId": "",
-      "Material": "",
-      "Order": 0,
-      "Parameters": {},
-      "PlayOnce": true,
-      "ScaleX": 1,
-      "ScaleY": 1,
       "SortingLayer": 0,
       "Z": 0
     },
@@ -9259,6 +9320,7 @@
           "Loop": true,
           "MaxDistance": 500,
           "MinDistance": 1,
+          "Music": true,
           "ObjectPath": "SoundController",
           "Pan": 0,
           "Path": "Audio/Sound/Music/High Action SuperEdit.ogg",
@@ -9448,38 +9510,6 @@
             1
           ],
           "ObjectPath": "InControl",
-          "ParentPath": ""
-        },
-        {
-          "Active": true,
-          "LocalPosition": [
-            0,
-            0,
-            -3
-          ],
-          "LocalRotation": 0.0,
-          "LocalScale": [
-            1,
-            1,
-            1
-          ],
-          "ObjectPath": "Fly/GameObject",
-          "ParentPath": "Fly"
-        },
-        {
-          "Active": true,
-          "LocalPosition": [
-            -11.561016,
-            8.660126,
-            0
-          ],
-          "LocalRotation": 0.0,
-          "LocalScale": [
-            1,
-            1,
-            1
-          ],
-          "ObjectPath": "Fly",
           "ParentPath": ""
         },
         {
@@ -10551,36 +10581,6 @@
             1,
             1
           ],
-          "FrameSeconds": 0.05,
-          "Frames": [
-            "5c16e5610919a604f8778e6816f9a17a:21300000",
-            "8e95665d50c28bb4f94cd5d41bf34630:21300000"
-          ],
-          "Layer": 14,
-          "Material": "Sprites-Default",
-          "Name": "GameObject",
-          "ObjectPath": "Fly/GameObject",
-          "Order": 0,
-          "PlayOnce": false,
-          "Rotation": 0.0,
-          "ScaleX": 1,
-          "ScaleY": 1,
-          "SortingLayer": 0,
-          "SourceId": -9,
-          "SpriteId": "8e95665d50c28bb4f94cd5d41bf34630:21300000",
-          "Visible": true,
-          "X": -11.561016,
-          "Y": 8.660126,
-          "Z": -3
-        },
-        {
-          "Active": true,
-          "Color": [
-            1,
-            1,
-            1,
-            1
-          ],
           "FrameSeconds": 0.1,
           "Frames": [],
           "Layer": 0,
@@ -10707,6 +10707,63 @@
         0,
         0
       ],
+      "BunkerEffects": {
+        "Dust": {
+          "BurstCount": [
+            20,
+            50
+          ],
+          "Color": [
+            1,
+            1,
+            1,
+            0.49803922
+          ],
+          "ConeAngle": 0.17453292519943295,
+          "ConeLength": 1.53,
+          "Duration": 7.5,
+          "FadeOut": true,
+          "Forward": [
+            0,
+            -1,
+            0
+          ],
+          "Lifetime": 7.5,
+          "Name": "RoofDustParticle",
+          "NoiseDamping": true,
+          "NoiseFrequency": 0.5,
+          "NoiseScrollSpeed": 1,
+          "NoiseStrength": 0.5,
+          "Order": 0,
+          "Radius": 0.1,
+          "RandomDirection": 0.15,
+          "Rate": 0,
+          "Right": [
+            -1,
+            0,
+            0
+          ],
+          "Size": [
+            0.1,
+            0.1
+          ],
+          "Speed": 7.5,
+          "SpeedDamping": 0.15,
+          "SpeedLimit": 2,
+          "TexturePath": "Textures/Sprites/white",
+          "Up": [
+            0,
+            0,
+            -1
+          ],
+          "Z": 0
+        },
+        "ExplosionDelay": [
+          1,
+          5
+        ],
+        "LightSourceId": 987782420
+      },
       "CameraX": 0.0,
       "CameraY": 0.0,
       "Collision": [
