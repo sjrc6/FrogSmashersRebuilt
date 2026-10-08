@@ -47,9 +47,7 @@ internal sealed class MenuRenderer(FrogGame game, MenuController menu)
                 CenteredHint(ButtonGlyph.Accept(menu.HintDevice), "RETURN TO LOBBY", 640, 692);
             return;
         }
-        if (menu.Screen == GameScreen.Seats)
-            return;
-        if (menu.Screen == GameScreen.Playing && !game.Match.Paused)
+        if (!menu.HasClickableMenu)
             return;
         if (menu.Screen == GameScreen.SlotEditor)
         {

@@ -38,6 +38,8 @@ internal sealed partial class MenuController : IDisposable
     public bool WaitingForBinding { get; private set; }
     public string JoinAddress { get; private set; } = "127.0.0.1";
     public bool ShowingCinematic => Screen is GameScreen.Intro or GameScreen.Title or GameScreen.Outro;
+    public bool HasClickableMenu =>
+        !ShowingCinematic && Screen != GameScreen.Seats && (Screen != GameScreen.Playing || game.Match.Paused);
     public bool ShowingMenuBackground => !ShowingCinematic && context == GameScreen.Main;
     public bool ShowingMatch => !ShowingCinematic && context == GameScreen.Playing;
     public bool LocalLobbyPaused => ShowingLobby && game.Online.Lobby == null && Screen != GameScreen.Seats;
