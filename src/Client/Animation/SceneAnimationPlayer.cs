@@ -427,6 +427,7 @@ internal sealed class SceneAnimationPlayer : IDisposable
         assets
             .SpriteEffect.Parameters["MatrixTransform"]
             .SetValue(Matrix.CreateOrthographicOffCenter(0, Width, Height, 0, 0, 1));
+        assets.SpriteEffect.Parameters["SpriteOpacity"].SetValue(1f);
         batch.Begin(
             SpriteSortMode.Immediate,
             BlendState.AlphaBlend,

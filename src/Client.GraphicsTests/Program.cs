@@ -93,6 +93,7 @@ internal sealed class GraphicsTestGame : Game
             var suite = new PresentationChecks(renderer);
             string[] checks =
             [
+                .. suite.VerifyIntro(captureDirectory),
                 .. suite.VerifyContent(captureDirectory),
                 .. suite.VerifyFinale(captureDirectory),
                 .. suite.VerifyBunker(captureDirectory),
