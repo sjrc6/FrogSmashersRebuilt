@@ -24,7 +24,7 @@ internal static class Program
                 "Frog Smashers Rebuilt Updater\nRun beside the game to install the latest stable release, then launch it.\n"
                     + "  --check                 Check without installing or launching\n"
                     + "  --no-launch             Do not launch the game afterward\n"
-                    + "  --non-interactive       Do not wait for Enter before closing\n"
+                    + "  --non-interactive       Do not wait for Enter after an error\n"
                     + "  --install-dir PATH      Update another extracted installation\n"
                     + "  --package PATH          Install a local release archive instead of downloading"
             );
@@ -53,7 +53,6 @@ internal static class Program
                 cancellation.Cancel();
             };
             await Run(options, cancellation.Token);
-            Pause(options);
             return 0;
         }
         catch (Exception error)

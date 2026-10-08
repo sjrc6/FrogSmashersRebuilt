@@ -199,6 +199,9 @@ public class FrogGame : Game
         var stageWorld =
             !Menus.ShowingCinematic && (Menus.ShowingMatch || Menus.ShowingMenuBackground) ? Match.World : null;
         Renderer.UpdateStageEffects(stageWorld, Menus.LocalPresentationPaused ? 0 : (float)elapsedSeconds);
+        bool mouseVisible = !(Fullscreen && IsActive && MouseFocus.IsOver(Window));
+        if (IsMouseVisible != mouseVisible)
+            IsMouseVisible = mouseVisible;
         CheckInvitations();
         base.Update(gameTime);
     }
