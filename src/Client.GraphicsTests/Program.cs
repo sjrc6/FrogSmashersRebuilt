@@ -97,6 +97,7 @@ internal sealed class GraphicsTestGame : Game
                 .. suite.VerifyContent(captureDirectory),
                 .. suite.VerifyFinale(captureDirectory),
                 .. suite.VerifyBunker(captureDirectory),
+                .. suite.VerifyColliders(captureDirectory),
                 .. suite.VerifyMenuLayout(),
             ];
 

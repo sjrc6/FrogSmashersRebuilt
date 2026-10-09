@@ -220,21 +220,7 @@ public sealed partial class Renderer
         }
 
         if (ShowColliders)
-        {
-            canvas.Begin(0);
-            foreach (var box in world.Map.Collision)
-            {
-                var a = Screen(new((float)(box.X - box.Width / 2), (float)(box.Y + box.Height / 2)));
-                var b = Screen(new((float)(box.X + box.Width / 2), (float)(box.Y - box.Height / 2)));
-                canvas.Outline(
-                    new((int)a.X, (int)a.Y, (int)(b.X - a.X), (int)(b.Y - a.Y)),
-                    box.OneWay ? Color.Cyan : Color.Lime,
-                    2
-                );
-            }
-
-            canvas.End();
-        }
+            DrawColliders(world);
     }
 
     private static int CompareDrawCommands(DrawCommand left, DrawCommand right)

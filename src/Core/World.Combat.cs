@@ -19,6 +19,15 @@ public sealed partial class World
     private Fixed GetAttackCharge(PlayerState player) =>
         Fixed.Clamp(player.AttackCharge / tuning.AttackChargeTime, 0, 1);
 
+    public (FixedVector Start, FixedVector End, Fixed Radius) GetBatHitbox(PlayerState player)
+    {
+        var direction = new FixedVector(player.AttackX, player.AttackY).Normalized;
+        var radius = player.AttackY < 0 ? FromDecimal(1.75m) : FromDecimal(1.25m);
+        var charge = GetAttackCharge(player);
+        var range = tuning.AttackRange + (charge > FromDecimal(.5m) ? charge : Fixed.Zero);
+        return (player.Center, player.Center + direction * range, radius);
+    }
+
     private void UpdateAttack(PlayerState player, InputFrame input)
     {
         if (player.AttackPhase == AttackPhase.Charging)
@@ -46,17 +55,14 @@ public sealed partial class World
             if (player.AttackTimeLeft <= 0)
             {
                 var direction = new FixedVector(player.AttackX, player.AttackY).Normalized;
-                var radius = player.AttackY < 0 ? FromDecimal(1.75m) : FromDecimal(1.25m);
-                var range =
-                    tuning.AttackRange
-                    + (GetAttackCharge(player) > FromDecimal(.5m) ? GetAttackCharge(player) : Fixed.Zero);
+                var (start, end, radius) = GetBatHitbox(player);
                 foreach (var other in Players)
                 {
                     if (
                         other != player
                         && other.Alive
                         && (!Rules.UsesTeams || player.Team != other.Team)
-                        && CapsuleTouchesPlayer(player.Center, player.Center + direction * range, radius, other)
+                        && CapsuleTouchesPlayer(start, end, radius, other)
                     )
                     {
                         Hit(
@@ -74,8 +80,7 @@ public sealed partial class World
                 if (
                     Rules.Lobby
                     && BeachBall.Active
-                    && PointSegmentDistanceSquared(BeachBall.Position, player.Center, player.Center + direction * range)
-                        <= ballRadius * ballRadius
+                    && PointSegmentDistanceSquared(BeachBall.Position, start, end) <= ballRadius * ballRadius
                 )
                     HitBeachBall(player, direction, GetAttackCharge(player));
                 player.AttackRecoverTimeLeft = tuning.AttackRecoverTime;
