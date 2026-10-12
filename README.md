@@ -17,6 +17,17 @@ Spiritually related to [DGR](https://github.com/TheFlyingFoool/DuckGameRebuilt)
   </tr>
 </table>
 
+## New Features
+- Online rollback multiplayer
+- Steam and LAN lobbies
+- 8 Players + Spectators in online (including mixing local players with multiple player per online connection)
+- Improved lobby room + Beach ball
+- Actual in-game menus and settings
+- A small selection of gameplay modifiers (feel free to suggest more in issues)
+- Fixed some undesirable physics bugs from the original game
+- Teams and Crew Battles(WIP) modes
+- Very stupid CPUs
+
 ## Installation
 - Download the latest version from the **[releases](https://github.com/sjrc6/FrogSmashersRebuilt/releases)**
 - After downloading you can update to new versions with the included updater executable
