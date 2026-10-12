@@ -102,20 +102,10 @@ internal static class ProtocolTests
     {
         var pair = new Pair();
         pair.Synchronize();
-        pair.A.SetTiming(
-            new()
-            {
-                DelayFrames = 2,
-                DonationFrames = 4,
-                MaxExtraDelayFrames = 2,
-            },
-            1
-        );
+        pair.A.SetTiming(new() { DelayFrames = 2, DonationFrames = 4 });
         pair.Step(250);
         Check.Equal(2, pair.B.Stats.ResponseDelayFrames, "Response delay travels with protocol progress");
         Check.Equal(4, pair.B.Stats.DonationFrames, "Donation travels with protocol progress");
-        Check.Equal(1, pair.B.Stats.ExtraDelayFrames, "Temporary delay is reported to remote peers");
-        Check.Equal(2, pair.B.Stats.MaxExtraDelayFrames, "Remote automatic-delay limit is visible");
         var stale = new ProtocolPacket
         {
             Kind = PacketKind.Ping,

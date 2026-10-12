@@ -47,7 +47,7 @@ public sealed class LobbyNetworkSession : IRollbackSession
         {
             FramesPerSecond = World.TickRate,
             InputDelay = preferences.Delay,
-            MaxInputDelay = RollbackPreferences.InputCapacityFrames,
+            MaxInputDelay = RollbackPreferences.MaximumDelayFrames,
             MaxPredictionFrames = RollbackPreferences.PredictionFrames,
             HistoryFrames = RollbackPreferences.HistoryFrames,
             ChecksumInterval = World.TickRate / 2,
@@ -148,8 +148,7 @@ public sealed class LobbyNetworkSession : IRollbackSession
         playing?.NetworkStats.Where(stats => stats.PeerId < SpectatorPeerOffset).ToArray() ?? [spectator!.NetworkStats];
     public int RejectedPackets => (int)PeerStats.Sum(stats => stats.InvalidPackets);
     public RollbackPreferences RollbackSettings { get; private set; }
-    public int ExtraDelayFrames => playing?.ExtraDelayFrames ?? 0;
-    public int EffectiveDelayFrames => playing?.EffectiveDelayFrames ?? 0;
+    public int DelayFrames => playing?.Timing.DelayFrames ?? 0;
     internal bool Spectating => spectator != null;
     internal bool CanPreparePeer => playing?.CanPreparePeer == true;
 
@@ -233,7 +232,7 @@ public sealed class LobbyNetworkSession : IRollbackSession
             int lead =
                 (int)Math.Ceiling(host.RoundTripMilliseconds * World.TickRate / 2000)
                 - host.DonationFrames
-                - EffectiveDelayFrames
+                - DelayFrames
                 + RollbackSettings.Donation;
             return host.LastReceivedFrame + Math.Min(MaxPrediction - 2, lead);
         }

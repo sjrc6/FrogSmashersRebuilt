@@ -158,10 +158,9 @@ internal sealed class ConnectionOverlay(FrogGame game)
         var session = Session;
         int prediction = session?.PredictionDepth ?? 0;
         int limit = session?.MaxPrediction ?? RollbackPreferences.PredictionFrames;
-        int extra = session?.ExtraDelayFrames ?? 0;
-        int delay = session == null ? 0 : session.EffectiveDelayFrames - extra;
+        int delay = session?.DelayFrames ?? 0;
         game.Renderer.Text($"PRED: {prediction}/{limit}", Renderer.Width / 2, y + 14, center: true);
-        game.Renderer.Text($"DELAY: {delay}+{extra}", Renderer.Width / 2, y + line + 20, center: true);
+        game.Renderer.Text($"DELAY: {delay}", Renderer.Width / 2, y + line + 20, center: true);
     }
 
     private void Separator(int left, int right, int y)

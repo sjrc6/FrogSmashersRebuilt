@@ -72,7 +72,7 @@ public sealed partial class P2PSession<TInput, TState>
         this.participation = participation;
         this.initialFrame = initialFrame;
         submittedFrame = initialFrame - 1;
-        Timing = new() { DelayFrames = this.options.InputDelay, MaxExtraDelayFrames = 0 };
+        Timing = new() { DelayFrames = this.options.InputDelay };
         wire = new(players, codec, this.options, inputSchema, spectatorCodec);
         engine = new(wire.Players.Length, this.options, game, predictor, participation, initialFrame);
         statuses = Enumerable.Repeat(new ConnectionStatus(false, initialFrame - 1), wire.Players.Length).ToArray();
@@ -324,7 +324,6 @@ public sealed partial class P2PSession<TInput, TState>
         RepairAndConfirm();
         PublishSpectators();
         CheckDesyncs();
-        UpdateTiming();
         foreach (var peer in AllPeers())
         {
             SetPeerProgress(peer);
@@ -546,7 +545,7 @@ public sealed partial class P2PSession<TInput, TState>
 
     private void SetPeerProgress(PeerProtocol peer)
     {
-        peer.SetTiming(Timing, ExtraDelayFrames);
+        peer.SetTiming(Timing);
         peer.SetSessionProgress(ConfirmedFrame, disconnectMask, disconnectFloor, disconnectReadyCut);
     }
 

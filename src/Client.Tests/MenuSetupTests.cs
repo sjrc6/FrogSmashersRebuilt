@@ -20,24 +20,14 @@ internal static class MenuSetupTests
         );
         string saved = JsonSerializer.Serialize(settings);
         check(ClientSettings.Parse(saved).Volume == settings.Volume, "personal settings survive serialization");
-        settings.Rollback = new()
-        {
-            Delay = 7,
-            Donation = 4,
-            MaxExtraDelay = 12,
-        };
+        settings.Rollback = new() { Delay = 7, Donation = 4 };
         check(
             ClientSettings.Parse(JsonSerializer.Serialize(settings)).Rollback == settings.Rollback,
             "personal rollback preferences persist"
         );
         check(
-            ClientSettings.Parse("""{"Rollback":{"Delay":-1,"Donation":999,"MaxExtraDelay":999}}""").Rollback
-                == new RollbackPreferences
-                {
-                    Delay = 0,
-                    Donation = RollbackPreferences.PredictionFrames,
-                    MaxExtraDelay = RollbackPreferences.MaximumExtraDelayFrames,
-                },
+            ClientSettings.Parse("""{"Rollback":{"Delay":-1,"Donation":999}}""").Rollback
+                == new RollbackPreferences { Delay = 0, Donation = RollbackPreferences.PredictionFrames },
             "rollback settings load within supported limits"
         );
         check(

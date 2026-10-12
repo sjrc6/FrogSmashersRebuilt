@@ -71,7 +71,7 @@ public sealed class SessionConfig
         Rollback = rollback ?? new();
         if (!Rollback.IsValid || Rollback.Donation > maxPrediction)
             throw new ArgumentException("Invalid rollback preferences");
-        if (maxPrediction < 2 || historyFrames < maxPrediction + Rollback.Delay + Rollback.MaxExtraDelay + 64)
+        if (maxPrediction < 2 || historyFrames < maxPrediction + Rollback.Delay + 64)
             throw new ArgumentException("Invalid rollback window");
         MaxPrediction = maxPrediction;
         HistoryFrames = historyFrames;
@@ -80,7 +80,7 @@ public sealed class SessionConfig
             ?? new Dictionary<int, RollbackInput[]>();
         if (
             InitialInputs.Any(pair =>
-                !slots.Contains(pair.Key) || pair.Value.Length > RollbackPreferences.InputCapacityFrames
+                !slots.Contains(pair.Key) || pair.Value.Length > RollbackPreferences.MaximumDelayFrames
             )
         )
             throw new ArgumentException(

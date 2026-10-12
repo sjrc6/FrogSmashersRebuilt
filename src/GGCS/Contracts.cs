@@ -90,7 +90,7 @@ public readonly record struct SessionEvent(SessionEventKind Kind, int PeerId, in
 public sealed record SessionOptions
 {
     public int FramesPerSecond { get; init; } = 60;
-    public int MaxPredictionFrames { get; init; } = 8;
+    public int MaxPredictionFrames { get; init; } = 50;
     public int HistoryFrames { get; init; } = 240;
     public int InputDelay { get; init; } = 0;
     public int MaxInputDelay { get; init; } = 30;

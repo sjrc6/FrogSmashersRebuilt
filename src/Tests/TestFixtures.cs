@@ -5,7 +5,7 @@ namespace FrogSmashers.Tests;
 
 internal static class TestFixtures
 {
-    public static RollbackPreferences FixedTiming { get; } = new() { MaxExtraDelay = 0 };
+    public static RollbackPreferences FixedTiming { get; } = new();
 
     public static MapData Map() =>
         new()

@@ -45,8 +45,8 @@ internal static class ReviewTests
             rig.Network.Block = (_, _, time) => time < outage + 400;
             rig.Run(300);
             int stalledFrame = rig.Nodes[0].Session.CurrentFrame;
-            rig.Nodes[0].Session.SetTiming(new() { DelayFrames = repeat % 2 == 0 ? 12 : 0, MaxExtraDelayFrames = 0 });
-            rig.Nodes[1].Session.SetTiming(new() { DelayFrames = repeat % 2 == 0 ? 3 : 0, MaxExtraDelayFrames = 0 });
+            rig.Nodes[0].Session.SetTiming(new() { DelayFrames = repeat % 2 == 0 ? 12 : 0 });
+            rig.Nodes[1].Session.SetTiming(new() { DelayFrames = repeat % 2 == 0 ? 3 : 0 });
             rig.Run(50);
             Check.Equal(
                 stalledFrame,

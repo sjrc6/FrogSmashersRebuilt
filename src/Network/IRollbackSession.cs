@@ -37,8 +37,7 @@ public interface IRollbackSession : IDisposable
     int RejectedPackets { get; }
     IEnumerable<SimulationEvent> EventsSince(long frame);
     RollbackPreferences RollbackSettings { get; }
-    int ExtraDelayFrames { get; }
-    int EffectiveDelayFrames { get; }
+    int DelayFrames { get; }
     void SetTiming(RollbackPreferences preferences);
     void StopAtTick(long? stateTick);
     bool TryGetConfirmedCheckpoint(long stateTick, out byte[] snapshot);

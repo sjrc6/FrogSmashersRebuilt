@@ -90,22 +90,15 @@ internal static partial class LobbyTests
             Loss = .03,
         };
         var host = rig.Add("host", Enumerable.Range(0, 4).Select(id => new LobbyPlayer(id)).ToArray());
-        host.Lobby.SetRollbackSettings(new() { Delay = RollbackPreferences.MaximumDelayFrames, MaxExtraDelay = 0 });
+        host.Lobby.SetRollbackSettings(new() { Delay = RollbackPreferences.MaximumDelayFrames });
         rig.Input = (node, handle) => node == host && handle == 1 ? new(default, TeamStep: 1) : default;
         rig.Steps(240);
         var guest = rig.Add("guest", Enumerable.Range(0, 3).Select(id => new LobbyPlayer(id, Team: 1)).ToArray());
-        guest.Lobby.SetRollbackSettings(
-            new()
-            {
-                Delay = 37,
-                Donation = 3,
-                MaxExtraDelay = 0,
-            }
-        );
+        guest.Lobby.SetRollbackSettings(new() { Delay = 37, Donation = 3 });
         rig.WaitFor(() => rig.Ready, "Long input prefixes did not survive admission");
         rig.Steps(240);
         var last = rig.Add("last", [new(0, Team: 2)]);
-        last.Lobby.SetRollbackSettings(new() { Delay = 0, MaxExtraDelay = 12 });
+        last.Lobby.SetRollbackSettings(new() { Delay = 0 });
         rig.WaitFor(() => rig.Ready, "Eight-player delayed checkpoint failed");
         rig.Steps(240);
         Check(
@@ -145,11 +138,11 @@ internal static partial class LobbyTests
     {
         using var rig = new Rig();
         var host = rig.Add("host", [new(0)]);
-        host.Lobby.SetRollbackSettings(new() { Delay = 0, MaxExtraDelay = 0 });
+        host.Lobby.SetRollbackSettings(new() { Delay = 0 });
         rig.Input = (_, _) => new(default, TeamStep: 1);
         rig.Steps(1);
         Check(host.Simulation.Membership.Rooms[0]!.Team == 1, "Fixture applies one lobby command");
-        host.Lobby.SetRollbackSettings(new() { Delay = 12, MaxExtraDelay = 0 });
+        host.Lobby.SetRollbackSettings(new() { Delay = 12 });
         rig.Input = null;
         rig.Steps(30);
         Check(
@@ -162,9 +155,9 @@ internal static partial class LobbyTests
     {
         using var rig = new Rig();
         var host = rig.Add("host", [new(0)]);
-        host.Lobby.SetRollbackSettings(new() { Delay = 12, MaxExtraDelay = 0 });
+        host.Lobby.SetRollbackSettings(new() { Delay = 12 });
         rig.Steps(30);
-        host.Lobby.SetRollbackSettings(new() { Delay = 0, MaxExtraDelay = 0 });
+        host.Lobby.SetRollbackSettings(new() { Delay = 0 });
         var pending = new RollbackInput(default, TeamStep: 1);
         rig.Input = (_, _) => pending;
         int accepted = 0;

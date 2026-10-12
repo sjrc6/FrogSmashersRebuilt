@@ -28,7 +28,7 @@ internal static class InterpolationSnapshotTests
             "interpolation",
             world,
             1,
-            rollback: new() { Delay = 0, MaxExtraDelay = 0 },
+            rollback: new() { Delay = 0 },
             inputPlayerSlots: inputRooms
         );
         using var session =

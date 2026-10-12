@@ -99,7 +99,7 @@ public sealed class NetworkSession : IRollbackSession
         {
             FramesPerSecond = World.TickRate,
             InputDelay = config.Rollback.Delay,
-            MaxInputDelay = RollbackPreferences.InputCapacityFrames,
+            MaxInputDelay = RollbackPreferences.MaximumDelayFrames,
             MaxPredictionFrames = config.MaxPrediction,
             HistoryFrames = config.HistoryFrames,
             ChecksumInterval = World.TickRate / 2,
@@ -134,11 +134,6 @@ public sealed class NetworkSession : IRollbackSession
                     if (peer != 0 && config.PeerSlots[peer].Length == 0)
                         playing.AddSpectator(peer);
             playing.SetTiming(config.Rollback.Timing);
-            int pendingDelay = LocalSlots
-                .Select(handle => config.InitialInputs.GetValueOrDefault(handle)?.Length ?? 0)
-                .DefaultIfEmpty()
-                .Max();
-            playing.RestoreExtraDelay(Math.Clamp(pendingDelay - rollback.Delay, 0, rollback.MaxExtraDelay));
             foreach (int handle in LocalSlots)
                 if (config.InitialInputs.TryGetValue(handle, out var inputs))
                     playing.SeedLocalInputDelay(handle, inputs);
@@ -154,8 +149,7 @@ public sealed class NetworkSession : IRollbackSession
         eventJournal.Where(pair => pair.Key >= frame).SelectMany(pair => pair.Value);
 
     public RollbackPreferences RollbackSettings => rollback;
-    public int ExtraDelayFrames => playing?.ExtraDelayFrames ?? 0;
-    public int EffectiveDelayFrames => playing?.EffectiveDelayFrames ?? 0;
+    public int DelayFrames => playing?.Timing.DelayFrames ?? 0;
 
     public void SetTiming(RollbackPreferences preferences)
     {
@@ -210,7 +204,7 @@ public sealed class NetworkSession : IRollbackSession
             if (boundaryStateTick == initialTick && count == 0)
                 count = config.InitialInputs.TryGetValue(LocalSlots[player], out var initial)
                     ? initial.Length
-                    : EffectiveDelayFrames;
+                    : DelayFrames;
             result[player] = new RollbackInput[count];
             for (int offset = 0; offset < count; offset++)
                 if (

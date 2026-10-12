@@ -480,7 +480,7 @@ internal static class NetworkSessionTests
             .ToArray();
         Synchronize(wire, sessions);
         NetworkSession fast = sessions[0];
-        for (int tick = 0; tick < 40; tick++)
+        for (int tick = 0; tick <= fast.MaxPrediction; tick++)
         {
             wire.Advance();
             if (!fast.TryAdvance([Input(fast.World.TickNumber, 0)]))

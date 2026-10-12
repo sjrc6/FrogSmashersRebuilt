@@ -38,16 +38,6 @@ internal sealed partial class MenuController
                 Change: amount => Change(value => value with { Donation = value.Donation + amount })
             )
         );
-        rows.Add(
-            new(
-                "max-extra-delay",
-                "MAX EXTRA DELAY",
-                Value: RollbackPreferences.Milliseconds(preferences.MaxExtraDelay),
-                ValueSample: "999 MS",
-                RepeatAdjust: true,
-                Change: amount => Change(value => value with { MaxExtraDelay = value.MaxExtraDelay + amount })
-            )
-        );
         return rows;
     }
 }

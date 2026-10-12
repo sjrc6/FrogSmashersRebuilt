@@ -40,8 +40,6 @@ internal sealed class ProtocolPacket
     public int TimingRevision;
     public int ResponseDelay;
     public int Donation;
-    public int ExtraDelay;
-    public int MaxExtraDelay;
     public int CommittedFrame = -1;
     public uint DisconnectMask;
     public int DisconnectFloor = -1;
@@ -201,7 +199,7 @@ internal static class PacketCodec
                 packet.InputData = data.ToArray();
                 return true;
             case PacketKind.Ping:
-                if (data.Length != 36)
+                if (data.Length != 28)
                     return false;
                 packet.Timestamp = BinaryPrimitives.ReadInt64LittleEndian(data);
                 packet.Frame = BinaryPrimitives.ReadInt32LittleEndian(data[8..]);
@@ -239,8 +237,6 @@ internal static class PacketCodec
         writer.Write(packet.TimingRevision);
         writer.Write(packet.ResponseDelay);
         writer.Write(packet.Donation);
-        writer.Write(packet.ExtraDelay);
-        writer.Write(packet.MaxExtraDelay);
     }
 
     private static void ReadTiming(ReadOnlySpan<byte> data, ProtocolPacket packet)
@@ -248,7 +244,5 @@ internal static class PacketCodec
         packet.TimingRevision = BinaryPrimitives.ReadInt32LittleEndian(data);
         packet.ResponseDelay = BinaryPrimitives.ReadInt32LittleEndian(data[4..]);
         packet.Donation = BinaryPrimitives.ReadInt32LittleEndian(data[8..]);
-        packet.ExtraDelay = BinaryPrimitives.ReadInt32LittleEndian(data[12..]);
-        packet.MaxExtraDelay = BinaryPrimitives.ReadInt32LittleEndian(data[16..]);
     }
 }
