@@ -245,7 +245,7 @@ public sealed partial class World
         }
         else if (player.Mode == CharacterMode.Tongue)
         {
-            UpdateTongue(player, priorTongueOrigin);
+            UpdateTongue(player, input, priorTongueOrigin);
         }
 
         if (

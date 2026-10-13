@@ -13,6 +13,8 @@ public sealed partial class Renderer
     private float lastPresentedTime = -1;
     private BeachBallPresentation ballPose = new();
     private Vector2 ballPosition;
+    private FlyPresentation flyPose = new();
+    private Vector2 flyPosition;
 
     private enum DrawKind
     {
@@ -138,7 +140,7 @@ public sealed partial class Renderer
                 pose.TipClock.Step(dt, assets.Data.TongueTip.FrameSeconds, assets.Data.TongueTip.Frames.Length, false);
             }
 
-            if (p.Mode != CharacterMode.Tongue || p.TonguePhase == TonguePhase.Stunned)
+            if (p.Mode != CharacterMode.Tongue || p.TonguePhase is TonguePhase.Stunned or TonguePhase.Charging)
             {
                 pose.TongueVisible = false;
             }
@@ -184,17 +186,7 @@ public sealed partial class Renderer
 
         if (world.Fly.Active)
         {
-            if (!flyWasActive)
-            {
-                flyClock = new();
-            }
-
             var fly = assets.Data.Effects["Fly"];
-            if (dt > 0)
-            {
-                flyClock.Step(dt, fly.FrameSeconds, fly.Frames.Length, false);
-            }
-
             AddCommand(fly.SortingLayer, fly.Order, fly.Material, fly.Z, DrawKind.Fly, fly);
         }
 
@@ -212,7 +204,6 @@ public sealed partial class Renderer
             AddCommand(0, 0, "SelectiveColorReplace", 2.78f, DrawKind.ScoreIcons);
         }
 
-        flyWasActive = world.Fly.Active;
         drawCommands.Sort(CompareDrawCommands);
         foreach (var command in drawCommands)
         {
@@ -289,7 +280,7 @@ public sealed partial class Renderer
                 canvas.End();
                 break;
             case DrawKind.Fly:
-                DrawFly(world, (EffectData)command.Item!);
+                DrawFly((EffectData)command.Item!);
                 break;
             case DrawKind.BeachBall:
                 canvas.Begin(1);
@@ -352,16 +343,15 @@ public sealed partial class Renderer
         canvas.End();
     }
 
-    private void DrawFly(World world, EffectData fly)
+    private void DrawFly(EffectData fly)
     {
-        string sprite = flyClock.Frame < 0 ? fly.InitialSpriteId : fly.Frames[flyClock.Frame % fly.Frames.Length];
         canvas.Begin(effects.ModeFor(fly));
         canvas.DrawSprite(
-            sprite,
-            new(world.Fly.X.ToFloat(), world.Fly.Y.ToFloat()),
+            flyPose.Sprite,
+            flyPosition,
             EffectSystem.ToColor(fly.Color),
-            new(fly.ScaleX, fly.ScaleY),
-            0
+            new Vector2(fly.ScaleX, fly.ScaleY) * flyPose.Scale,
+            flyPose.Rotation
         );
         canvas.End();
     }
@@ -424,6 +414,25 @@ public sealed partial class Renderer
         {
             effects.RemoveCharacter(8);
             ballPose = new();
+        }
+        if (world.Fly.Active)
+        {
+            flyPosition = new(world.Fly.X.ToFloat(), world.Fly.Y.ToFloat());
+            if (previous?.Fly.Active == true && previous.Map.Id == world.Map.Id)
+            {
+                var before = new Vector2(previous.Fly.X.ToFloat(), previous.Fly.Y.ToFloat());
+                if (Vector2.DistanceSquared(before, flyPosition) < 400)
+                    flyPosition = Vector2.Lerp(before, flyPosition, alpha);
+            }
+            if (dt > 0 || flyPose.Sprite == null)
+                flyPose.Update(assets, world.Fly, dt);
+            if (dt > 0)
+                effects.UpdateFly(world, flyPosition, flyPose, dt);
+        }
+        else
+        {
+            effects.RemoveCharacter(9);
+            flyPose = new();
         }
         DrawGameplayScene(world, previous, alpha, dt, showGameplayUi);
         PostProcess();

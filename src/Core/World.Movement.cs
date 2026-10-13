@@ -8,6 +8,27 @@ public sealed partial class World
     private void UpdateNormalInput(PlayerState player, InputFrame input)
     {
         var deltaTime = player.LocalDelta;
+        if (
+            Rules.Modifiers.TongueJump
+            && player.Mode == CharacterMode.Tongue
+            && player.TonguePhase == TonguePhase.AttachedToTerrain
+            && input.Jump
+            && !player.PreviousInput.Jump
+            && deltaTime > 0
+        )
+        {
+            StopBouncing(player);
+            player.TonguePhase = TonguePhase.Retracting;
+            player.TongueDistance = 0;
+            player.WasBouncingBeforeTongue = false;
+            player.OnGround = false;
+            player.WallSliding = false;
+            player.JumpGraceLeft = 0;
+            player.VY = tuning.JumpVel;
+            player.GravityGraceLeft = tuning.GravityGraceTime;
+            Emit(SimulationEventKind.Jump, player);
+        }
+
         if (input.X != 0 && player.Mode == CharacterMode.Normal)
         {
             if (!input.Strafe)
@@ -108,7 +129,12 @@ public sealed partial class World
         var deltaTime = player.LocalDelta;
         if (player.Mode == CharacterMode.Tongue && player.TonguePhase == TonguePhase.AttachedToTerrain)
         {
-            SetVelocity(player, new FixedVector(player.TongueX, player.TongueY) * tuning.TongueRetractSpeedLatched);
+            SetVelocity(
+                player,
+                new FixedVector(player.TongueX, player.TongueY)
+                    * tuning.TongueRetractSpeedLatched
+                    * player.TongueLengthMultiplier
+            );
         }
         else if (
             player.Mode == CharacterMode.Bouncing

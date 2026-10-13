@@ -55,6 +55,27 @@ internal static class ModifierCatalog
                 Disabled: BodyDisabled
             ),
             new(
+                "tongue-hurtbox",
+                "TONGUE HURTBOX",
+                "OFF",
+                m => OnOff(m.TongueHurtbox),
+                (m, _) => m with { TongueHurtbox = !m.TongueHurtbox }
+            ),
+            new(
+                "tongue-jump",
+                "TONGUE JUMP",
+                "OFF",
+                m => OnOff(m.TongueJump),
+                (m, _) => m with { TongueJump = !m.TongueJump }
+            ),
+            new(
+                "charge-tongues",
+                "CHARGE TONGUES",
+                "OFF",
+                m => OnOff(m.ChargeTongues),
+                (m, _) => m with { ChargeTongues = !m.ChargeTongues }
+            ),
+            new(
                 "suicide-penalty",
                 "SUICIDE PENALTY",
                 "OFF",
@@ -78,6 +99,22 @@ internal static class ModifierCatalog
                 PointsOnly
             ),
             new("flies", "FLIES", "OFF", m => OnOff(m.FlyEnabled), (m, _) => m with { FlyEnabled = !m.FlyEnabled }),
+            new(
+                "fly-tumble",
+                "FLY TUMBLE",
+                "OFF",
+                m => OnOff(m.FlyTumble),
+                (m, _) => m with { FlyTumble = !m.FlyTumble, FlyExplode = false },
+                Disabled: FliesDisabled
+            ),
+            new(
+                "fly-explode",
+                "FLY EXPLODE",
+                "OFF",
+                m => OnOff(m.FlyExplode),
+                (m, _) => m with { FlyExplode = !m.FlyExplode, FlyTumble = false },
+                Disabled: FliesDisabled
+            ),
             new(
                 "fly-min",
                 "FLY DELAY MIN",

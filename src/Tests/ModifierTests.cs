@@ -12,6 +12,7 @@ internal static class ModifierTests
     {
         Configuration();
         Scores();
+        TongueFlyModifierTests.Run();
         Rollback();
         Console.WriteLine("Modifiers: configuration, scoring and lossy rollback passed");
     }
@@ -58,6 +59,26 @@ internal static class ModifierTests
             },
             defaults with
             {
+                TongueHurtbox = true,
+            },
+            defaults with
+            {
+                TongueJump = true,
+            },
+            defaults with
+            {
+                ChargeTongues = true,
+            },
+            defaults with
+            {
+                FlyTumble = true,
+            },
+            defaults with
+            {
+                FlyExplode = true,
+            },
+            defaults with
+            {
                 FlyEnabled = false,
             },
             defaults with
@@ -93,6 +114,11 @@ internal static class ModifierTests
                 defaults with
                 {
                     FlySpawnMinSeconds = 46,
+                },
+                defaults with
+                {
+                    FlyTumble = true,
+                    FlyExplode = true,
                 },
                 defaults with
                 {
@@ -211,6 +237,11 @@ internal static class ModifierTests
                     PhysicsFixes = fixes,
                     BodyBouncing = true,
                     RedirectBounces = true,
+                    TongueHurtbox = true,
+                    TongueJump = true,
+                    ChargeTongues = true,
+                    FlyTumble = fixes,
+                    FlyExplode = !fixes,
                     BounceBeforeRecoveryOnly = false,
                     SuicidePenalty = true,
                     MatchScoring = MatchScoring.CumulativePoints,

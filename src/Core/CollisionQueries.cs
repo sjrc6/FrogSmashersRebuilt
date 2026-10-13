@@ -28,6 +28,27 @@ internal static class CollisionQueries
     public static bool SegmentBox(FixedVector a, FixedVector b, Fixed left, Fixed bottom, Fixed right, Fixed top) =>
         SweepBox(a, b - a, left, bottom, right, top, out _, out _);
 
+    public static Fixed SegmentDistanceSquared(FixedVector a, FixedVector b, FixedVector c, FixedVector d)
+    {
+        static Fixed Cross(FixedVector first, FixedVector second) => first.X * second.Y - first.Y * second.X;
+
+        var first = b - a;
+        var second = d - c;
+        var denominator = Cross(first, second);
+        if (denominator != Fixed.Zero)
+        {
+            var alongFirst = Cross(c - a, second) / denominator;
+            var alongSecond = Cross(c - a, first) / denominator;
+            if (alongFirst >= 0 && alongFirst <= 1 && alongSecond >= 0 && alongSecond <= 1)
+                return Fixed.Zero;
+        }
+
+        return Fixed.Min(
+            Fixed.Min(PointSegmentDistanceSquared(a, c, d), PointSegmentDistanceSquared(b, c, d)),
+            Fixed.Min(PointSegmentDistanceSquared(c, a, b), PointSegmentDistanceSquared(d, a, b))
+        );
+    }
+
     public static bool SweepBox(
         FixedVector start,
         FixedVector delta,

@@ -5,6 +5,7 @@ public enum HitKind
     Bat,
     Tongue,
     Body,
+    FlyExplosion,
 }
 
 public enum SimulationEventKind
@@ -33,6 +34,10 @@ public enum SimulationEventKind
     BeachBallHit,
     BeachBallBounce,
     BeachBallLaunch,
+    FlyHit,
+    FlyBounce,
+    FlyExplode,
+    FlyLaunch,
 }
 
 public readonly record struct SimulationEvent(

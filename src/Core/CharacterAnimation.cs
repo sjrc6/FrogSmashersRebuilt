@@ -37,6 +37,8 @@ internal static class CharacterAnimation
 
     private static string Tongue(PlayerState player)
     {
+        if (player.TonguePhase == TonguePhase.Charging)
+            return "tongue";
         if (player.TonguePhase == TonguePhase.Burping)
         {
             return "tongueBurp";

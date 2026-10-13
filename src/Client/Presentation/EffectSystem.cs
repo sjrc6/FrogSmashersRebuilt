@@ -661,6 +661,31 @@ internal sealed class EffectSystem
         UpdateFlight(visual, pose.Flight, dt, ball.HitstopTicks > 0 ? 0 : dt);
     }
 
+    public void UpdateFly(World world, Vector2 position, FlyPresentation pose, float dt)
+    {
+        var fly = world.Fly;
+        var visual = new FlightVisual
+        {
+            Owner = 9,
+            Tick = world.TickNumber,
+            Hits = fly.HitsTaken,
+            Center = position,
+            Velocity = new(fly.VX.ToFloat(), fly.VY.ToFloat()),
+            SpritePosition = position,
+            Sprite = pose.Sprite,
+            SpriteScale = 1,
+            Facing = 1,
+            Rotation = pose.Rotation,
+            Color = Color.White,
+            AttackerColor = fly.LastHitBy >= 0 ? colorFor(world, fly.LastHitBy) : null,
+            Airborne = fly.Phase == FlyPhase.Tumbling,
+            Silhouette = fly.HitsTaken > 0,
+            Frozen = fly.HitstopTicks > 0 || fly.Phase == FlyPhase.Exploding,
+            Recovered = fly.Phase != FlyPhase.Tumbling,
+        };
+        UpdateFlight(visual, pose.Flight, dt, visual.Frozen ? 0 : dt);
+    }
+
     internal enum VisualEffectKind
     {
         Sprite,

@@ -26,6 +26,7 @@ public enum TonguePhase
     RetractingHitFly,
     Stunned,
     Burping,
+    Charging,
 }
 
 public sealed class PlayerState
@@ -59,6 +60,8 @@ public sealed class PlayerState
     public Fixed TongueX = 1;
     public Fixed TongueY;
     public Fixed TongueDistance;
+    public Fixed TongueChargeTicks;
+    public int TongueLengthMultiplier = 1;
     public Fixed AttackCharge;
     public Fixed AttackTimeLeft;
     public Fixed AttackRecoverTimeLeft;
@@ -116,6 +119,8 @@ public sealed class PlayerState
         writer.Write(TongueX.Raw);
         writer.Write(TongueY.Raw);
         writer.Write(TongueDistance.Raw);
+        writer.Write(TongueChargeTicks.Raw);
+        writer.Write(TongueLengthMultiplier);
         writer.Write(AttackCharge.Raw);
         writer.Write(AttackTimeLeft.Raw);
         writer.Write(AttackRecoverTimeLeft.Raw);
@@ -169,6 +174,8 @@ public sealed class PlayerState
             TongueX = new(reader.ReadInt64()),
             TongueY = new(reader.ReadInt64()),
             TongueDistance = new(reader.ReadInt64()),
+            TongueChargeTicks = new(reader.ReadInt64()),
+            TongueLengthMultiplier = reader.ReadInt32(),
             AttackCharge = new(reader.ReadInt64()),
             AttackTimeLeft = new(reader.ReadInt64()),
             AttackRecoverTimeLeft = new(reader.ReadInt64()),

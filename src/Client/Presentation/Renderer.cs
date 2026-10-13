@@ -27,8 +27,6 @@ public sealed partial class Renderer : IDisposable
     private MapData? activeMap;
     private float parallaxDelay;
     private readonly Dictionary<long, SpriteAnimation> sceneClocks = new();
-    private SpriteAnimation flyClock = new();
-    private bool flyWasActive;
     private readonly List<Impact> impacts = new();
     private float frameSeconds = 1 / 60f;
     private float time;
@@ -161,6 +159,7 @@ public sealed partial class Renderer : IDisposable
     {
         effects.Reset();
         ballPose = new();
+        flyPose = new();
         impacts.Clear();
         parallax.Clear();
         seen.Clear();
@@ -200,6 +199,7 @@ public sealed partial class Renderer : IDisposable
     {
         effects.Rewind(fromTick);
         ballPose.Rewind(fromTick);
+        flyPose.Rewind(fromTick);
         impacts.RemoveAll(e => e.Tick >= fromTick);
         scores.Rewind(fromTick);
         seen.RemoveWhere(id => (id >> 12) >= fromTick);
@@ -283,6 +283,7 @@ public sealed partial class Renderer : IDisposable
                     );
                     break;
                 case SimulationEventKind.BeachBallBounce:
+                case SimulationEventKind.FlyBounce:
                 case SimulationEventKind.Bounce:
                     if (e.Kind == SimulationEventKind.BeachBallBounce)
                     {
@@ -290,11 +291,20 @@ public sealed partial class Renderer : IDisposable
                             break;
                         ballPose.Bounce(assets, world.BeachBall, e, age);
                     }
+                    if (e.Kind == SimulationEventKind.FlyBounce)
+                    {
+                        if (e.Strength <= 5)
+                            break;
+                        flyPose.Bounce(e, age);
+                    }
                     var side = e.SurfaceSide == 0 ? Contact(world.Map, p) : Surface(e.SurfaceSide);
-                    var offset =
-                        e.Kind == SimulationEventKind.BeachBallBounce
-                            ? (side.Offset - Vector2.UnitY) * BeachBallState.Radius.ToFloat()
-                            : side.Offset;
+                    var offset = e.Kind switch
+                    {
+                        SimulationEventKind.BeachBallBounce => (side.Offset - Vector2.UnitY)
+                            * BeachBallState.Radius.ToFloat(),
+                        SimulationEventKind.FlyBounce => (side.Offset - Vector2.UnitY) * FlyState.Radius.ToFloat(),
+                        _ => side.Offset,
+                    };
                     effects.Add(
                         side.Offset.X != 0 ? "WallPuff" : "BouncePuff",
                         p + offset,
@@ -322,9 +332,12 @@ public sealed partial class Renderer : IDisposable
 
                     break;
                 case SimulationEventKind.BeachBallHit:
+                case SimulationEventKind.FlyHit:
                 case SimulationEventKind.Hit:
                     if (e.Kind == SimulationEventKind.BeachBallHit)
                         ballPose.ClearSquish();
+                    if (e.Kind == SimulationEventKind.FlyHit)
+                        flyPose.ClearSquish();
                     if (e.HitKind == HitKind.Tongue)
                     {
                         break;
@@ -356,7 +369,10 @@ public sealed partial class Renderer : IDisposable
                             Life = life,
                         }
                     );
-                    if (e.Power >= Fixed.One)
+                    if (
+                        e.Power >= Fixed.One
+                        || e.Kind == SimulationEventKind.FlyHit && e.HitKind == HitKind.FlyExplosion
+                    )
                     {
                         effects.Add(
                             "HitStarPowerHit",
@@ -377,7 +393,7 @@ public sealed partial class Renderer : IDisposable
                         new()
                         {
                             Tick = e.Tick,
-                            Position = e.Kind == SimulationEventKind.BeachBallHit ? p : p + Vector2.UnitY,
+                            Position = e.Kind == SimulationEventKind.Hit ? p + Vector2.UnitY : p,
                             Direction = new Vector2(-direction.X, -direction.Y),
                             Life = .1f + life * .1f,
                             Age = age,
@@ -388,6 +404,21 @@ public sealed partial class Renderer : IDisposable
                         cameraController.Shake(Vector2.Normalize(direction), e.ComboHits * .75f);
                     }
 
+                    break;
+                case SimulationEventKind.FlyExplode:
+                    effects.Add(
+                        "SmokeRing",
+                        p,
+                        Color.White,
+                        e.Tick,
+                        new EffectSpawn
+                        {
+                            Age = age,
+                            Scale = 2,
+                            Life = .4f,
+                        }
+                    );
+                    cameraController.Shake(Vector2.UnitY, 2);
                     break;
                 case SimulationEventKind.TongueHit:
                     var tip = p;
@@ -428,13 +459,12 @@ public sealed partial class Renderer : IDisposable
 
         effects.Reset();
         ballPose = new();
+        flyPose = new();
         impacts.Clear();
         parallax.Clear();
         sceneClocks.Clear();
         smokeEmitters.Clear();
         bunkerEffects = null;
-        flyClock = new();
-        flyWasActive = false;
         parallaxDelay = 0;
         sceneTime = 0;
         activeMap = map;

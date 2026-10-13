@@ -222,7 +222,13 @@ internal sealed class CharacterPresentation
 
                 break;
             case State.Tongue:
-                if (player.TonguePhase == TonguePhase.Burping)
+                if (player.TonguePhase == TonguePhase.Charging)
+                {
+                    frame = 0;
+                    counter = 0;
+                    Sprite = assets.Frame("tongue", 0);
+                }
+                else if (player.TonguePhase == TonguePhase.Burping)
                 {
                     if (!wasBurp)
                     {

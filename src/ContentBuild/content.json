@@ -676,6 +676,7 @@
     "Textures/Sprites/Effects/splash_v1_06.xnb": "a8f1e2138c4149397bf4d58afec6d610259888fc6525afd182569a2b04457117",
     "Textures/Sprites/FLY/fly_01.xnb": "53c504e8f4d6cfcc06239e8028db40eef7b20e4a3ebb5fa4a0112e8b4e993f05",
     "Textures/Sprites/FLY/fly_02.xnb": "406da9c47ff18274c22bd5b740fb64a37ef8e01c7a1eb8fd562e697f136ccad4",
+    "Textures/Sprites/FLY/fly_tumble.xnb": "fe0a68e6cb921669c5366e0288d3e259c098298e1341efa7bb0e5d7ec414a810",
     "Textures/Sprites/Frog/bat_2.xnb": "edf7a6fd2f4c71cfe9a7e8bbae16b4e4ae9eb88411abbbfe3d7e6d63e4326543",
     "Textures/Sprites/Frog/bat_3.xnb": "c01e9aa26a3146ee4fda37e2a4ec25ec13fa620ff90cd65c11cf91ef8bd12635",
     "Textures/Sprites/Frog/bat_4.xnb": "33ccb43bf1675c62a7c7ee188b0c150beafc0ccb1c81364f87940a51904ca916",
@@ -1106,7 +1107,7 @@
     "smokeRingDistance": 7.5,
     "trailDelay": 0.01
   },
-  "ContentHash": "55cc255ecc68de947516c901f1e6fcf44e946a9ee85cbf4f5a46f5371e30ed16",
+  "ContentHash": "ca5e9e0b4c55ba13dcda9c671497a322ad93c0f40f88a10df66db928d3f100cb",
   "Effects": {
     "BackgroundEscapeFlames": {
       "Animations": {
@@ -108256,6 +108257,108 @@
         [
           -0.8999999761581421,
           0.6000000238418579
+        ]
+      ],
+      "Width": 128
+    },
+    "fly-tumble": {
+      "Height": 128,
+      "Name": "fly_tumble",
+      "Path": "Textures/Sprites/FLY/fly_tumble",
+      "PivotX": 0.5,
+      "PivotY": 0.5,
+      "PixelsPerUnit": 10,
+      "PointFilter": true,
+      "RectHeight": 128,
+      "RectWidth": 128,
+      "RectX": 0,
+      "RectY": 0,
+      "Triangles": [
+        7,
+        6,
+        5,
+        4,
+        5,
+        6,
+        3,
+        5,
+        4,
+        0,
+        3,
+        4,
+        1,
+        3,
+        0,
+        2,
+        1,
+        0
+      ],
+      "UV": [
+        [
+          0.5234375,
+          0.5625
+        ],
+        [
+          0.5546875,
+          0.484375
+        ],
+        [
+          0.5546875,
+          0.546875
+        ],
+        [
+          0.515625,
+          0.46875
+        ],
+        [
+          0.484375,
+          0.5625
+        ],
+        [
+          0.4765625,
+          0.46875
+        ],
+        [
+          0.46875,
+          0.5390625
+        ],
+        [
+          0.46875,
+          0.484375
+        ]
+      ],
+      "Vertices": [
+        [
+          0.30000001192092896,
+          0.800000011920929
+        ],
+        [
+          0.699999988079071,
+          -0.20000000298023224
+        ],
+        [
+          0.699999988079071,
+          0.6000000238418579
+        ],
+        [
+          0.20000000298023224,
+          -0.4000000059604645
+        ],
+        [
+          -0.20000000298023224,
+          0.800000011920929
+        ],
+        [
+          -0.30000001192092896,
+          -0.4000000059604645
+        ],
+        [
+          -0.4000000059604645,
+          0.5
+        ],
+        [
+          -0.4000000059604645,
+          -0.20000000298023224
         ]
       ],
       "Width": 128

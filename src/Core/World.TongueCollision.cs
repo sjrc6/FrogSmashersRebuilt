@@ -4,6 +4,20 @@ namespace FrogSmashers.Core;
 
 public sealed partial class World
 {
+    private static bool CapsuleTouchesTongue(FixedVector start, FixedVector end, Fixed radius, PlayerState player)
+    {
+        if (
+            player.Mode != CharacterMode.Tongue
+            || player.TonguePhase is TonguePhase.Stunned or TonguePhase.Burping or TonguePhase.Charging
+            || player.TongueDistance <= 0
+        )
+            return false;
+
+        Fixed combinedRadius = radius + FromDecimal(.5m);
+        return CollisionQueries.SegmentDistanceSquared(start, end, player.TongueOrigin, player.TongueTip)
+            <= combinedRadius * combinedRadius;
+    }
+
     private bool CanTongueHit(PlayerState attacker, PlayerState target) =>
         !Rules.Lobby && target != attacker && target.Alive && (!Rules.UsesTeams || target.Team != attacker.Team);
 

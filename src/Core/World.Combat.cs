@@ -56,22 +56,28 @@ public sealed partial class World
             {
                 var direction = new FixedVector(player.AttackX, player.AttackY).Normalized;
                 var (start, end, radius) = GetBatHitbox(player);
+                var flyRadius = radius + FlyState.Radius;
+                bool hitFly =
+                    !Rules.Lobby
+                    && Rules.Modifiers.FlyEnabled
+                    && (Rules.Modifiers.FlyTumble || Rules.Modifiers.FlyExplode)
+                    && Fly.Active
+                    && Fly.Phase != FlyPhase.Exploding
+                    && PointSegmentDistanceSquared(Fly.Position, start, end) <= flyRadius * flyRadius;
+                var power = GetAttackCharge(player) + (player.HasFly ? FromDecimal(1.5m) : Fixed.Zero);
                 foreach (var other in Players)
                 {
                     if (
                         other != player
                         && other.Alive
                         && (!Rules.UsesTeams || player.Team != other.Team)
-                        && CapsuleTouchesPlayer(start, end, radius, other)
+                        && (
+                            CapsuleTouchesPlayer(start, end, radius, other)
+                            || Rules.Modifiers.TongueHurtbox && CapsuleTouchesTongue(start, end, radius, other)
+                        )
                     )
                     {
-                        Hit(
-                            other,
-                            player,
-                            new(player.AttackX, player.AttackY),
-                            GetAttackCharge(player) + (player.HasFly ? FromDecimal(1.5m) : Fixed.Zero),
-                            false
-                        );
+                        Hit(other, player, new(player.AttackX, player.AttackY), power, HitKind.Bat);
                     }
                 }
 
@@ -84,6 +90,8 @@ public sealed partial class World
                 )
                     HitBeachBall(player, direction, GetAttackCharge(player));
                 player.AttackRecoverTimeLeft = tuning.AttackRecoverTime;
+                if (hitFly)
+                    HitFly(player, direction, power);
             }
         }
         else if (player.AttackPhase == AttackPhase.Recovering)
@@ -117,8 +125,17 @@ public sealed partial class World
 
         player.Mode = CharacterMode.Tongue;
         player.TongueDistance = 0;
-        player.TonguePhase = TonguePhase.Extending;
+        player.TongueChargeTicks = 0;
+        player.TongueLengthMultiplier = 1;
+        player.TonguePhase = Rules.Modifiers.ChargeTongues ? TonguePhase.Charging : TonguePhase.Extending;
         player.TongueDelayLeft = tuning.TongueDelay;
+        AimTongue(player, input);
+        if (!Rules.Modifiers.ChargeTongues)
+            Emit(SimulationEventKind.TongueLaunch, player);
+    }
+
+    private static void AimTongue(PlayerState player, InputFrame input)
+    {
         var direction = GetAimDirection(player, input);
         if (input.X != 0)
         {
@@ -129,12 +146,25 @@ public sealed partial class World
         direction = direction.Normalized;
         player.TongueX = direction.X;
         player.TongueY = direction.Y;
-        Emit(SimulationEventKind.TongueLaunch, player);
     }
 
-    private void UpdateTongue(PlayerState player, FixedVector priorOrigin)
+    private void UpdateTongue(PlayerState player, InputFrame input, FixedVector priorOrigin)
     {
         var deltaTime = player.LocalDelta;
+        if (player.TonguePhase == TonguePhase.Charging)
+        {
+            AimTongue(player, input);
+            if (input.Tongue)
+            {
+                player.TongueChargeTicks += deltaTime / TickDuration;
+                return;
+            }
+            int chargeSteps = checked((int)(player.TongueChargeTicks.Raw / (TickRate / 2 * Fixed.Unit)));
+            player.TongueLengthMultiplier = Math.Max(1, chargeSteps);
+            player.TongueChargeTicks = 0;
+            player.TonguePhase = TonguePhase.Extending;
+            Emit(SimulationEventKind.TongueLaunch, player);
+        }
         if (player.TongueDelayLeft > 0)
         {
             player.TongueDelayLeft -= deltaTime;
@@ -145,20 +175,28 @@ public sealed partial class World
         if (player.TonguePhase == TonguePhase.Extending)
         {
             var priorTip = priorOrigin + direction * player.TongueDistance;
-            player.TongueDistance += tuning.TongueSpeed * deltaTime;
+            var priorDistance = player.TongueDistance;
+            var extension = tuning.TongueSpeed * player.TongueLengthMultiplier * deltaTime;
             if (player.TongueX * player.VX < 0)
             {
-                player.TongueDistance += Fixed.Abs(player.VX) * deltaTime;
+                extension += Fixed.Abs(player.VX) * deltaTime;
             }
 
             if (player.TongueY * player.VY < 0)
             {
-                player.TongueDistance += Fixed.Abs(player.VY) * deltaTime;
+                extension += Fixed.Abs(player.VY) * deltaTime;
             }
 
-            CheckTongueContact(player, priorTip);
+            for (int step = 1; step <= player.TongueLengthMultiplier; step++)
+            {
+                player.TongueDistance = priorDistance + extension * step / player.TongueLengthMultiplier;
+                CheckTongueContact(player, priorTip);
+                if (player.TonguePhase != TonguePhase.Extending)
+                    break;
+                priorTip = player.TongueTip;
+            }
 
-            bool atRangeLimit = player.TongueDistance > tuning.TongueRange;
+            bool atRangeLimit = player.TongueDistance > tuning.TongueRange * player.TongueLengthMultiplier;
             if (player.TonguePhase == TonguePhase.Extending && atRangeLimit)
             {
                 player.TonguePhase = TonguePhase.Retracting;
@@ -166,7 +204,7 @@ public sealed partial class World
         }
         else if (player.TonguePhase == TonguePhase.AttachedToTerrain)
         {
-            player.TongueDistance -= tuning.TongueRetractSpeedLatched * deltaTime;
+            player.TongueDistance -= tuning.TongueRetractSpeedLatched * player.TongueLengthMultiplier * deltaTime;
             if (player.TongueDistance <= 0)
             {
                 player.Mode = player.WasBouncingBeforeTongue ? CharacterMode.Bouncing : CharacterMode.Normal;
@@ -191,7 +229,9 @@ public sealed partial class World
                     player.TonguePhase == TonguePhase.RetractingHitEnemy
                         ? tuning.TongueSpeed
                         : tuning.TongueRetractSpeedMissed
-                ) * deltaTime;
+                )
+                * player.TongueLengthMultiplier
+                * deltaTime;
             if (player.TonguePhase == TonguePhase.RetractingHitFly)
             {
                 if (Fly.Owner != player.Slot || !Fly.Active)
@@ -283,8 +323,7 @@ public sealed partial class World
                 if (
                     CanTongueHit(player, other)
                     && other.Mode == CharacterMode.Tongue
-                    && other.TonguePhase != TonguePhase.Stunned
-                    && other.TonguePhase != TonguePhase.Burping
+                    && other.TonguePhase is not (TonguePhase.Stunned or TonguePhase.Burping or TonguePhase.Charging)
                     && (other.TongueTip - tip).LengthSquared <= FromDecimal(2.25m)
                 )
                 {
@@ -303,7 +342,7 @@ public sealed partial class World
                         && CircleTouchesBox(tip, 1, other.X - 1, other.Y, other.X + 1, other.Y + 2)
                     )
                     {
-                        Hit(other, player, -direction, 0, true);
+                        Hit(other, player, -direction, 0, HitKind.Tongue);
                         player.TonguePhase = TonguePhase.RetractingHitEnemy;
                         Emit(SimulationEventKind.TongueHit, player, other.Slot, position: tip);
                     }
@@ -331,6 +370,7 @@ public sealed partial class World
         victim.CanBounceTongue = false;
         victim.HasBounceTongued = false;
         victim.Mode = CharacterMode.Bouncing;
+        victim.TongueChargeTicks = 0;
         victim.AttackPhase = AttackPhase.Idle;
         victim.SkidRecoverLeft = FromDecimal(.5m);
         victim.TimeSinceHit = 0;
@@ -340,13 +380,14 @@ public sealed partial class World
         victim.AnimationTime = 0;
     }
 
-    private void Hit(PlayerState victim, PlayerState attacker, FixedVector direction, Fixed power, bool tongue)
+    private void Hit(PlayerState victim, PlayerState attacker, FixedVector direction, Fixed power, HitKind kind)
     {
         if (Rules.Lobby)
         {
             Emit(SimulationEventKind.LobbyContact, victim, attacker.Slot);
             return;
         }
+        bool tongue = kind == HitKind.Tongue;
         if (!tongue)
         {
             victim.HitsTaken++;
@@ -358,12 +399,16 @@ public sealed partial class World
                 Fly.X = victim.Center.X;
                 Fly.Y = victim.Center.Y;
                 ReleaseFly();
+                ResetFlyTumble();
             }
         }
 
         ResetHit(victim, attacker.Slot, direction);
-        var velocity = HitVelocity(direction, victim.HitsTaken, power, tongue);
         var totalPower = HitPower(victim.HitsTaken, power, tongue);
+        var velocity =
+            kind == HitKind.FlyExplosion
+                ? direction.Normalized * totalPower
+                : HitVelocity(direction, victim.HitsTaken, power, tongue);
         SetVelocity(victim, velocity);
         ApplyHitstop(victim, tongue ? FromDecimal(.75m) : victim.HitsTaken + power, 0);
         ApplyHitstop(attacker, tongue ? FromDecimal(.5m) : victim.HitsTaken + power, 0);
@@ -379,7 +424,7 @@ public sealed partial class World
             totalPower,
             power,
             victim.HitsTaken,
-            tongue ? HitKind.Tongue : HitKind.Bat,
+            kind,
             victim.Velocity,
             hitstopSeconds: (Fixed)victim.HitstopTicks / TickRate
         );

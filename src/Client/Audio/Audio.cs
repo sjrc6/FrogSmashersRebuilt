@@ -339,24 +339,28 @@ public sealed class Audio : IDisposable
         {
             long id = e.Id << 3;
             var position = new Vector3(e.X.ToFloat(), e.Y.ToFloat(), 0);
-            if (e.Kind == SimulationEventKind.BeachBallHit)
+            if (e.Kind is SimulationEventKind.BeachBallHit or SimulationEventKind.FlyHit)
             {
                 PlayAt(
-                    e.HitKind == HitKind.Bat ? "BatHit" + Math.Clamp(e.ComboHits, 1, 5) : "TongueCollide",
+                    e.HitKind != HitKind.Tongue ? "BatHit" + Math.Clamp(e.ComboHits, 1, 5) : "TongueCollide",
                     id,
                     .5f,
                     position
                 );
                 continue;
             }
-            if (e.Kind == SimulationEventKind.BeachBallLaunch)
+            if (e.Kind is SimulationEventKind.BeachBallLaunch or SimulationEventKind.FlyLaunch)
             {
                 PlayAt("Launch3", id, .5f, position);
                 continue;
             }
             if (e.Kind == SimulationEventKind.Hit)
             {
-                if (e.HitKind == HitKind.Bat)
+                if (e.HitKind == HitKind.FlyExplosion)
+                {
+                    PlayAt("BatHitVoice" + Math.Clamp(e.ComboHits, 1, 5), id, .5f, position);
+                }
+                else if (e.HitKind == HitKind.Bat)
                 {
                     PlayAt("BatHit" + Math.Clamp(e.ComboHits, 1, 5), id, .5f, position);
                     PlayAt("BatHitVoice" + Math.Clamp(e.ComboHits, 1, 5), id | 1, .5f, position);
@@ -405,6 +409,8 @@ public sealed class Audio : IDisposable
                 SimulationEventKind.Burp => "Burp",
                 SimulationEventKind.Bounce => "FrogBounce",
                 SimulationEventKind.BeachBallBounce => "BeachBallBounce",
+                SimulationEventKind.FlyBounce => "FrogBounce",
+                SimulationEventKind.FlyExplode => "Knockout3",
                 SimulationEventKind.Death => e.Other < 0 ? "KnockoutSuicide"
                 : e.Strength <= 1 ? "Knockout1"
                 : e.Strength <= 3 ? "Knockout2"

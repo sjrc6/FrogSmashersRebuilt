@@ -5,7 +5,7 @@ namespace FrogSmashers.Core;
 public sealed partial class World
 {
     private const int SnapshotMagic = 0x46535253;
-    private const int SnapshotVersion = 10;
+    private const int SnapshotVersion = 11;
     private readonly MemoryStream snapshotBuffer = new(4096);
 
     public byte[] Capture()
@@ -82,6 +82,7 @@ public sealed partial class World
         var ball = BeachBallState.ReadSnapshot(reader);
         if (
             stream.Position != stream.Length
+            || !Enum.IsDefined(fly.Phase)
             || fly.Owner < -1
             || fly.Owner >= count
             || fly.IngestedBy < -1

@@ -1,8 +1,26 @@
 namespace FrogSmashers.Core;
 
+public enum FlyPhase
+{
+    Flying,
+    Tumbling,
+    Recovering,
+    Exploding,
+}
+
 public sealed class FlyState
 {
+    public static readonly Fixed Radius = Fixed.FromDecimal(.75m);
     public bool Active;
+    public FlyPhase Phase;
+    public bool HasBounced;
+    public int HitsTaken;
+    public int LastHitBy = -1;
+    public int HitstopTicks;
+    public int RecoveryTicks;
+    public Fixed TimeSinceHit;
+    public Fixed GravityRestore;
+    public Fixed ExplosionPower;
     public int Owner = -1;
     public int IngestedBy = -1;
     public int ClaimTicks;
@@ -19,6 +37,15 @@ public sealed class FlyState
     internal void WriteSnapshot(BinaryWriter writer)
     {
         writer.Write(Active);
+        writer.Write((int)Phase);
+        writer.Write(HasBounced);
+        writer.Write(HitsTaken);
+        writer.Write(LastHitBy);
+        writer.Write(HitstopTicks);
+        writer.Write(RecoveryTicks);
+        writer.Write(TimeSinceHit.Raw);
+        writer.Write(GravityRestore.Raw);
+        writer.Write(ExplosionPower.Raw);
         writer.Write(Owner);
         writer.Write(IngestedBy);
         writer.Write(ClaimTicks);
@@ -36,6 +63,15 @@ public sealed class FlyState
         new()
         {
             Active = reader.ReadBoolean(),
+            Phase = (FlyPhase)reader.ReadInt32(),
+            HasBounced = reader.ReadBoolean(),
+            HitsTaken = reader.ReadInt32(),
+            LastHitBy = reader.ReadInt32(),
+            HitstopTicks = reader.ReadInt32(),
+            RecoveryTicks = reader.ReadInt32(),
+            TimeSinceHit = new(reader.ReadInt64()),
+            GravityRestore = new(reader.ReadInt64()),
+            ExplosionPower = new(reader.ReadInt64()),
             Owner = reader.ReadInt32(),
             IngestedBy = reader.ReadInt32(),
             ClaimTicks = reader.ReadInt32(),

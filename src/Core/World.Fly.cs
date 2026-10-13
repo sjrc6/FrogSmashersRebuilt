@@ -13,13 +13,14 @@ public sealed partial class World
 
     private bool TryClaimFly(PlayerState claimant)
     {
-        if (!Fly.Active || Fly.Owner >= 0 && Fly.Owner != claimant.Slot)
+        if (!Fly.Active || Fly.Phase == FlyPhase.Exploding || Fly.Owner >= 0 && Fly.Owner != claimant.Slot)
         {
             return false;
         }
 
         Fly.Owner = claimant.Slot;
         Fly.ClaimTicks = 3 * TickRate;
+        ResetFlyTumble();
         return true;
     }
 
@@ -64,6 +65,7 @@ public sealed partial class World
             }
 
             Fly.Active = true;
+            ResetFlyTumble();
             Fly.X = FromDecimal(Map.FlySpawn.X);
             Fly.Y = FromDecimal(Map.FlySpawn.Y);
             var initial = new FixedVector(RandomRange(-10000, 10001), RandomRange(-10000, 10001)).Normalized * 10;
@@ -73,7 +75,7 @@ public sealed partial class World
             Emit(SimulationEventKind.FlySpawn);
         }
 
-        if (--Fly.DirectionTicks <= 0)
+        if (Fly.Phase == FlyPhase.Flying && --Fly.DirectionTicks <= 0)
         {
             FlyDirection();
         }
@@ -94,30 +96,10 @@ public sealed partial class World
 
         if (Fly.Owner < 0)
         {
-            var velocity = new FixedVector(Fly.VX, Fly.VY);
-            var difference = new FixedVector(Fly.TargetVX, Fly.TargetVY) - velocity;
-            var step = 5 * TickDuration;
-            velocity += difference.LengthSquared <= step * step ? difference : difference.Normalized * step;
-            Fly.VX = velocity.X;
-            Fly.VY = velocity.Y;
-            var dx = Fly.VX * TickDuration;
-            var dy = (Fly.VY + FlyBob() * 3) * TickDuration;
-            if (dx != Fixed.Zero && Ray(Fly.Position, true, dx + (dx > 0 ? 1 : -1), false, out _))
-            {
-                dx = 0;
-                Fly.VX *= -FromDecimal(.5m);
-                FlyDirection();
-            }
-
-            if (dy != Fixed.Zero && Ray(Fly.Position, false, dy + (dy > 0 ? 1 : -1), false, out _))
-            {
-                dy = 0;
-                Fly.VY *= -FromDecimal(.5m);
-                FlyDirection();
-            }
-
-            Fly.X += dx;
-            Fly.Y += dy;
+            if (Fly.Phase == FlyPhase.Flying)
+                MoveFlyingFly();
+            else
+                UpdateFlyTumble();
         }
 
         if (
@@ -129,8 +111,37 @@ public sealed partial class World
         {
             Fly.Active = false;
             ReleaseFly();
+            ResetFlyTumble();
             Fly.SpawnTicks = NextFlySpawnTicks();
         }
+    }
+
+    private void MoveFlyingFly()
+    {
+        var velocity = new FixedVector(Fly.VX, Fly.VY);
+        var difference = new FixedVector(Fly.TargetVX, Fly.TargetVY) - velocity;
+        var step = 5 * TickDuration;
+        velocity += difference.LengthSquared <= step * step ? difference : difference.Normalized * step;
+        Fly.VX = velocity.X;
+        Fly.VY = velocity.Y;
+        var dx = Fly.VX * TickDuration;
+        var dy = (Fly.VY + FlyBob() * 3) * TickDuration;
+        if (dx != Fixed.Zero && Ray(Fly.Position, true, dx + (dx > 0 ? 1 : -1), false, out _))
+        {
+            dx = 0;
+            Fly.VX *= -FromDecimal(.5m);
+            FlyDirection();
+        }
+
+        if (dy != Fixed.Zero && Ray(Fly.Position, false, dy + (dy > 0 ? 1 : -1), false, out _))
+        {
+            dy = 0;
+            Fly.VY *= -FromDecimal(.5m);
+            FlyDirection();
+        }
+
+        Fly.X += dx;
+        Fly.Y += dy;
     }
 
     private Fixed FlyBob()

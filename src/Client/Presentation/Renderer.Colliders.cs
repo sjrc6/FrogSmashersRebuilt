@@ -21,13 +21,15 @@ public sealed partial class Renderer
             ColliderBox(ColliderPoint(player.Center), Vector2.One, Color.Yellow);
             if (
                 player.Mode == CharacterMode.Tongue
-                && player.TonguePhase is not (TonguePhase.Stunned or TonguePhase.Burping)
+                && player.TonguePhase is not (TonguePhase.Stunned or TonguePhase.Burping or TonguePhase.Charging)
             )
             {
                 var tip = ColliderPoint(player.TongueTip);
                 bool extending = player.TonguePhase == TonguePhase.Extending && player.TongueDelayLeft <= 0;
                 float opacity = extending ? 1 : .4f;
                 ColliderLine(ColliderPoint(player.TongueOrigin), tip, Color.Magenta * .4f);
+                if (world.Rules.Modifiers.TongueHurtbox)
+                    ColliderCapsule(ColliderPoint(player.TongueOrigin), tip, .5f, Color.Yellow);
                 ColliderArc(tip, .5f, 0, MathHelper.TwoPi, Color.Magenta * opacity);
                 ColliderArc(tip, .75f, 0, MathHelper.TwoPi, Color.Violet * opacity);
                 ColliderArc(tip, 1, 0, MathHelper.TwoPi, Color.Red * opacity);
@@ -50,7 +52,17 @@ public sealed partial class Renderer
                 Color.White
             );
         if (world.Fly.Active)
+        {
             ColliderBox(ColliderPoint(world.Fly.Position), new(.75f), Color.DeepSkyBlue);
+            if (world.Rules.Modifiers.FlyTumble || world.Rules.Modifiers.FlyExplode)
+                ColliderArc(
+                    ColliderPoint(world.Fly.Position),
+                    FlyState.Radius.ToFloat(),
+                    0,
+                    MathHelper.TwoPi,
+                    Color.Yellow
+                );
+        }
         canvas.End();
     }
 
