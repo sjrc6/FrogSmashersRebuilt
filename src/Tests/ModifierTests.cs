@@ -59,7 +59,7 @@ internal static class ModifierTests
             },
             defaults with
             {
-                TongueHurtbox = true,
+                TongueParry = true,
             },
             defaults with
             {
@@ -76,6 +76,7 @@ internal static class ModifierTests
             defaults with
             {
                 FlyExplode = true,
+                FlyTumble = true,
             },
             defaults with
             {
@@ -117,7 +118,7 @@ internal static class ModifierTests
                 },
                 defaults with
                 {
-                    FlyTumble = true,
+                    FlyTumble = false,
                     FlyExplode = true,
                 },
                 defaults with
@@ -237,10 +238,10 @@ internal static class ModifierTests
                     PhysicsFixes = fixes,
                     BodyBouncing = true,
                     RedirectBounces = true,
-                    TongueHurtbox = true,
+                    TongueParry = true,
                     TongueJump = true,
                     ChargeTongues = true,
-                    FlyTumble = fixes,
+                    FlyTumble = true,
                     FlyExplode = !fixes,
                     BounceBeforeRecoveryOnly = false,
                     SuicidePenalty = true,

@@ -35,10 +35,12 @@ public sealed partial class World
 
         if (player.OnGround)
         {
+            player.FullTongueJump = false;
             player.JumpGraceLeft = tuning.JumpGraceTime;
         }
         else if (player.WallSliding)
         {
+            player.FullTongueJump = false;
             player.JumpGraceLeft = tuning.JumpGraceTime * FromDecimal(.66m);
         }
         else
@@ -47,6 +49,8 @@ public sealed partial class World
             if (player.VY <= tuning.GravityGraceThreshold)
             {
                 player.GravityGraceLeft = Fixed.Max(0, player.GravityGraceLeft - deltaTime);
+                if (player.GravityGraceLeft == 0 || player.VY <= 0)
+                    player.FullTongueJump = false;
             }
         }
     }

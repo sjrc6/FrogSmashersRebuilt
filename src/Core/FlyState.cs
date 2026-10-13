@@ -5,7 +5,6 @@ public enum FlyPhase
     Flying,
     Tumbling,
     Recovering,
-    Exploding,
 }
 
 public sealed class FlyState

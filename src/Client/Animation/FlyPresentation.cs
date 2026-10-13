@@ -27,7 +27,10 @@ internal sealed class FlyPresentation
         else
         {
             Sprite = "fly-tumble";
-            Rotation = fly.Phase == FlyPhase.Tumbling ? fly.TimeSinceHit.ToFloat() * 12 : 0;
+            Rotation =
+                fly.Phase == FlyPhase.Tumbling && (fly.VX != 0 || fly.VY != 0)
+                    ? MathF.Atan2(fly.VY.ToFloat(), fly.VX.ToFloat()) - MathF.PI / 2
+                    : 0;
         }
         Scale = squishRemaining > 0 ? squishScale : Vector2.One;
         squishRemaining = Math.Max(0, squishRemaining - dt);

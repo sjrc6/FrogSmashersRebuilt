@@ -22,6 +22,9 @@ internal static class ModifierCatalog
 
     private static bool FliesDisabled(GameRules rules) => !rules.Modifiers.FlyEnabled;
 
+    private static bool FlyExplosionDisabled(GameRules rules) =>
+        !rules.Modifiers.FlyEnabled || !rules.Modifiers.FlyTumble;
+
     public static IReadOnlyList<ModifierDefinition> All { get; } =
         Array.AsReadOnly<ModifierDefinition>([
             new(
@@ -55,11 +58,11 @@ internal static class ModifierCatalog
                 Disabled: BodyDisabled
             ),
             new(
-                "tongue-hurtbox",
-                "TONGUE HURTBOX",
+                "tongue-parry",
+                "TONGUE PARRY",
                 "OFF",
-                m => OnOff(m.TongueHurtbox),
-                (m, _) => m with { TongueHurtbox = !m.TongueHurtbox }
+                m => OnOff(m.TongueParry),
+                (m, _) => m with { TongueParry = !m.TongueParry }
             ),
             new(
                 "tongue-jump",
@@ -112,8 +115,8 @@ internal static class ModifierCatalog
                 "FLY EXPLODE",
                 "OFF",
                 m => OnOff(m.FlyExplode),
-                (m, _) => m with { FlyExplode = !m.FlyExplode, FlyTumble = false },
-                Disabled: FliesDisabled
+                (m, _) => m with { FlyExplode = m.FlyTumble && !m.FlyExplode },
+                Disabled: FlyExplosionDisabled
             ),
             new(
                 "fly-min",

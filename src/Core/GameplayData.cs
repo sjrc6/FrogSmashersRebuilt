@@ -27,6 +27,7 @@ internal static class GameplayData
         {
             writer.Write(map.Id);
             writer.Write((int)map.Role);
+            WriteNumber(writer, (decimal)map.OrthoSize);
             WriteNumber(writer, map.KillBounds.Left);
             WriteNumber(writer, map.KillBounds.Right);
             WriteNumber(writer, map.KillBounds.Bottom);

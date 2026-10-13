@@ -59,12 +59,38 @@ internal sealed partial class PresentationChecks
         renderer.Update(.2f);
         renderer.DrawWorld(world, null, 1, showGameplayUi: false);
         Check(characters[0].Sprite == assets.Frame("tongue", 0), "The charge pose does not advance while held");
+        var flyPose = new FlyPresentation();
+        flyPose.Update(assets, world.Fly, .1f);
+        float flightAngle = MathF.Atan2(10, 40) - MathF.PI / 2;
+        Check(Math.Abs(flyPose.Rotation - flightAngle) < .001f, "The tumbling fly faces its velocity");
+        flyPose.Update(assets, world.Fly, 1);
+        Check(Math.Abs(flyPose.Rotation - flightAngle) < .001f, "Time alone does not spin the fly");
         Check(world.HashState() == hash, "Modifier presentation does not change simulation state");
         if (captureDirectory != null)
             SaveFrame(Path.Combine(captureDirectory, "fly-tumble-and-tongue-charge.png"));
 
+        player.Mode = CharacterMode.Bouncing;
+        player.TonguePhase = TonguePhase.Extending;
+        player.TongueParried = true;
+        player.TongueDistance = 8;
+        player.TongueX = 1;
+        player.TongueY = 0;
+        player.HitstopTicks = 10;
+        player.HitstopScale = 0;
+        renderer.Update(.01f);
+        renderer.DrawWorld(world, null, 1, showGameplayUi: false);
+        Check(
+            characters[0].TongueVisible && characters[0].TongueOffset.X > 7,
+            "The tongue stays extended while its owner is frozen by a parry"
+        );
+        player.TongueParried = false;
+        player.HitstopTicks = 0;
+        renderer.Update(.01f);
+        renderer.DrawWorld(world, null, 1, showGameplayUi: false);
+        Check(!characters[0].TongueVisible, "The tongue disappears when parry hitstop ends");
+
         renderer.Reset();
-        world.Fly.Phase = FlyPhase.Exploding;
+        world.Fly.Phase = FlyPhase.Tumbling;
         world.Fly.HitstopTicks = World.TickRate / 2;
         var hit = new SimulationEvent(
             world.TickNumber,

@@ -82,10 +82,13 @@ internal static class MenuArchitectureTests
         }
         var tumble = ModifierCatalog.All.Single(definition => definition.Id == "fly-tumble");
         var explode = ModifierCatalog.All.Single(definition => definition.Id == "fly-explode");
-        var flyModifiers = tumble.Change(new() { FlyExplode = true }, 1);
-        check(flyModifiers.FlyTumble && !flyModifiers.FlyExplode, "Fly tumble replaces the explosion option");
+        var flyModifiers = tumble.Change(new(), 1);
+        check(flyModifiers.FlyTumble && !flyModifiers.FlyExplode, "Fly tumble enables ordinary launches");
         flyModifiers = explode.Change(flyModifiers, 1);
-        check(flyModifiers.FlyExplode && !flyModifiers.FlyTumble, "Fly explosion replaces the tumble option");
+        check(flyModifiers.FlyExplode && flyModifiers.FlyTumble, "Fly explosion builds on fly tumble");
+        flyModifiers = tumble.Change(flyModifiers, 1);
+        check(!flyModifiers.FlyTumble && !flyModifiers.FlyExplode, "Disabling tumble also disables explosions");
+        check(explode.Disabled!(new GameRules()), "Explosions require fly tumble");
         var noFlies = new GameRules(modifiers: new() { FlyEnabled = false });
         check(tumble.Disabled!(noFlies) && explode.Disabled!(noFlies), "Fly hit options require flies to be enabled");
         Console.WriteLine("Menu identities, disabled actions and host configuration ownership passed");

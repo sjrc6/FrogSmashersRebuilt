@@ -19,7 +19,7 @@ public sealed record GameModifiers
     public bool BodyBouncing { get; init; }
     public bool BounceBeforeRecoveryOnly { get; init; } = true;
     public bool RedirectBounces { get; init; }
-    public bool TongueHurtbox { get; init; }
+    public bool TongueParry { get; init; }
     public bool TongueJump { get; init; }
     public bool ChargeTongues { get; init; }
     public bool SuicidePenalty { get; init; }
@@ -34,8 +34,8 @@ public sealed record GameModifiers
     {
         if (!Enum.IsDefined(MatchScoring))
             throw new ArgumentException("Invalid match scoring modifier");
-        if (FlyTumble && FlyExplode)
-            throw new ArgumentException("Choose one fly hit modifier");
+        if (FlyExplode && !FlyTumble)
+            throw new ArgumentException("Fly explode requires fly tumble");
         if (
             FlySpawnMinSeconds < MinimumFlyDelay
             || FlySpawnMaxSeconds > MaximumFlyDelay
@@ -50,7 +50,7 @@ public sealed record GameModifiers
         writer.Write(BodyBouncing);
         writer.Write(BounceBeforeRecoveryOnly);
         writer.Write(RedirectBounces);
-        writer.Write(TongueHurtbox);
+        writer.Write(TongueParry);
         writer.Write(TongueJump);
         writer.Write(ChargeTongues);
         writer.Write(SuicidePenalty);

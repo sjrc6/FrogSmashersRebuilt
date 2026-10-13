@@ -224,6 +224,8 @@ public sealed partial class World
         {
             player.HitstopScale = 1;
         }
+        if (player.HitstopTicks == 0)
+            player.TongueParried = false;
 
         var priorMode = player.Mode;
         if (player.Mode == CharacterMode.Bouncing)

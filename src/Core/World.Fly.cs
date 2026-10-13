@@ -13,7 +13,7 @@ public sealed partial class World
 
     private bool TryClaimFly(PlayerState claimant)
     {
-        if (!Fly.Active || Fly.Phase == FlyPhase.Exploding || Fly.Owner >= 0 && Fly.Owner != claimant.Slot)
+        if (!Fly.Active || Fly.Owner >= 0 && Fly.Owner != claimant.Slot)
         {
             return false;
         }
@@ -102,6 +102,14 @@ public sealed partial class World
                 UpdateFlyTumble();
         }
 
+        if (!Fly.Active)
+            return;
+        if (FlyExplosionArmed && FlyOutsideScreen())
+        {
+            ExplodeFly();
+            return;
+        }
+
         if (
             Fly.X < FromDecimal(Map.KillBounds.Left)
             || Fly.X > FromDecimal(Map.KillBounds.Right)
@@ -114,6 +122,13 @@ public sealed partial class World
             ResetFlyTumble();
             Fly.SpawnTicks = NextFlySpawnTicks();
         }
+    }
+
+    private bool FlyOutsideScreen()
+    {
+        var halfHeight = FromDecimal((decimal)Map.OrthoSize);
+        var halfWidth = halfHeight * 16 / 9;
+        return Fixed.Abs(Fly.X) > halfWidth + FlyState.Radius || Fixed.Abs(Fly.Y) > halfHeight + FlyState.Radius;
     }
 
     private void MoveFlyingFly()

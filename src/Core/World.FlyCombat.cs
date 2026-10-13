@@ -4,6 +4,11 @@ namespace FrogSmashers.Core;
 
 public sealed partial class World
 {
+    private static readonly Fixed FlyTumbleGravityScale = FromDecimal(.5m);
+
+    private bool FlyExplosionArmed =>
+        Rules.Modifiers.FlyExplode && Fly.Phase == FlyPhase.Tumbling && Fly.LastHitBy >= 0;
+
     private void ResetFlyTumble()
     {
         Fly.Phase = FlyPhase.Flying;
@@ -29,14 +34,14 @@ public sealed partial class World
     {
         ReleaseFly();
         bool exploding = Rules.Modifiers.FlyExplode;
-        Fly.Phase = exploding ? FlyPhase.Exploding : FlyPhase.Tumbling;
+        Fly.Phase = FlyPhase.Tumbling;
         Fly.HasBounced = false;
         Fly.HitsTaken++;
         Fly.LastHitBy = attacker.Slot;
         Fly.TimeSinceHit = 0;
         Fly.GravityRestore = 0;
         Fly.RecoveryTicks = 0;
-        Fly.ExplosionPower = exploding ? power : Fixed.Zero;
+        Fly.ExplosionPower = exploding ? HitPower(Fly.HitsTaken, power, false) : Fixed.Zero;
         var velocity = HitVelocity(direction, Fly.HitsTaken, power, false);
         Fly.VX = velocity.X;
         Fly.VY = velocity.Y;
@@ -57,16 +62,19 @@ public sealed partial class World
         );
     }
 
-    private void ExplodeFly(PlayerState attacker, Fixed power)
+    private void ExplodeFly()
     {
+        var attacker = Players[Fly.LastHitBy];
+        var power = Fly.ExplosionPower;
         var origin = Fly.Position;
         Fly.Active = false;
         Fly.SpawnTicks = NextFlySpawnTicks();
+        ReleaseFly();
         ResetFlyTumble();
-        Emit(SimulationEventKind.FlyExplode, other: attacker.Slot, position: origin, power: power);
+        Emit(SimulationEventKind.FlyExplode, other: attacker.Slot, position: origin, strength: power, power: power);
         foreach (var victim in Players)
         {
-            if (!victim.Alive)
+            if (!victim.Alive || victim == attacker)
                 continue;
             var direction = victim.Center - origin;
             if (direction == default)
@@ -84,11 +92,6 @@ public sealed partial class World
                 Emit(SimulationEventKind.FlyLaunch, position: Fly.Position, comboHits: Fly.HitsTaken);
             return;
         }
-        if (Fly.Phase == FlyPhase.Exploding)
-        {
-            ExplodeFly(Players[Fly.LastHitBy], Fly.ExplosionPower);
-            return;
-        }
         if (Fly.Phase == FlyPhase.Recovering)
         {
             if (--Fly.RecoveryTicks <= 0)
@@ -97,8 +100,8 @@ public sealed partial class World
         }
 
         Fly.TimeSinceHit += TickDuration;
-        var gravity = BounceGravity(Fly.TimeSinceHit, ref Fly.GravityRestore, TickDuration);
-        if (Fly.VY >= 0 && Fly.VY - gravity * TickDuration < 0)
+        var gravity = BounceGravity(Fly.TimeSinceHit, ref Fly.GravityRestore, TickDuration) * FlyTumbleGravityScale;
+        if (!FlyExplosionArmed && Fly.VY >= 0 && Fly.VY - gravity * TickDuration < 0)
         {
             ResumeFlyFlight();
             return;
@@ -125,6 +128,13 @@ public sealed partial class World
             }
 
             position += delta * fraction + normal * FromDecimal(.001m);
+            if (FlyExplosionArmed)
+            {
+                Fly.X = position.X;
+                Fly.Y = position.Y;
+                ExplodeFly();
+                return;
+            }
             if (Fly.HasBounced && velocity.LengthSquared < 25)
             {
                 Fly.Phase = FlyPhase.Recovering;

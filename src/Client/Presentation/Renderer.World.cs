@@ -135,12 +135,15 @@ public sealed partial class Renderer
             var pose = characters[i];
             var pos = characterPositions[i];
 
-            if (dt > 0 && pose.TongueVisible)
+            if (dt > 0 && pose.TongueVisible && !p.TongueParried)
             {
                 pose.TipClock.Step(dt, assets.Data.TongueTip.FrameSeconds, assets.Data.TongueTip.Frames.Length, false);
             }
 
-            if (p.Mode != CharacterMode.Tongue || p.TonguePhase is TonguePhase.Stunned or TonguePhase.Charging)
+            if (
+                (p.Mode != CharacterMode.Tongue && !p.TongueParried)
+                || p.TonguePhase is TonguePhase.Stunned or TonguePhase.Charging
+            )
             {
                 pose.TongueVisible = false;
             }

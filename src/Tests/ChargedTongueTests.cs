@@ -10,17 +10,17 @@ internal static class ChargedTongueTests
     {
         LongTongueCollisions();
         var baseline = Shoot(0);
-        foreach (int heldTicks in new[] { 1, 49, 50, 99, 100, 149, 150, 200 })
+        foreach (int heldTicks in new[] { 1, 12, 25, 49, 50, 75, 150, 200 })
         {
             var shot = Shoot(heldTicks);
-            int multiplier = Math.Max(1, heldTicks / (World.TickRate / 2));
+            Fixed multiplier = 1 + (Fixed)2 * Math.Min(heldTicks, World.TickRate / 2) / (World.TickRate / 2);
             Check(
                 shot.Extension == baseline.Extension && shot.Retraction == baseline.Retraction,
                 "Charge changes reach without changing extension or retraction time"
             );
             Check(
                 Fixed.Abs(shot.Reach - baseline.Reach * multiplier) < Fixed.FromDecimal(.001m),
-                "Each half-second charge step adds one base range, with 1.5 seconds giving 3x reach"
+                "Charge grows smoothly from 1x to 3x over half a second and stays capped"
             );
         }
 
@@ -61,7 +61,9 @@ internal static class ChargedTongueTests
             Step(pull, new(0, 0, InputButtons.Jump));
             Check(player.Mode == CharacterMode.Normal && player.VY > 0, "Tongue Jump also cancels a charged pull");
         }
-        Console.WriteLine("Charged tongues: release, exact charge steps, equal travel times and interruption passed");
+        Console.WriteLine(
+            "Charged tongues: release, half-second charge cap, equal travel times and interruption passed"
+        );
     }
 
     private static void LongTongueCollisions()
@@ -94,7 +96,8 @@ internal static class ChargedTongueTests
             var player = world.Players[0];
             player.Mode = CharacterMode.Tongue;
             player.TonguePhase = TonguePhase.Extending;
-            player.TongueLengthMultiplier = 20;
+            player.TongueLengthMultiplier = 3;
+            player.TongueDistance = 3;
             if (target == "player")
                 world.Players[1].X = 5;
             else if (target == "fly")

@@ -11,6 +11,7 @@ public sealed partial class World
         if (
             Rules.Modifiers.TongueJump
             && player.Mode == CharacterMode.Tongue
+            && !player.WasBouncingBeforeTongue
             && player.TonguePhase == TonguePhase.AttachedToTerrain
             && input.Jump
             && !player.PreviousInput.Jump
@@ -23,9 +24,11 @@ public sealed partial class World
             player.WasBouncingBeforeTongue = false;
             player.OnGround = false;
             player.WallSliding = false;
-            player.JumpGraceLeft = 0;
+            player.JumpGraceLeft = tuning.JumpGraceTime;
+            player.JumpCooldownLeft = 0;
             player.VY = tuning.JumpVel;
             player.GravityGraceLeft = tuning.GravityGraceTime;
+            player.FullTongueJump = true;
             Emit(SimulationEventKind.Jump, player);
         }
 
@@ -73,8 +76,7 @@ public sealed partial class World
         }
 
         if (
-            input.Jump
-            && input.Y >= 0
+            (input.Jump && input.Y >= 0 || player.FullTongueJump)
             && (player.JumpCooldownLeft <= 0 || (!player.PreviousInput.Jump && player.Mode != CharacterMode.Attacking))
         )
         {
@@ -197,7 +199,11 @@ public sealed partial class World
         else
         {
             var gravity = tuning.Gravity;
-            if (input.Jump && player.VY <= tuning.GravityGraceThreshold && player.GravityGraceLeft > 0)
+            if (
+                (input.Jump || player.FullTongueJump)
+                && player.VY <= tuning.GravityGraceThreshold
+                && player.GravityGraceLeft > 0
+            )
             {
                 gravity *= 1 - player.GravityGraceLeft / tuning.GravityGraceTime;
             }

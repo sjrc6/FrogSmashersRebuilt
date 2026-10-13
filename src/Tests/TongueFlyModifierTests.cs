@@ -9,14 +9,14 @@ internal static class TongueFlyModifierTests
 {
     public static void Run()
     {
-        TongueHurtbox();
+        TongueParry();
         TongueJump();
         ChargedTongueTests.Run();
         FlyBatting();
         FlyRecovery();
         FlyCapture();
         FlyExplosion();
-        Console.WriteLine("Tongue hurtboxes, pull jumps, fly tumble/recovery and radial explosions passed");
+        Console.WriteLine("Tongue parries, pull jumps, fly tumble/recovery and radial explosions passed");
     }
 
     private static void Swing(PlayerState player, int x = 1, int y = 0)
@@ -40,12 +40,12 @@ internal static class TongueFlyModifierTests
         Check(world.Events.SequenceEqual(events), "Modifier presentation events replay deterministically");
     }
 
-    private static void TongueHurtbox()
+    private static void TongueParry()
     {
         foreach (bool enabled in new[] { false, true })
         foreach (var phase in Enum.GetValues<TonguePhase>())
         {
-            var world = CreateWorld(new(modifiers: new() { TongueHurtbox = enabled }));
+            var world = CreateWorld(new(modifiers: new() { TongueParry = enabled }));
             Swing(world.Players[0], 0, 1);
             var target = world.Players[1];
             target.X = 10;
@@ -65,7 +65,28 @@ internal static class TongueFlyModifierTests
                 );
         }
 
-        var overlap = CreateWorld(new(modifiers: new() { TongueHurtbox = true }));
+        var frozen = CreateWorld(new(modifiers: new() { TongueParry = true }));
+        Swing(frozen.Players[0], 0, 1);
+        var parried = frozen.Players[1];
+        parried.X = 10;
+        parried.Mode = CharacterMode.Tongue;
+        parried.TongueX = -1;
+        parried.TongueDistance = 20;
+        var tip = parried.TongueTip;
+        ReplayStep(frozen);
+        Check(frozen.Players[1].TongueParried, "A tongue parry retains the extended tongue during hitstop");
+        while (frozen.Players[1].HitstopTicks > 1)
+        {
+            Check(
+                frozen.Players[1].TongueTip == tip && frozen.Players[1].TongueParried,
+                "The parried tongue stays extended and stationary"
+            );
+            Step(frozen);
+        }
+        Step(frozen);
+        Check(!frozen.Players[1].TongueParried, "The tongue disappears when parry hitstop ends");
+
+        var overlap = CreateWorld(new(modifiers: new() { TongueParry = true }));
         Swing(overlap.Players[0]);
         overlap.Players[1].X = 2;
         overlap.Players[1].Mode = CharacterMode.Tongue;
@@ -74,7 +95,7 @@ internal static class TongueFlyModifierTests
         Check(overlap.Players[1].HitsTaken == 1, "A bat overlapping both body and tongue hits the owner once");
 
         var team = CreateWorld(
-            new(playerCount: 3, format: MatchFormat.Teams, teams: [0, 0, 1], modifiers: new() { TongueHurtbox = true })
+            new(playerCount: 3, format: MatchFormat.Teams, teams: [0, 0, 1], modifiers: new() { TongueParry = true })
         );
         Swing(team.Players[0], 0, 1);
         team.Players[1].X = 10;
@@ -82,7 +103,7 @@ internal static class TongueFlyModifierTests
         team.Players[1].TongueX = -1;
         team.Players[1].TongueDistance = 20;
         ReplayStep(team);
-        Check(team.Players[1].HitsTaken == 0, "Tongue hurtboxes preserve friendly-fire rules");
+        Check(team.Players[1].HitsTaken == 0, "Tongue parries preserve friendly-fire rules");
     }
 
     private static World Pulling(bool enabled, bool bounced = false)
@@ -104,10 +125,9 @@ internal static class TongueFlyModifierTests
     private static void TongueJump()
     {
         var jump = new InputFrame(0, 0, InputButtons.Jump);
-        foreach (bool bounced in new[] { false, true })
         foreach (decimal distance in new[] { .1m, 5m, 9m })
         {
-            var world = Pulling(true, bounced);
+            var world = Pulling(true);
             world.Players[0].TongueDistance = FromDecimal(distance);
             ReplayStep(world, jump);
             var player = world.Players[0];
@@ -115,11 +135,27 @@ internal static class TongueFlyModifierTests
                 player.Mode == CharacterMode.Normal && player.TongueDistance == 0 && player.VY > 0,
                 "A fresh jump cancels a terrain pull at any distance"
             );
-            Check(!player.WasBouncingBeforeTongue && player.HitsTaken == 0, "Jumping out also ends a bounce tongue");
-            Fixed upward = player.VY;
-            Step(world, jump);
-            Check(world.Players[0].VY < upward, "Holding jump does not repeatedly renew the tongue jump");
+            var normal = CreateWorld();
+            Step(normal);
+            normal.Players[0].Y = 6;
+            Step(normal, jump);
+            for (int tick = 0; tick < 40; tick++)
+            {
+                Check(
+                    player.Y == normal.Players[0].Y && player.VY == normal.Players[0].VY,
+                    $"Tapping a tongue jump gives the full held-jump trajectory at {tick}: {player.Y}/{player.VY} vs {normal.Players[0].Y}/{normal.Players[0].VY}"
+                );
+                Step(world);
+                Step(normal, jump);
+            }
         }
+        var bounced = Pulling(true, true);
+        ReplayStep(bounced, jump);
+        Check(
+            bounced.Players[0].Mode == CharacterMode.Tongue && bounced.Players[0].WasBouncingBeforeTongue,
+            "Jump cannot cancel a tumble tongue"
+        );
+        Check(!bounced.Events.Any(e => e.Kind == SimulationEventKind.Jump), "A tumble tongue emits no jump");
         var disabled = Pulling(false);
         ReplayStep(disabled, jump);
         Check(
@@ -183,7 +219,7 @@ internal static class TongueFlyModifierTests
             world.Fly.Phase = FlyPhase.Tumbling;
             world.Fly.HasBounced = bounced;
             world.Fly.Y = 6;
-            world.Fly.VY = FromDecimal(.1m);
+            world.Fly.VY = FromDecimal(.05m);
             ReplayStep(world);
             Check(world.Fly.Phase == FlyPhase.Flying, "Apex recovery is immediate and does not require a bounce");
         }
@@ -251,50 +287,108 @@ internal static class TongueFlyModifierTests
 
     private static void FlyExplosion()
     {
-        var world = CreateWorld(
-            new(playerCount: 4, format: MatchFormat.Teams, teams: [0, 0, 1, 1], modifiers: new() { FlyExplode = true })
+        var rules = new GameRules(
+            playerCount: 4,
+            format: MatchFormat.Teams,
+            teams: [0, 0, 1, 1],
+            modifiers: new() { FlyTumble = true, FlyExplode = true }
         );
-        FixedVector[] positions = [new(0, 0), new(2, 0), new(25, 25), new(-25, 25)];
-        for (int slot = 0; slot < world.Players.Length; slot++)
+        Fixed previousStrength = 0;
+        foreach (int charge in new[] { 0, 1 })
         {
-            world.Players[slot].X = positions[slot].X;
-            world.Players[slot].Y = positions[slot].Y;
+            var world = CreateWorld(rules);
+            for (int slot = 1; slot < 4; slot++)
+                world.Players[slot].X = slot * 8;
+            world.Fly.Active = true;
+            world.Fly.X = 2;
+            world.Fly.Y = 1;
+            Swing(world.Players[0]);
+            world.Players[0].AttackCharge = charge;
+            ReplayStep(world);
+            Check(
+                world.Fly.Phase == FlyPhase.Tumbling && world.Fly.LastHitBy == 0,
+                "An explosive fly tumbles and credits its last hitter"
+            );
+            var strength = world.Fly.ExplosionPower;
+            Check(strength > previousStrength, "Charging the bat increases explosion strength");
+            previousStrength = strength;
+            Check(
+                world.Events.Single(e => e.Kind == SimulationEventKind.FlyHit).HitstopSeconds == FromDecimal(.5m),
+                "An explosive fly retains half a second of launch hitstop and stars"
+            );
+            var origin = world.Fly.Position;
+            ReplayStep(world, count: world.Fly.HitstopTicks);
+            Check(world.Fly.Position == origin && world.Fly.Active, "The armed fly freezes before launching");
+            world.Fly.Y = 6;
+            world.Fly.VY = FromDecimal(.05m);
+            ReplayStep(world);
+            Check(
+                world.Fly.Phase == FlyPhase.Tumbling && world.Fly.VY < 0,
+                "An armed fly passes its apex without disarming"
+            );
+
+            world.Fly.X = 4;
+            world.Fly.Y = FlyState.Radius + FromDecimal(.005m);
+            world.Fly.VY = -10;
+            foreach (var player in world.Players)
+                player.HitstopTicks = 0;
+            ReplayStep(world);
+            Check(!world.Fly.Active && world.Fly.SpawnTicks > 0, "The next surface contact detonates the fly");
+            Check(
+                world.Players[0].HitsTaken == 0 && world.Players[0].HitstopTicks == 0,
+                "The explosion neither launches nor freezes its owner"
+            );
+            foreach (var victim in world.Players.Skip(1))
+            {
+                Check(
+                    victim.Mode == CharacterMode.Bouncing && victim.LastHitBy == 0 && victim.HitsTaken == 1,
+                    "The blast hits everyone else, including the owner's teammate"
+                );
+                Check(
+                    Fixed.Abs(victim.Velocity.Length - strength) < FromDecimal(.001m),
+                    "Blast speed matches the strength of the hit that armed the fly"
+                );
+                Check(victim.VX > 0 && victim.VY > 0, "Blast knockback points away from the contact point");
+            }
+            Check(
+                world.Events.Count(e => e.Kind == SimulationEventKind.FlyExplode) == 1,
+                "A contact produces exactly one explosion"
+            );
         }
-        world.Fly.Active = true;
-        world.Fly.X = 2;
-        world.Fly.Y = 1;
-        Swing(world.Players[0]);
-        ReplayStep(world);
-        Check(world.Fly.Active && world.Fly.Phase == FlyPhase.Exploding, "The fly freezes before its explosion");
+        foreach (var direction in new FixedVector[] { new(1, 0), new(-1, 0), new(0, 1), new(0, -1) })
+        {
+            var world = WithFly(rules.Modifiers);
+            world.Fly.Phase = FlyPhase.Tumbling;
+            world.Fly.LastHitBy = 0;
+            world.Fly.ExplosionPower = 30;
+            world.Fly.X = direction.X * 29;
+            world.Fly.Y = direction.Y * 17;
+            world.Fly.HitstopTicks = 2;
+            ReplayStep(world);
+            Check(
+                !world.Fly.Active && world.Events.Any(e => e.Kind == SimulationEventKind.FlyExplode),
+                "An armed fly detonates beyond every screen edge, before the kill bounds"
+            );
+        }
+        var takeover = WithFly(new() { FlyTumble = true, FlyExplode = true });
+        Swing(takeover.Players[0]);
+        Step(takeover);
+        takeover.Fly.X = 22;
+        Swing(takeover.Players[1]);
+        ReplayStep(takeover);
         Check(
-            world.Events.Single(e => e.Kind == SimulationEventKind.FlyHit).HitstopSeconds == FromDecimal(.5m),
-            "Explosion hit effects last half a second"
+            takeover.Fly.LastHitBy == 1 && takeover.Fly.HitsTaken == 2,
+            "Batting an armed fly transfers ownership and increases its power"
         );
-        var origin = world.Fly.Position;
-        ReplayStep(world, count: world.Fly.HitstopTicks);
+        takeover.Fly.HitstopTicks = 0;
+        takeover.Fly.Y = FlyState.Radius + FromDecimal(.005m);
+        takeover.Fly.VY = -10;
+        foreach (var player in takeover.Players)
+            player.HitstopTicks = 0;
+        ReplayStep(takeover);
         Check(
-            world.Fly.Active && world.Fly.Position == origin && world.Fly.HitstopTicks == 0,
-            "The exploding fly stays in place throughout its half-second hitstop"
-        );
-        ReplayStep(world);
-        Check(!world.Fly.Active && world.Fly.SpawnTicks > 0, "An exploded fly disappears and schedules its next spawn");
-        Check(
-            world.Players.All(p => p.Mode == CharacterMode.Bouncing && p.HitsTaken == 1 && p.HitstopTicks > 0),
-            "Fly explosions hit every living player, including the batter and their teammate"
-        );
-        Check(
-            world.Players[0].VX < 0 && world.Players[0].VY == 0,
-            "Explosion knockback points radially away without bat lift"
-        );
-        Check(world.Players[1].VX == 0 && world.Players[1].VY > 0, "A player at the explosion center launches upward");
-        Check(
-            world.Players[2].VX > 0 && world.Players[2].VY > 0 && world.Players[3].VX < 0 && world.Players[3].VY > 0,
-            "Distant players launch away from the same explosion center"
-        );
-        Check(
-            world.Events.Count(e => e.Kind == SimulationEventKind.FlyExplode) == 1
-                && world.Events.Count(e => e.Kind == SimulationEventKind.Hit && e.HitKind == HitKind.FlyExplosion) == 4,
-            "An explosion emits one blast and one hit per player"
+            takeover.Players[1].HitsTaken == 0 && takeover.Players[0].LastHitBy == 1,
+            "Only the newest owner is immune to the explosion"
         );
     }
 }

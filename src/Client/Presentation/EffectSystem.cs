@@ -680,7 +680,7 @@ internal sealed class EffectSystem
             AttackerColor = fly.LastHitBy >= 0 ? colorFor(world, fly.LastHitBy) : null,
             Airborne = fly.Phase == FlyPhase.Tumbling,
             Silhouette = fly.HitsTaken > 0,
-            Frozen = fly.HitstopTicks > 0 || fly.Phase == FlyPhase.Exploding,
+            Frozen = fly.HitstopTicks > 0,
             Recovered = fly.Phase != FlyPhase.Tumbling,
         };
         UpdateFlight(visual, pose.Flight, dt, visual.Frozen ? 0 : dt);

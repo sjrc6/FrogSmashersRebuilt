@@ -60,24 +60,22 @@ public sealed partial class World
                 bool hitFly =
                     !Rules.Lobby
                     && Rules.Modifiers.FlyEnabled
-                    && (Rules.Modifiers.FlyTumble || Rules.Modifiers.FlyExplode)
+                    && Rules.Modifiers.FlyTumble
                     && Fly.Active
-                    && Fly.Phase != FlyPhase.Exploding
                     && PointSegmentDistanceSquared(Fly.Position, start, end) <= flyRadius * flyRadius;
                 var power = GetAttackCharge(player) + (player.HasFly ? FromDecimal(1.5m) : Fixed.Zero);
                 foreach (var other in Players)
                 {
+                    bool parried = Rules.Modifiers.TongueParry && CapsuleTouchesTongue(start, end, radius, other);
                     if (
                         other != player
                         && other.Alive
                         && (!Rules.UsesTeams || player.Team != other.Team)
-                        && (
-                            CapsuleTouchesPlayer(start, end, radius, other)
-                            || Rules.Modifiers.TongueHurtbox && CapsuleTouchesTongue(start, end, radius, other)
-                        )
+                        && (CapsuleTouchesPlayer(start, end, radius, other) || parried)
                     )
                     {
                         Hit(other, player, new(player.AttackX, player.AttackY), power, HitKind.Bat);
+                        other.TongueParried = parried && !Rules.Lobby;
                     }
                 }
 
@@ -124,6 +122,7 @@ public sealed partial class World
         }
 
         player.Mode = CharacterMode.Tongue;
+        player.FullTongueJump = false;
         player.TongueDistance = 0;
         player.TongueChargeTicks = 0;
         player.TongueLengthMultiplier = 1;
@@ -156,11 +155,10 @@ public sealed partial class World
             AimTongue(player, input);
             if (input.Tongue)
             {
-                player.TongueChargeTicks += deltaTime / TickDuration;
+                player.TongueChargeTicks = Fixed.Min(TickRate / 2, player.TongueChargeTicks + deltaTime / TickDuration);
                 return;
             }
-            int chargeSteps = checked((int)(player.TongueChargeTicks.Raw / (TickRate / 2 * Fixed.Unit)));
-            player.TongueLengthMultiplier = Math.Max(1, chargeSteps);
+            player.TongueLengthMultiplier = 1 + 2 * player.TongueChargeTicks / (TickRate / 2);
             player.TongueChargeTicks = 0;
             player.TonguePhase = TonguePhase.Extending;
             Emit(SimulationEventKind.TongueLaunch, player);
@@ -187,9 +185,10 @@ public sealed partial class World
                 extension += Fixed.Abs(player.VY) * deltaTime;
             }
 
-            for (int step = 1; step <= player.TongueLengthMultiplier; step++)
+            int steps = (int)((player.TongueLengthMultiplier.Raw + Fixed.Unit - 1) / Fixed.Unit);
+            for (int step = 1; step <= steps; step++)
             {
-                player.TongueDistance = priorDistance + extension * step / player.TongueLengthMultiplier;
+                player.TongueDistance = priorDistance + extension * step / steps;
                 CheckTongueContact(player, priorTip);
                 if (player.TonguePhase != TonguePhase.Extending)
                     break;
@@ -370,6 +369,8 @@ public sealed partial class World
         victim.CanBounceTongue = false;
         victim.HasBounceTongued = false;
         victim.Mode = CharacterMode.Bouncing;
+        victim.FullTongueJump = false;
+        victim.TongueParried = false;
         victim.TongueChargeTicks = 0;
         victim.AttackPhase = AttackPhase.Idle;
         victim.SkidRecoverLeft = FromDecimal(.5m);
@@ -404,17 +405,23 @@ public sealed partial class World
         }
 
         ResetHit(victim, attacker.Slot, direction);
-        var totalPower = HitPower(victim.HitsTaken, power, tongue);
+        bool explosion = kind == HitKind.FlyExplosion;
+        var totalPower = explosion ? power : HitPower(victim.HitsTaken, power, tongue);
         var velocity =
             kind == HitKind.FlyExplosion
                 ? direction.Normalized * totalPower
                 : HitVelocity(direction, victim.HitsTaken, power, tongue);
         SetVelocity(victim, velocity);
-        ApplyHitstop(victim, tongue ? FromDecimal(.75m) : victim.HitsTaken + power, 0);
-        ApplyHitstop(attacker, tongue ? FromDecimal(.5m) : victim.HitsTaken + power, 0);
-        if (!tongue)
+        var duration =
+            explosion ? power / 20
+            : tongue ? FromDecimal(.75m)
+            : victim.HitsTaken + power;
+        ApplyHitstop(victim, duration, 0);
+        if (!explosion)
         {
-            ApplyNearbyHitstop(victim.Position, victim.HitsTaken + power);
+            ApplyHitstop(attacker, tongue ? FromDecimal(.5m) : duration, 0);
+            if (!tongue)
+                ApplyNearbyHitstop(victim.Position, duration);
         }
 
         Emit(

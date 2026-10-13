@@ -48,6 +48,8 @@ public sealed class PlayerState
     public bool CanBounceTongue;
     public bool HasBounceTongued;
     public bool WasBouncingBeforeTongue;
+    public bool FullTongueJump;
+    public bool TongueParried;
     public int WallSlideSide;
     public int SpawnTicks;
     public int HitstopTicks;
@@ -61,7 +63,7 @@ public sealed class PlayerState
     public Fixed TongueY;
     public Fixed TongueDistance;
     public Fixed TongueChargeTicks;
-    public int TongueLengthMultiplier = 1;
+    public Fixed TongueLengthMultiplier = 1;
     public Fixed AttackCharge;
     public Fixed AttackTimeLeft;
     public Fixed AttackRecoverTimeLeft;
@@ -110,6 +112,8 @@ public sealed class PlayerState
         writer.Write(CanBounceTongue);
         writer.Write(HasBounceTongued);
         writer.Write(WasBouncingBeforeTongue);
+        writer.Write(FullTongueJump);
+        writer.Write(TongueParried);
         writer.Write(X.Raw);
         writer.Write(Y.Raw);
         writer.Write(VX.Raw);
@@ -120,7 +124,7 @@ public sealed class PlayerState
         writer.Write(TongueY.Raw);
         writer.Write(TongueDistance.Raw);
         writer.Write(TongueChargeTicks.Raw);
-        writer.Write(TongueLengthMultiplier);
+        writer.Write(TongueLengthMultiplier.Raw);
         writer.Write(AttackCharge.Raw);
         writer.Write(AttackTimeLeft.Raw);
         writer.Write(AttackRecoverTimeLeft.Raw);
@@ -165,6 +169,8 @@ public sealed class PlayerState
             CanBounceTongue = reader.ReadBoolean(),
             HasBounceTongued = reader.ReadBoolean(),
             WasBouncingBeforeTongue = reader.ReadBoolean(),
+            FullTongueJump = reader.ReadBoolean(),
+            TongueParried = reader.ReadBoolean(),
             X = new(reader.ReadInt64()),
             Y = new(reader.ReadInt64()),
             VX = new(reader.ReadInt64()),
@@ -175,7 +181,7 @@ public sealed class PlayerState
             TongueY = new(reader.ReadInt64()),
             TongueDistance = new(reader.ReadInt64()),
             TongueChargeTicks = new(reader.ReadInt64()),
-            TongueLengthMultiplier = reader.ReadInt32(),
+            TongueLengthMultiplier = new(reader.ReadInt64()),
             AttackCharge = new(reader.ReadInt64()),
             AttackTimeLeft = new(reader.ReadInt64()),
             AttackRecoverTimeLeft = new(reader.ReadInt64()),

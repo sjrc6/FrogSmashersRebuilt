@@ -7,7 +7,7 @@ public sealed partial class World
     private static bool CapsuleTouchesTongue(FixedVector start, FixedVector end, Fixed radius, PlayerState player)
     {
         if (
-            player.Mode != CharacterMode.Tongue
+            (player.Mode != CharacterMode.Tongue && !player.TongueParried)
             || player.TonguePhase is TonguePhase.Stunned or TonguePhase.Burping or TonguePhase.Charging
             || player.TongueDistance <= 0
         )

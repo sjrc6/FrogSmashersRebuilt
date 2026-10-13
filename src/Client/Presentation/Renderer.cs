@@ -406,6 +406,7 @@ public sealed partial class Renderer : IDisposable
 
                     break;
                 case SimulationEventKind.FlyExplode:
+                    float blastScale = Math.Clamp(e.Strength.ToFloat() / 10, 2, 6);
                     effects.Add(
                         "SmokeRing",
                         p,
@@ -414,11 +415,11 @@ public sealed partial class Renderer : IDisposable
                         new EffectSpawn
                         {
                             Age = age,
-                            Scale = 2,
+                            Scale = blastScale,
                             Life = .4f,
                         }
                     );
-                    cameraController.Shake(Vector2.UnitY, 2);
+                    cameraController.Shake(Vector2.UnitY, blastScale);
                     break;
                 case SimulationEventKind.TongueHit:
                     var tip = p;
