@@ -33,6 +33,13 @@ Spiritually related to [DGR](https://github.com/TheFlyingFoool/DuckGameRebuilt)
 - Download the latest version from the **[releases](https://github.com/sjrc6/FrogSmashersRebuilt/releases)**
 - After downloading you can update to new versions with the included updater executable
 
+## Contributing
+The current release build is based on the "modifiers" branch where I've put some experimental modifiers for gameplay testing. They will be merged back into main at some point, but if you're wondering why the main branch does not include those features that's why.
+
+Please feel free to ignore any failing tests, I'll fix them after merging your changes
+
+Dev improvements for other environments are welcome
+
 ## Docs
 
 Controls: [controls.txt](docs/controls.txt) \
