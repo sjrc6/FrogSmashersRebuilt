@@ -27,6 +27,7 @@ Spiritually related to [DGR](https://github.com/TheFlyingFoool/DuckGameRebuilt)
 - Fixed some undesirable physics bugs from the original game
 - Teams and Crew Battles(WIP) modes
 - Very stupid CPUs
+- Strafe button
 
 ## Installation
 - Download the latest version from the **[releases](https://github.com/sjrc6/FrogSmashersRebuilt/releases)**
